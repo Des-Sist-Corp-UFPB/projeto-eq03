@@ -14,7 +14,7 @@
 <head>
     <meta charset="UTF-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Login — Mercado DSC</title>
+    <title>Login — Chamados DSC</title>
     <link rel="stylesheet"
           th:href="@{/webjars/bootstrap/css/bootstrap.min.css}"/>
     <style>
@@ -56,10 +56,13 @@
     <!-- Cabeçalho do card -->
     <div class="login-header">
         <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" fill="white"
-             class="bi bi-shop mb-2" viewBox="0 0 16 16">
-            <path d="M2.97 1.35A1 1 0 0 1 3.73 1h8.54a1 1 0 0 1 .76.35l2.609 3.044A1.5 1.5 0 0 1 16 5.37v.255a2.375 2.375 0 0 1-4.25 1.458A2.371 2.371 0 0 1 9.875 8 2.37 2.37 0 0 1 8 7.083 2.37 2.37 0 0 1 6.125 8a2.37 2.37 0 0 1-1.875-.917A2.375 2.375 0 0 1 0 5.625V5.37a1.5 1.5 0 0 1 .361-.976zm1.78 4.275a1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0 1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0 1.375 1.375 0 1 0 2.75 0V5.37a.5.5 0 0 0-.12-.325L12.27 2H3.73L1.12 5.045A.5.5 0 0 0 1 5.37v.255a1.375 1.375 0 0 0 2.75 0 .5.5 0 0 1 1 0M1.5 8.5A.5.5 0 0 1 2 9v6h1v-5a1 1 0 0 1 1-1h3a1 1 0 0 1 1 1v5h6V9a.5.5 0 0 1 1 0v6h.5a.5.5 0 0 1 0 1H.5a.5.5 0 0 1 0-1H1V9a.5.5 0 0 1 .5-.5M4 15h3v-5H4zm6-5a1 1 0 0 1 1-1h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1z"/>
+             class="bi bi-ticket mb-2" viewBox="0 0 16 16">
+            <path d="M2 4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H2zm11 1a1 1 0 0 1 1 1v.5H2V6a1 1 0 0 1 1-1h10z" />
+            <path d="M2 7.5a1 1 0 0 0-1 1V12a1 1 0 0 0 1 1h.5a.5.5 0 0 1 0 1H2a2 2 0 0 1-2-2V8.5a2 2 0 0 1 2-2h.5a.5.5 0 0 1 0 1H2z" />
+            <path d="m14 8.5-.5-.5h.5a.5.5 0 0 1 0 1h-.5l.5-.5zm0 3-.5-.5h.5a.5.5 0 0 1 0 1h-.5l.5-.5z" />
+            <path d="M14 7.5a2 2 0 0 1 2 2v3.5a2 2 0 0 1-2 2h-.5a.5.5 0 0 0 0-1H14a1 1 0 0 0 1-1v-3.5a1 1 0 0 0-1-1h-.5a.5.5 0 0 0 0-1h.5z" />
         </svg>
-        <h1>Mercado DSC</h1>
+        <h1>Chamados DSC</h1>
         <p>Desenvolvimento de Sistemas Corporativos — UFPB Campus IV</p>
     </div>
 
@@ -96,20 +99,24 @@
         <h2 class="h5 text-center mb-4 text-muted">Acesse sua conta</h2>
 
         <!--
-          Formulário de login do Spring Security.
-
-          IMPORTANTE:
-          - th:action="@{/login}" gera a URL correta E injeta automaticamente o token CSRF
-            como campo oculto (_csrf). Isso protege contra ataques de Cross-Site Request Forgery.
-          - method="post" é obrigatório (GET enviaria a senha na URL — vulnerabilidade grave!)
-          - name="username" e name="password" são os nomes padrão do Spring Security.
-            Para customizar, configure em SecurityConfig: .usernameParameter("email")
+          Formulário de login JWT.
+          
+          Este formulário faz POST para /api/auth/login (endpoint JSON) em vez de usar
+          o formulário padrão do Spring Security (que vai para /login).
+          
+          Fluxo:
+          1. Usuário preenche usuário e senha
+          2. JavaScript intercepta o submit e envia para /api/auth/login (JSON)
+          3. API retorna JWT no campo "token"
+          4. Armazena token em localStorage
+          5. Redireciona para /usuarios (página autenticada)
+          6. SecurityFilter valida token em cada requisição
         -->
-        <form th:action="@{/login}" method="post">
+        <form id="loginForm">
 
             <!-- Campo usuário -->
             <div class="mb-3">
-                <label for="username" class="form-label fw-semibold">Usuário</label>
+                <label for="matricula" class="form-label fw-semibold">Usuário</label>
                 <div class="input-group">
                     <span class="input-group-text">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -118,11 +125,10 @@
                         </svg>
                     </span>
                     <input type="text"
-                           id="username"
-                           name="username"
+                           id="matricula"
+                           name="matricula"
                            class="form-control"
                            placeholder="Digite seu usuário"
-                           autocomplete="username"
                            required
                            autofocus/>
                 </div>
@@ -130,7 +136,7 @@
 
             <!-- Campo senha -->
             <div class="mb-4">
-                <label for="password" class="form-label fw-semibold">Senha</label>
+                <label for="senha" class="form-label fw-semibold">Senha</label>
                 <div class="input-group">
                     <span class="input-group-text">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
@@ -139,24 +145,23 @@
                         </svg>
                     </span>
                     <input type="password"
-                           id="password"
-                           name="password"
+                           id="senha"
+                           name="senha"
                            class="form-control"
                            placeholder="Digite sua senha"
-                           autocomplete="current-password"
                            required/>
                 </div>
             </div>
 
             <!-- Botão de login -->
             <div class="d-grid">
-                <button type="submit" class="btn btn-primary btn-lg">
+                <button type="submit" class="btn btn-primary btn-lg" id="submitBtn">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16"
                          fill="currentColor" class="bi bi-box-arrow-in-right me-2" viewBox="0 0 16 16">
                         <path fill-rule="evenodd" d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0z"/>
                         <path fill-rule="evenodd" d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"/>
                     </svg>
-                    Entrar
+                    <span id="btnText">Entrar</span>
                 </button>
             </div>
 
@@ -172,5 +177,95 @@
 </div>
 
 <script th:src="@{/webjars/bootstrap/js/bootstrap.bundle.min.js}"></script>
+
+<script>
+    /**
+     * Autenticação JWT via API REST.
+     * 
+     * Em vez de usar o formulário padrão do Spring Security (que usa sessões),
+     * este formulário faz uma requisição JSON para /api/auth/login e armazena
+     * o JWT em localStorage.
+     */
+    document.addEventListener('DOMContentLoaded', function() {
+        const loginForm = document.getElementById('loginForm');
+        
+        loginForm.addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const matricula = document.getElementById('matricula').value.trim();
+        const senha = document.getElementById('senha').value;
+        const submitBtn = document.getElementById('submitBtn');
+        const btnText = document.getElementById('btnText');
+        
+        // Validação básica
+        if (!matricula || !senha) {
+            alert('Preencha todos os campos!');
+            return;
+        }
+        
+        // Desabilita botão e mostra loading
+        submitBtn.disabled = true;
+        btnText.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Autenticando...';
+        
+        try {
+            // POST para /api/auth/login com JSON
+            const response = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    matricula: matricula,
+                    senha: senha
+                })
+            });
+            
+            if (response.ok) {
+                // Sucesso: armazena token e redireciona
+                const data = await response.json();
+                const token = data.token;
+                
+                // Armazena token em localStorage (para requisições AJAX com header Authorization)
+                localStorage.setItem('authToken', token);
+                localStorage.setItem('userMatricula', data.matricula);
+                localStorage.setItem('userName', data.nomeCompleto);
+                
+                // Também armazena em cookie (para que navegação entre páginas funcione)
+                document.cookie = `authToken=${token}; path=/; SameSite=Lax; max-age=3600`;
+                
+                // Log para debug
+                console.log('Login bem-sucedido. Redirecionando para /usuarios...');
+                
+                // Redireciona para página autenticada
+                window.location.href = '/usuarios';
+            } else if (response.status === 401) {
+                // Credenciais inválidas
+                alert('Usuário ou senha incorretos!');
+                document.getElementById('senha').value = '';
+                document.getElementById('matricula').focus();
+            } else {
+                // Outro erro
+                alert('Erro na autenticação. Tente novamente.');
+            }
+        } catch (error) {
+            console.error('Erro:', error);
+            alert('Erro de conexão. Verifique se o servidor está rodando.');
+        } finally {
+            // Reabilita botão
+            submitBtn.disabled = false;
+            btnText.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-box-arrow-in-right me-2" viewBox="0 0 16 16"><path fill-rule="evenodd" d="M6 3.5a.5.5 0 0 1 .5-.5h8a.5.5 0 0 1 .5.5v9a.5.5 0 0 1-.5.5h-8a.5.5 0 0 1-.5-.5v-2a.5.5 0 0 0-1 0v2A1.5 1.5 0 0 0 6.5 14h8a1.5 1.5 0 0 0 1.5-1.5v-9A1.5 1.5 0 0 0 14.5 2h-8A1.5 1.5 0 0 0 5 3.5v2a.5.5 0 0 0 1 0z"/><path fill-rule="evenodd" d="M11.854 8.354a.5.5 0 0 0 0-.708l-3-3a.5.5 0 1 0-.708.708L10.293 7.5H1.5a.5.5 0 0 0 0 1h8.793l-2.147 2.146a.5.5 0 0 0 .708.708z"/></svg>Entrar';
+        }
+    });
+});
+    
+/**
+ * Quando o token é armazenado em localStorage, o SecurityFilter
+ * (OncePerRequestFilter) o lê do header Authorization em cada requisição:
+ * Authorization: Bearer <token>
+ * 
+ * Ver: SecurityFilter.doFilterInternal()
+ */
+</script>
+
 </body>
 </html>

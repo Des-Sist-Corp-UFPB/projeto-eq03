@@ -1,0 +1,69 @@
+<!--
+  Fragmento da tabela de usuários
+  Retornado pelos endpoints POST, PUT, DELETE para atualizar a lista via HTMX
+  th:fragment permite que este bloco seja referenciado e reutilizado
+-->
+<table class="table table-striped table-hover" th:fragment="tabela">
+    <thead class="table-dark">
+        <tr>
+            <th scope="col">Matrícula</th>
+            <th scope="col">Nome Completo</th>
+            <th scope="col">Email</th>
+            <th scope="col">Status</th>
+            <th scope="col">Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        <!--
+          th:each itera sobre a lista de usuários do Model.
+          Cada iteração renderiza uma linha (<tr>) com os dados do usuário.
+        -->
+        <tr th:each="usuario : ${usuarios}" th:fragment="linha">
+            <td th:text="${usuario.matricula}">mat001</td>
+            <td th:text="${usuario.nomeCompleto}">João Silva</td>
+            <td th:text="${usuario.email}">joao@example.com</td>
+            <td>
+                <!--
+                  Badge Bootstrap para indicar status (ativo/inativo).
+                  th:classappend alterna entre bg-success e bg-secondary.
+                -->
+                <span th:classappend="${usuario.ativo} ? 'bg-success' : 'bg-secondary'"
+                      class="badge">
+                    [[${usuario.ativo} ? 'Ativo' : 'Inativo']]
+                </span>
+            </td>
+            <td>
+                <!-- Botão Editar: carrega o formulário no modal -->
+                <button type="button" class="btn btn-sm btn-warning"
+                        hx-get="@{/usuarios/{id}/editar(id=${usuario.id})}"
+                        hx-target="#modal-container"
+                        hx-trigger="click"
+                        title="Editar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         class="bi bi-pencil" viewBox="0 0 16 16">
+                        <path d="M12.146.292a.5.5 0 0 1 .708 0l3.854 3.854a.5.5 0 0 1 0 .708l-10.954 10.954a.5.5 0 0 1-.208.143l-4.851 1.213a.5.5 0 0 1-.609-.609l1.213-4.851a.5.5 0 0 1 .143-.208l10.954-10.954zM11.207 2.5 13.5 4.793 14.793 3.5 12.5 1.207 11.207 2.5z"/>
+                    </svg>
+                </button>
+
+                <!-- Botão Deletar: envia DELETE e recebe tabela atualizada -->
+                <button type="button" class="btn btn-sm btn-danger"
+                        hx-delete="@{/usuarios/{id}(id=${usuario.id})}"
+                        hx-target="closest tr"
+                        hx-swap="outerHTML swap:1s"
+                        hx-confirm="Tem certeza que deseja deletar este usuário?"
+                        title="Deletar">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                         class="bi bi-trash" viewBox="0 0 16 16">
+                        <path d="M5.5 5.5A.5.5 0 0 1 6 6v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm2.5 0a.5.5 0 0 1 .5.5v6a.5.5 0 0 1-1 0V6a.5.5 0 0 1 .5-.5Zm3 .5a.5.5 0 0 0-1 0v6a.5.5 0 0 0 1 0V6Z"/>
+                        <path d="M14.5 3a1 1 0 0 1-1 1H13v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4h-.5a1 1 0 0 1-1-1V2a1 1 0 0 1 1-1H6a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1h3.5a1 1 0 0 1 1 1V3ZM4.118 4 4 4.059V13a1 1 0 0 0 1 1h6a1 1 0 0 0 1-1V4.059L11.882 4H4.118ZM2.5 1a.5.5 0 0 0-.5.5v1h12v-1a.5.5 0 0 0-.5-.5h-11Z"/>
+                    </svg>
+                </button>
+            </td>
+        </tr>
+    </tbody>
+</table>
+
+<!-- Mensagem quando não há usuários -->
+<div th:if="${#lists.isEmpty(usuarios)}" class="alert alert-info">
+    Nenhum usuário cadastrado. <a href="#" hx-get="/usuarios/novo" hx-target="#modal-container">Criar um novo</a>.
+</div>
