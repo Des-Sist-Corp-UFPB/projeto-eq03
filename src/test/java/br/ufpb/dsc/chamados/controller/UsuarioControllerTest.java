@@ -56,7 +56,7 @@ class UsuarioControllerTest {
     void testNovoFormulario() throws Exception {
         mockMvc.perform(get("/usuarios/novo"))
                 .andExpect(status().isOk())
-                .andExpect(view().name("usuarios/fragments/form"))
+                .andExpect(view().name("usuarios/fragments/form-modal"))
                 .andExpect(model().attributeExists("usuarioForm"));
     }
 

@@ -188,6 +188,18 @@
                     const modal = new bootstrap.Modal(modalEl);
                     modal.show();
                 }
+            } else if (evt.detail.target.id === 'tabela-usuarios') {
+                const modalEl = document.getElementById('usuarioModal');
+                if (modalEl) {
+                    const modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+                    modalEl.addEventListener('hidden.bs.modal', function() {
+                        const modalContainer = document.getElementById('modal-container');
+                        if (modalContainer) {
+                            modalContainer.innerHTML = '';
+                        }
+                    }, { once: true });
+                    modal.hide();
+                }
             }
         });
         

@@ -4,6 +4,7 @@ import br.ufpb.dsc.chamados.domain.Usuario;
 import br.ufpb.dsc.chamados.dto.UsuarioForm;
 import br.ufpb.dsc.chamados.service.UsuarioService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
@@ -49,7 +50,7 @@ public class UsuarioController {
     @GetMapping("/novo")
     public String novoFormulario(Model model) {
         model.addAttribute("usuarioForm", new UsuarioForm(null, null, null, null, true));
-        return "usuarios/fragments/form";
+        return "usuarios/fragments/form-modal";
     }
 
     /**
@@ -58,16 +59,19 @@ public class UsuarioController {
     @PostMapping
     public String salvar(@Valid @ModelAttribute UsuarioForm usuarioForm, 
                         BindingResult result, 
-                        Model model) {
+                        Model model,
+                        HttpServletResponse response) {
         if (result.hasErrors()) {
-            return "usuarios/fragments/form";
+            response.setHeader("HX-Retarget", "#modal-container");
+            return "usuarios/fragments/form-modal";
         }
 
         try {
             usuarioService.salvar(usuarioForm);
         } catch (IllegalArgumentException e) {
             result.rejectValue("matricula", "error.matricula", e.getMessage());
-            return "usuarios/fragments/form";
+            response.setHeader("HX-Retarget", "#modal-container");
+            return "usuarios/fragments/form-modal";
         }
 
         List<Usuario> usuarios = usuarioService.listarTodos();
@@ -90,7 +94,7 @@ public class UsuarioController {
         );
         model.addAttribute("usuarioForm", form);
         model.addAttribute("usuarioId", id);
-        return "usuarios/fragments/form";
+        return "usuarios/fragments/form-modal";
     }
 
     /**
@@ -98,12 +102,14 @@ public class UsuarioController {
      */
     @PutMapping("/{id}")
     public String atualizar(@PathVariable Long id,
-                           @Valid @ModelAttribute UsuarioForm usuarioForm,
-                           BindingResult result,
-                           Model model) {
+                            @Valid @ModelAttribute UsuarioForm usuarioForm,
+                            BindingResult result,
+                            Model model,
+                            HttpServletResponse response) {
         if (result.hasErrors()) {
             model.addAttribute("usuarioId", id);
-            return "usuarios/fragments/form";
+            response.setHeader("HX-Retarget", "#modal-container");
+            return "usuarios/fragments/form-modal";
         }
 
         try {
@@ -111,7 +117,8 @@ public class UsuarioController {
         } catch (IllegalArgumentException e) {
             result.rejectValue("matricula", "error.matricula", e.getMessage());
             model.addAttribute("usuarioId", id);
-            return "usuarios/fragments/form";
+            response.setHeader("HX-Retarget", "#modal-container");
+            return "usuarios/fragments/form-modal";
         }
 
         List<Usuario> usuarios = usuarioService.listarTodos();
