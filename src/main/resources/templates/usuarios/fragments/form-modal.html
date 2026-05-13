@@ -1,0 +1,99 @@
+<!--
+  Fragmento do formulário de criação/edição de usuários
+  Retornado por GET /usuarios/novo e GET /usuarios/{id}/editar
+  Renderizado em um modal Bootstrap via HTMX
+-->
+<div class="modal fade" id="usuarioModal" tabindex="-1" aria-hidden="true" th:fragment="form">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h1 class="modal-title fs-5">
+                    <span th:if="${usuarioId == null}">Novo Usuário</span>
+                    <span th:unless="${usuarioId == null}">Editar Usuário</span>
+                </h1>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+
+            <div class="modal-body">
+                <form th:action="${usuarioId == null} ? @{/usuarios} : @{/usuarios/{id}(id=${usuarioId})}"
+                      th:method="${usuarioId == null} ? 'post' : 'put'"
+                      th:object="${usuarioForm}"
+                      id="form-usuario"
+                      class="needs-validation">
+
+                    <div class="mb-3">
+                        <label for="matricula" class="form-label">Matrícula <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control"
+                               id="matricula"
+                               th:field="*{matricula}"
+                               th:classappend="${#fields.hasErrors('matricula')} ? 'is-invalid'"
+                               placeholder="Digite a matrícula"
+                               required>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('matricula')}">
+                            <span th:errors="*{matricula}"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="nomeCompleto" class="form-label">Nome Completo <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control"
+                               id="nomeCompleto"
+                               th:field="*{nomeCompleto}"
+                               th:classappend="${#fields.hasErrors('nomeCompleto')} ? 'is-invalid'"
+                               placeholder="Digite o nome completo"
+                               required>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('nomeCompleto')}">
+                            <span th:errors="*{nomeCompleto}"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="senha" class="form-label">Senha <span class="text-danger">*</span></label>
+                        <input type="password" class="form-control"
+                               id="senha"
+                               th:field="*{senha}"
+                               th:classappend="${#fields.hasErrors('senha')} ? 'is-invalid'"
+                               placeholder="Digite a senha (mín. 6 caracteres)"
+                               required>
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('senha')}">
+                            <span th:errors="*{senha}"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="email" class="form-label">Email (opcional)</label>
+                        <input type="email" class="form-control"
+                               id="email"
+                               th:field="*{email}"
+                               th:classappend="${#fields.hasErrors('email')} ? 'is-invalid'"
+                               placeholder="Digite o email">
+                        <div class="invalid-feedback" th:if="${#fields.hasErrors('email')}">
+                            <span th:errors="*{email}"></span>
+                        </div>
+                    </div>
+
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" class="form-check-input"
+                               id="ativo"
+                               th:field="*{ativo}"
+                               th:checked="${ativo != null ? ativo : true}">
+                        <label class="form-check-label" for="ativo">
+                            Usuário Ativo
+                        </label>
+                    </div>
+
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                        <button type="submit" class="btn btn-primary"
+                                th:hx-post="${usuarioId == null} ? @{/usuarios} : null"
+                                th:hx-put="${usuarioId != null} ? @{/usuarios/{id}(id=${usuarioId})} : null"
+                                hx-target="#tabela-usuarios"
+                                hx-swap="outerHTML">
+                            Salvar
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

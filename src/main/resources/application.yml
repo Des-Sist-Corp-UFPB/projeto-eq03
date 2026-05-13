@@ -1,8 +1,17 @@
 spring:
   application:
-    name: mercado
+    name: chamados
   profiles:
     active: dev
+
+# ===== CONFIGURAÇÃO DE APP =====
+app:
+  jwt:
+    # Chave secreta para assinar tokens JWT (vem de variável de ambiente)
+    # Em produção: use uma chave forte com mínimo 32 caracteres
+    secret: ${JWT_SECRET:sua-chave-secreta-super-segura-mudar-em-producao}
+    # Expiração do token em minutos
+    expiration-minutes: ${JWT_EXPIRATION_MINUTES:60}
 
 # Actuator - monitoramento da aplicação
 # Acesse: http://localhost:8080/actuator/health

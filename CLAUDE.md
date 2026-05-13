@@ -1,11 +1,12 @@
-# Memória do Projeto — Mercado DSC/UFPB
+# Memória do Projeto — Sistema de Chamados DSC/UFPB
 
 ## Identidade do Projeto
-- **Nome**: Sistema Mercado — Projeto Base DSC
+- **Nome**: Sistema de Chamados — Projeto Base DSC
 - **Disciplina**: Desenvolvimento de Sistemas Corporativos
 - **Professor**: Rodrigo Rebouças
 - **Instituição**: Universidade Federal da Paraíba — Campus IV
-- **Propósito**: Boilerplate educacional para alunos iniciarem seus projetos
+- **Propósito**: Boilerplate educacional adaptado para gerenciamento de chamados com entidade Usuario
+- **Status Atual**: Etapa 1 concluída - CRUD de Usuários implementado
 
 ## Stack Técnica
 | Camada | Tecnologia | Versão |
@@ -22,15 +23,33 @@
 
 ## Estrutura de Pacotes
 ```
-br.ufpb.dsc.mercado
+br.ufpb.dsc.chamados
 ├── config/          # Configurações Spring (Security, Web, etc.)
 ├── controller/      # Controllers MVC (recebem requests HTTP)
+│   ├── AuthController.java      # Login/autenticação
+│   └── UsuarioController.java   # CRUD de Usuários (NOVO)
 ├── domain/          # Entidades JPA (mapeamento objeto-relacional)
+│   └── Usuario.java             # Entidade Principal (NOVO)
 ├── dto/             # Data Transfer Objects (Records Java)
+│   └── UsuarioForm.java         # DTO para Usuários (NOVO)
 ├── exception/       # Exceções de domínio
+│   └── UsuarioNaoEncontradoException.java  # (NOVO)
 ├── repository/      # Interfaces Spring Data JPA
+│   └── UsuarioRepository.java   # (NOVO)
 └── service/         # Lógica de negócio (@Transactional)
+    └── UsuarioService.java      # (NOVO)
 ```
+
+## Entidade Usuario (Etapa 1)
+- **Tabela**: `usuario`
+- **Campos**:
+  - `id` (Long, PK, auto-incremento)
+  - `matricula` (String, UNIQUE, NOT NULL)
+  - `nomeCompleto` (String, NOT NULL)
+  - `senha` (String, NOT NULL)
+  - `email` (String, nullable)
+  - `ativo` (Boolean, default true)
+  - `created_at`, `updated_at` (timestamps)
 
 ## Comandos Essenciais
 
@@ -67,14 +86,14 @@ mvn versions:display-dependency-updates -Pversions
 docker compose -f docker/docker-compose.dev.yml --profile scan up trivy
 
 # Trivy scan da imagem (depois de fazer o build)
-docker build -f docker/Dockerfile -t mercado:latest .
-docker run --rm aquasec/trivy image mercado:latest
+docker build -f docker/Dockerfile -t chamados:latest .
+docker run --rm aquasec/trivy image chamados:latest
 ```
 
 ### Produção
 ```bash
 # Build imagem de produção
-docker build -f docker/Dockerfile -t mercado:latest .
+docker build -f docker/Dockerfile -t chamados:latest .
 
 # Subir produção (requer .env configurado)
 docker compose -f docker/docker-compose.prod.yml up -d
@@ -114,7 +133,7 @@ SpotBugs e OWASP Dependency-Check são lentos. Separar em perfil permite que o b
 | SpotBugs + FindSecBugs | SAST bytecode Java | `mvn verify -Psecurity` |
 | Semgrep | SAST código-fonte | `semgrep --config=auto src/` |
 | Trivy (fs) | Vulnerabilidades em libs | docker compose `--profile scan` |
-| Trivy (image) | Vulnerabilidades na imagem Docker | `trivy image mercado:latest` |
+| Trivy (image) | Vulnerabilidades na imagem Docker | `trivy image chamados:latest` |
 | OWASP Dependency-Check | CVEs em dependências | `mvn verify -Psecurity` |
 
 ## Para Alunos: Próximos Passos Sugeridos

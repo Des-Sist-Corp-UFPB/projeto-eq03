@@ -1,4 +1,4 @@
-# AI Agents Context — Mercado DSC/UFPB
+# AI Agents Context — Sistema de Chamados DSC/UFPB
 
 > Este arquivo fornece contexto para ferramentas de IA (Cursor, GitHub Copilot, etc.)
 > Para Claude Code, veja CLAUDE.md (mais completo).
@@ -7,7 +7,7 @@
 Boilerplate Spring Boot para disciplina universitária. Java 21, Spring Boot 3.4.5, PostgreSQL, Thymeleaf+HTMX+Bootstrap.
 
 ## Pacote base
-`br.ufpb.dsc.mercado`
+`br.ufpb.dsc.chamados`
 
 ## Padrões importantes
 - DTOs são Records Java imutáveis
