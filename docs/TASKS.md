@@ -20,9 +20,9 @@ Status legend: `[ ]` todo · `[x]` done · `[-]` in progress
 - [x] Configure Flyway
 - [x] Write `V1__create_security_tables.sql` (tb_role, tb_permission, tb_user, join tables)
 - [x] Write `V2__insert_roles_permissions.sql` (seed ADMIN, GERENTE, FUNCIONARIA, CLIENTE + permissions)
-- [ ] Configure `CorsConfig.java`
-- [ ] Configure `OpenApiConfig.java` (Swagger)
-- [ ] Configure `BeanConfig.java` (PasswordEncoder, etc.)
+- [x] Configure `CorsConfig.java`
+- [x] Configure `OpenApiConfig.java` (Swagger)
+- [x] Configure `BeanConfig.java` (PasswordEncoder, etc.)
 
 ### Backend — Security
 - [x] Implement `User` entity + `Role` entity + `Permission` entity
