@@ -21,7 +21,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.NOT_FOUND.value(),
-                "Not Found",
+                "Não Encontrado",
                 ex.getMessage(),
                 request.getRequestURI()
         );
@@ -33,7 +33,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
-                "Bad Request",
+                "Requisição Inválida",
                 ex.getMessage(),
                 request.getRequestURI()
         );
@@ -45,7 +45,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
+                "Não Autorizado",
                 ex.getMessage(),
                 request.getRequestURI()
         );
@@ -57,7 +57,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.UNAUTHORIZED.value(),
-                "Unauthorized",
+                "Não Autorizado",
                 "Email ou senha incorretos",
                 request.getRequestURI()
         );
@@ -69,7 +69,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.FORBIDDEN.value(),
-                "Access Denied",
+                "Acesso Negado",
                 "Você não possui permissão para acessar este recurso.",
                 request.getRequestURI()
         );
@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
-                "Validation Error",
+                "Erro de Validação",
                 message,
                 request.getRequestURI()
         );
@@ -97,7 +97,7 @@ public class GlobalExceptionHandler {
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Internal Server Error",
+                "Erro Interno do Servidor",
                 "Ocorreu um erro inesperado no servidor.",
                 request.getRequestURI()
         );
