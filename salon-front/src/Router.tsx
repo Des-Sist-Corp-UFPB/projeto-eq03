@@ -29,7 +29,7 @@ export const Router = () => {
       </Route>
 
       <Route element={<AdminLayout />}>
-        <Route path="/admin/dashboard" element={<div>Dashboard Admin</div>} />
+        <Route path="/admin/dashboard" element={<Reports />} />
         <Route path="/admin/users" element={<Users />} />
         <Route path="/admin/employees" element={<Employees />} />
         <Route path="/admin/services" element={<AdminServices />} />
@@ -37,7 +37,6 @@ export const Router = () => {
         <Route path="/admin/appointments" element={<AdminAppointments />} />
         <Route path="/admin/cashflow" element={<CashFlow />} />
         <Route path="/admin/reports" element={<Reports />} />
-        <Route path="/admin/dashboard" element={<Reports />} />
       </Route>
 
       <Route element={<CustomerLayout />}>

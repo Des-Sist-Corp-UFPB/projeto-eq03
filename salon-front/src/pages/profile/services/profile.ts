@@ -1,5 +1,5 @@
-import api from '../../services/api';
-import { UserData, UserUpdateRequest } from '../admin/users/services/users';
+import api from '../../../services/api';
+import type { UserData, UserUpdateRequest } from '../../admin/users/services/users';
 
 export const profileApi = {
   getProfile: async () => {
