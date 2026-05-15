@@ -12,6 +12,8 @@ import { PublicServices } from './pages/services/PublicServices';
 import { PublicAppointment } from './pages/appointments/PublicAppointment';
 import { MyAppointments } from './pages/appointments/MyAppointments';
 import { AdminAppointments } from './pages/admin/appointments/AdminAppointments';
+import { CashFlow } from './pages/admin/cashflow/CashFlow';
+import { Reports } from './pages/admin/reports/Reports';
 
 export const Router = () => {
   return (
@@ -31,8 +33,9 @@ export const Router = () => {
         <Route path="/admin/services" element={<AdminServices />} />
         <Route path="/admin/products" element={<Products />} />
         <Route path="/admin/appointments" element={<AdminAppointments />} />
-        <Route path="/admin/cashflow" element={<div>Fluxo de Caixa Admin</div>} />
-        <Route path="/admin/reports" element={<div>Relatórios Admin</div>} />
+        <Route path="/admin/cashflow" element={<CashFlow />} />
+        <Route path="/admin/reports" element={<Reports />} />
+        <Route path="/admin/dashboard" element={<Reports />} />
       </Route>
 
       <Route element={<CustomerLayout />}>
