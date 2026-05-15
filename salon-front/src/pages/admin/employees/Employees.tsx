@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 import { Button, Form } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2 } from 'lucide-react';
-import { Table } from '../../components/table/Table';
-import { ModalForm } from '../../components/modal/ModalForm';
-import { ConfirmDialog } from '../../components/modal/ConfirmDialog';
-import { PermissionGate } from '../../components/permissions/PermissionGate';
-import { employeesApi, EmployeeData } from '../../services/employees';
+import { Table } from '../../../components/table/Table';
+import { ModalForm } from '../../../components/modal/ModalForm';
+import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
+import { PermissionGate } from '../../../components/permissions/PermissionGate';
+import { employeesApi, EmployeeData } from './services/employees';
 
 export const Employees = () => {
   const [employees, setEmployees] = useState<EmployeeData[]>([]);

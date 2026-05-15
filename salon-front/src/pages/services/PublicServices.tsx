@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Badge, Spinner } from 'react-bootstrap';
-import { servicesApi, ServiceData } from '../../services/services';
+import { servicesApi, ServiceData } from './services/services';
 
 export const PublicServices = () => {
   const [services, setServices] = useState<ServiceData[]>([]);

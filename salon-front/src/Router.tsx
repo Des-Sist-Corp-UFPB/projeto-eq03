@@ -4,14 +4,14 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { CustomerLayout } from './layouts/CustomerLayout';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
-import { AdminServices } from './pages/admin/AdminServices';
-import { Products } from './pages/admin/Products';
-import { Users } from './pages/admin/Users';
-import { Employees } from './pages/admin/Employees';
-import { PublicServices } from './pages/public/PublicServices';
-import { PublicAppointment } from './pages/public/PublicAppointment';
-import { MyAppointments } from './pages/customer/MyAppointments';
-import { AdminAppointments } from './pages/admin/AdminAppointments';
+import { AdminServices } from './pages/admin/services/AdminServices';
+import { Products } from './pages/admin/products/Products';
+import { Users } from './pages/admin/users/Users';
+import { Employees } from './pages/admin/employees/Employees';
+import { PublicServices } from './pages/services/PublicServices';
+import { PublicAppointment } from './pages/appointments/PublicAppointment';
+import { MyAppointments } from './pages/appointments/MyAppointments';
+import { AdminAppointments } from './pages/admin/appointments/AdminAppointments';
 
 export const Router = () => {
   return (

@@ -1,9 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Button, Form, Badge } from 'react-bootstrap';
-import { Table } from '../../components/table/Table';
-import { ConfirmDialog } from '../../components/modal/ConfirmDialog';
-import { PermissionGate } from '../../components/permissions/PermissionGate';
-import { appointmentsApi, AppointmentResponse } from '../../services/appointments';
+import { Table } from '../../../components/table/Table';
+import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
+import { PermissionGate } from '../../../components/permissions/PermissionGate';
+import { appointmentsApi, AppointmentResponse } from '../../appointments/services/appointments';
 
 export const AdminAppointments = () => {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
