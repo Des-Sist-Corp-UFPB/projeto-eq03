@@ -1,4 +1,4 @@
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Table as BSTable, Pagination, Form, InputGroup } from 'react-bootstrap';
 import { Search } from 'lucide-react';
 

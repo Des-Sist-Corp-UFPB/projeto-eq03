@@ -3,7 +3,8 @@ import { Button, Form, Badge } from 'react-bootstrap';
 import { Table } from '../../../components/table/Table';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
-import { appointmentsApi, AppointmentResponse } from '../../appointments/services/appointments';
+import { appointmentsApi } from '../../appointments/services/appointments';
+import type { AppointmentResponse } from '../../appointments/services/appointments';
 
 export const AdminAppointments = () => {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);

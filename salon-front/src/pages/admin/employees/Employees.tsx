@@ -6,7 +6,8 @@ import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
-import { employeesApi, EmployeeData } from './services/employees';
+import { employeesApi } from './services/employees';
+import type { EmployeeData } from './services/employees';
 
 export const Employees = () => {
   const [employees, setEmployees] = useState<EmployeeData[]>([]);

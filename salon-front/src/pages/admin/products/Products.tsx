@@ -6,7 +6,8 @@ import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
-import { productsApi, ProductData } from './services/products';
+import { productsApi } from './services/products';
+import type { ProductData } from './services/products';
 
 export const Products = () => {
   const [products, setProducts] = useState<ProductData[]>([]);

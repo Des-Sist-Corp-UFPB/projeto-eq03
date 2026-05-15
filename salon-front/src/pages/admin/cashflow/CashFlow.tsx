@@ -6,7 +6,8 @@ import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
-import { cashFlowApi, CashFlowData } from './services/cashflow';
+import { cashFlowApi } from './services/cashflow';
+import type { CashFlowData } from './services/cashflow';
 
 export const CashFlow = () => {
   const [cashFlows, setCashFlows] = useState<CashFlowData[]>([]);

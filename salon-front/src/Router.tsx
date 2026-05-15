@@ -14,6 +14,8 @@ import { MyAppointments } from './pages/appointments/MyAppointments';
 import { AdminAppointments } from './pages/admin/appointments/AdminAppointments';
 import { CashFlow } from './pages/admin/cashflow/CashFlow';
 import { Reports } from './pages/admin/reports/Reports';
+import { NotFound } from './pages/error/NotFound';
+import { Profile } from './pages/profile/Profile';
 
 export const Router = () => {
   return (
@@ -40,8 +42,11 @@ export const Router = () => {
 
       <Route element={<CustomerLayout />}>
         <Route path="/my-appointments" element={<MyAppointments />} />
-        <Route path="/profile" element={<div>Meu Perfil</div>} />
+        <Route path="/profile" element={<Profile />} />
       </Route>
+
+      {/* Catch-all para 404 */}
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 };

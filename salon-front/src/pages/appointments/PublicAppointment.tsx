@@ -1,9 +1,12 @@
 import { useState, useEffect } from 'react';
 import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { servicesApi, ServiceData } from '../services/services/services';
-import { employeesApi, EmployeeData } from '../admin/employees/services/employees';
-import { appointmentsApi, TimeSlotResponse } from './services/appointments';
+import { servicesApi } from '../services/services/services';
+import type { ServiceData } from '../services/services/services';
+import { employeesApi } from '../admin/employees/services/employees';
+import type { EmployeeData } from '../admin/employees/services/employees';
+import { appointmentsApi } from './services/appointments';
+import type { TimeSlotResponse } from './services/appointments';
 import { useAuth } from '../../hooks/useAuth';
 
 export const PublicAppointment = () => {

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, Badge, Button, Row, Col } from 'react-bootstrap';
-import { appointmentsApi, AppointmentResponse } from './services/appointments';
+import { appointmentsApi } from './services/appointments';
+import type { AppointmentResponse } from './services/appointments';
 import { ConfirmDialog } from '../../components/modal/ConfirmDialog';
 
 export const MyAppointments = () => {

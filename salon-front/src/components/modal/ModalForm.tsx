@@ -1,5 +1,5 @@
 import { Modal, Button, Form } from 'react-bootstrap';
-import { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 
 interface ModalFormProps {
   show: boolean;

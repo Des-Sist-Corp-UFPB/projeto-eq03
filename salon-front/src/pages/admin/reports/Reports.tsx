@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Row, Col, Card, Form, Button, Spinner } from 'react-bootstrap';
-import { reportsApi, FinancialReportResponse, AppointmentReportResponse } from './services/reports';
-import { cashFlowApi, CashFlowData } from '../cashflow/services/cashflow';
+import { reportsApi } from './services/reports';
+import type { FinancialReportResponse, AppointmentReportResponse } from './services/reports';
+import { cashFlowApi } from '../cashflow/services/cashflow';
+import type { CashFlowData } from '../cashflow/services/cashflow';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
@@ -179,7 +181,7 @@ export const Reports = () => {
                       <CartesianGrid strokeDasharray="3 3" />
                       <XAxis dataKey="Data" />
                       <YAxis />
-                      <Tooltip formatter={(val: number) => `R$ ${val.toFixed(2)}`} />
+                      <Tooltip formatter={(val: any) => `R$ ${Number(val).toFixed(2)}`} />
                       <Legend />
                       <Line type="monotone" dataKey="Receita" stroke="#198754" activeDot={{ r: 8 }} />
                     </LineChart>

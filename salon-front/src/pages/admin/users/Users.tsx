@@ -6,7 +6,8 @@ import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
-import { usersApi, UserData, UserUpdateRequest } from './services/users';
+import { usersApi } from './services/users';
+import type { UserData, UserUpdateRequest } from './services/users';
 
 export const Users = () => {
   const [users, setUsers] = useState<UserData[]>([]);

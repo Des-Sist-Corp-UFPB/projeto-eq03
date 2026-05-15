@@ -1,7 +1,7 @@
-import { createContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { createContext, useState, useEffect, useCallback } from 'react';
+import type { ReactNode } from 'react';
 import { jwtDecode } from 'jwt-decode';
-import api from '../services/api';
-import { JwtPayload, UserContextData } from '../types/auth';
+import type { JwtPayload, UserContextData } from '../types/auth';
 
 interface AuthContextType {
   user: UserContextData | null;
