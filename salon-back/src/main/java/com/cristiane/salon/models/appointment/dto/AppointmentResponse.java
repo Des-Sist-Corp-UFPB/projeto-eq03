@@ -21,8 +21,8 @@ public record AppointmentResponse(
                 appointment.getClient().getName(),
                 appointment.getEmployee().getId(),
                 appointment.getEmployee().getUser().getName(),
-                appointment.getService().getId(),
-                appointment.getService().getName(),
+                appointment.getSalonService().getId(),
+                appointment.getSalonService().getName(),
                 appointment.getScheduledAt(),
                 appointment.getStatus().name()
         );

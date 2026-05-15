@@ -1,8 +1,8 @@
 package com.cristiane.salon.controller;
 
-import com.cristiane.salon.models.service.dto.ServiceRequest;
-import com.cristiane.salon.models.service.dto.ServiceResponse;
-import com.cristiane.salon.models.service.service.ServiceService;
+import com.cristiane.salon.models.service.dto.SalonServiceRequest;
+import com.cristiane.salon.models.service.dto.SalonServiceResponse;
+import com.cristiane.salon.models.service.service.SalonServiceManager;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -18,41 +18,41 @@ import java.util.List;
 @RequestMapping("/v1/services")
 @RequiredArgsConstructor
 @Tag(name = "Services", description = "Endpoints para gerenciamento de serviços de beleza")
-public class ServiceController {
+public class SalonServiceController {
 
-    private final ServiceService serviceService;
+    private final SalonServiceManager salonServiceManager;
 
     @GetMapping
     @Operation(summary = "Lista todos os serviços (Público)")
     public ResponseEntity<List<ServiceResponse>> findAll() {
-        return ResponseEntity.ok(serviceService.findAll());
+        return ResponseEntity.ok(salonServiceManager.findAll());
     }
 
     @GetMapping("/{id}")
     @Operation(summary = "Busca um serviço por ID (Público)")
     public ResponseEntity<ServiceResponse> findById(@PathVariable Long id) {
-        return ResponseEntity.ok(serviceService.findById(id));
+        return ResponseEntity.ok(salonServiceManager.findById(id));
     }
 
     @PostMapping
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     @Operation(summary = "Cria um novo serviço (Admin)")
-    public ResponseEntity<ServiceResponse> create(@Valid @RequestBody ServiceRequest request) {
-        return ResponseEntity.status(HttpStatus.CREATED).body(serviceService.create(request));
+    public ResponseEntity<ServiceResponse> create(@Valid @RequestBody SalonServiceRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(salonServiceManager.create(request));
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     @Operation(summary = "Atualiza um serviço (Admin)")
-    public ResponseEntity<ServiceResponse> update(@PathVariable Long id, @Valid @RequestBody ServiceRequest request) {
-        return ResponseEntity.ok(serviceService.update(id, request));
+    public ResponseEntity<ServiceResponse> update(@PathVariable Long id, @Valid @RequestBody SalonServiceRequest request) {
+        return ResponseEntity.ok(salonServiceManager.update(id, request));
     }
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     @Operation(summary = "Remove um serviço (Admin)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
-        serviceService.delete(id);
+        salonServiceManager.delete(id);
         return ResponseEntity.noContent().build();
     }
 }

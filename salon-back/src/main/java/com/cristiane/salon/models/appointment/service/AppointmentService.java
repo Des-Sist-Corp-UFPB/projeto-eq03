@@ -11,7 +11,7 @@ import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
-import com.cristiane.salon.models.service.repository.ServiceRepository;
+import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.models.cashflow.entity.CashFlow;
 import com.cristiane.salon.models.cashflow.enums.CashFlowType;
 import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
@@ -35,7 +35,7 @@ public class AppointmentService {
 
     private final AppointmentRepository appointmentRepository;
     private final EmployeeRepository employeeRepository;
-    private final ServiceRepository serviceRepository;
+    private final SalonServiceRepository salonServiceRepository;
     private final UserRepository userRepository;
     private final CashFlowRepository cashFlowRepository;
 
@@ -100,7 +100,7 @@ public class AppointmentService {
         Employee employee = employeeRepository.findById(request.employeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Funcionário não encontrado"));
                 
-        com.cristiane.salon.models.service.entity.Service service = serviceRepository.findById(request.serviceId())
+        com.cristiane.salon.models.service.entity.Service service = salonServiceRepository.findById(request.serviceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
 
         if (!service.getActive()) {
@@ -133,7 +133,7 @@ public class AppointmentService {
         Appointment appointment = new Appointment();
         appointment.setClient(client);
         appointment.setEmployee(employee);
-        appointment.setService(service);
+        appointment.setSalonService(service);
         appointment.setScheduledAt(request.scheduledAt());
         appointment.setStatus(AppointmentStatus.PENDING);
 
@@ -192,8 +192,8 @@ public class AppointmentService {
                 if (!alreadyBilled) {
                     CashFlow cashFlow = new CashFlow();
                     cashFlow.setType(CashFlowType.INCOME);
-                    cashFlow.setAmount(appointment.getService().getPrice());
-                    cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getService().getName());
+                    cashFlow.setAmount(appointment.getSalonService().getPrice());
+                    cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName());
                     cashFlow.setDate(LocalDate.now());
                     cashFlow.setAppointment(appointment);
                     cashFlowRepository.save(cashFlow);

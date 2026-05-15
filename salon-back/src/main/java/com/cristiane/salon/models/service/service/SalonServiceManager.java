@@ -1,10 +1,10 @@
 package com.cristiane.salon.models.service.service;
 
 import com.cristiane.salon.exception.ResourceNotFoundException;
-import com.cristiane.salon.models.service.dto.ServiceRequest;
-import com.cristiane.salon.models.service.dto.ServiceResponse;
-import com.cristiane.salon.models.service.entity.Service;
-import com.cristiane.salon.models.service.repository.ServiceRepository;
+import com.cristiane.salon.models.service.dto.SalonServiceRequest;
+import com.cristiane.salon.models.service.dto.SalonServiceResponse;
+import com.cristiane.salon.models.service.entity.SalonService;
+import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,39 +14,39 @@ import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
-public class ServiceService {
+public class SalonServiceManager {
 
-    private final ServiceRepository serviceRepository;
+    private final SalonServiceRepository salonServiceRepository;
 
     @Transactional(readOnly = true)
     public List<ServiceResponse> findAll() {
-        return serviceRepository.findAll().stream()
+        return salonServiceRepository.findAll().stream()
                 .map(ServiceResponse::fromEntity)
                 .collect(Collectors.toList());
     }
 
     @Transactional(readOnly = true)
-    public ServiceResponse findById(Long id) {
-        Service service = serviceRepository.findById(id)
+    public SalonServiceResponse findById(Long id) {
+        SalonService service = salonServiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
-        return ServiceResponse.fromEntity(service);
+        return SalonServiceResponse.fromEntity(service);
     }
 
     @Transactional
-    public ServiceResponse create(ServiceRequest request) {
-        Service service = new Service();
+    public SalonServiceResponse create(ServiceRequest request) {
+        SalonService service = new Service();
         service.setName(request.name());
         service.setDescription(request.description());
         service.setPrice(request.price());
         service.setDurationMin(request.durationMin());
         service.setActive(request.active() != null ? request.active() : true);
 
-        return ServiceResponse.fromEntity(serviceRepository.save(service));
+        return SalonServiceResponse.fromEntity(salonServiceRepository.save(service));
     }
 
     @Transactional
-    public ServiceResponse update(Long id, ServiceRequest request) {
-        Service service = serviceRepository.findById(id)
+    public SalonServiceResponse update(Long id, SalonServiceRequest request) {
+        SalonService service = salonServiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
 
         if (request.name() != null) service.setName(request.name());
@@ -55,14 +55,14 @@ public class ServiceService {
         if (request.durationMin() != null) service.setDurationMin(request.durationMin());
         if (request.active() != null) service.setActive(request.active());
 
-        return ServiceResponse.fromEntity(serviceRepository.save(service));
+        return SalonServiceResponse.fromEntity(salonServiceRepository.save(service));
     }
 
     @Transactional
     public void delete(Long id) {
-        if (!serviceRepository.existsById(id)) {
+        if (!salonServiceRepository.existsById(id)) {
             throw new ResourceNotFoundException("Serviço não encontrado");
         }
-        serviceRepository.deleteById(id);
+        salonServiceRepository.deleteById(id);
     }
 }

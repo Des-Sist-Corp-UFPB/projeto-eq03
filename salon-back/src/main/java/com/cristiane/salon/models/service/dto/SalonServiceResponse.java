@@ -1,10 +1,10 @@
 package com.cristiane.salon.models.service.dto;
 
-import com.cristiane.salon.models.service.entity.Service;
+import com.cristiane.salon.models.service.entity.SalonService;
 
 import java.math.BigDecimal;
 
-public record ServiceResponse(
+public record SalonServiceResponse(
         Long id,
         String name,
         String description,
@@ -12,7 +12,7 @@ public record ServiceResponse(
         Integer durationMin,
         Boolean active
 ) {
-    public static ServiceResponse fromEntity(Service service) {
+    public static SalonServiceResponse fromEntity(Service service) {
         return new ServiceResponse(
                 service.getId(),
                 service.getName(),

@@ -13,8 +13,8 @@ import java.math.BigDecimal;
 @NoArgsConstructor
 @AllArgsConstructor
 @Entity
-@Table(name = "tb_service")
-public class Service {
+@Table(name = "tb_salon_service")
+public class SalonService {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

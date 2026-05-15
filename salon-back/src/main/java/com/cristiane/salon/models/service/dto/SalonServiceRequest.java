@@ -7,7 +7,7 @@ import jakarta.validation.constraints.Size;
 
 import java.math.BigDecimal;
 
-public record ServiceRequest(
+public record SalonServiceRequest(
         @NotBlank(message = "O nome é obrigatório")
         @Size(min = 3, max = 150, message = "O nome deve ter entre 3 e 150 caracteres")
         String name,

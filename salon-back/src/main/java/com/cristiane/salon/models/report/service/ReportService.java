@@ -71,7 +71,7 @@ public class ReportService {
                 .collect(Collectors.groupingBy(a -> a.getEmployee().getUser().getName(), Collectors.counting()));
 
         Map<String, Long> byService = appointments.stream()
-                .collect(Collectors.groupingBy(a -> a.getService().getName(), Collectors.counting()));
+                .collect(Collectors.groupingBy(a -> a.getSalonService().getName(), Collectors.counting()));
 
         String period = from + " a " + to;
 
