@@ -12,6 +12,9 @@ import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import com.cristiane.salon.models.service.repository.ServiceRepository;
+import com.cristiane.salon.models.cashflow.entity.CashFlow;
+import com.cristiane.salon.models.cashflow.enums.CashFlowType;
+import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,6 +37,7 @@ public class AppointmentService {
     private final EmployeeRepository employeeRepository;
     private final ServiceRepository serviceRepository;
     private final UserRepository userRepository;
+    private final CashFlowRepository cashFlowRepository;
 
     // Horário de funcionamento fixo (ex: 09:00 as 18:00)
     private static final LocalTime START_TIME = LocalTime.of(9, 0);
@@ -179,6 +183,23 @@ public class AppointmentService {
         try {
             AppointmentStatus status = AppointmentStatus.valueOf(statusStr.toUpperCase());
             appointment.setStatus(status);
+            
+            // Auto-create INCOME cash flow entry when appointment status -> DONE
+            if (status == AppointmentStatus.DONE) {
+                boolean alreadyBilled = cashFlowRepository.findAll().stream()
+                        .anyMatch(cf -> cf.getAppointment() != null && cf.getAppointment().getId().equals(id));
+                
+                if (!alreadyBilled) {
+                    CashFlow cashFlow = new CashFlow();
+                    cashFlow.setType(CashFlowType.INCOME);
+                    cashFlow.setAmount(appointment.getService().getPrice());
+                    cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getService().getName());
+                    cashFlow.setDate(LocalDate.now());
+                    cashFlow.setAppointment(appointment);
+                    cashFlowRepository.save(cashFlow);
+                }
+            }
+            
             return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Status inválido");
