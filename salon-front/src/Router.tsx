@@ -4,6 +4,10 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { CustomerLayout } from './layouts/CustomerLayout';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
+import { AdminServices } from './pages/admin/AdminServices';
+import { Products } from './pages/admin/Products';
+import { Users } from './pages/admin/Users';
+import { Employees } from './pages/admin/Employees';
 
 export const Router = () => {
   return (
@@ -18,10 +22,10 @@ export const Router = () => {
 
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<div>Dashboard Admin</div>} />
-        <Route path="/admin/users" element={<div>Usuários Admin</div>} />
-        <Route path="/admin/employees" element={<div>Funcionárias Admin</div>} />
-        <Route path="/admin/services" element={<div>Serviços Admin</div>} />
-        <Route path="/admin/products" element={<div>Produtos Admin</div>} />
+        <Route path="/admin/users" element={<Users />} />
+        <Route path="/admin/employees" element={<Employees />} />
+        <Route path="/admin/services" element={<AdminServices />} />
+        <Route path="/admin/products" element={<Products />} />
         <Route path="/admin/appointments" element={<div>Agendamentos Admin</div>} />
         <Route path="/admin/cashflow" element={<div>Fluxo de Caixa Admin</div>} />
         <Route path="/admin/reports" element={<div>Relatórios Admin</div>} />
