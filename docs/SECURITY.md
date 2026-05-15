@@ -1,323 +1,102 @@
-# Modelo de Segurança
+# Security Model
 
----
+## Overview
 
-## Visão Geral
+Authentication via **JWT** (stateless). Authorization via **Roles** + **granular Authorities** checked per endpoint and HTTP method. Resource ownership verified for self-service actions.
 
-O sistema utilizará segurança baseada em:
+## Roles
 
-- JWT Authentication
-- Roles
-- Authorities
-- Permissões granulares
-- Controle baseado em endpoint
-- Controle baseado em método HTTP
-- Verificação de dono do recurso
+| Role                   | Description                                 |
+|------------------------|---------------------------------------------|
+| ADMIN                  | Full access                                 |
+| GERENTE_DE_ATENDIMENTO | Manages clients, views reports              |
+| FUNCIONARIA            | Views/manages own appointments              |
+| CLIENTE                | Self-service booking and profile            |
 
----
+## Auth Flow
 
-# Fluxo de Autenticação
-
-## Login
-
-Endpoint:
-
-```text
+```
 POST /v1/auth/login
-```
+Body:    { "email": "...", "password": "..." }
+Returns: { "accessToken": "<jwt>", "refreshToken": "<token>" }
 
-Body:
-
-```json
-{
-  "email": "admin@email.com",
-  "password": "123456"
-}
-```
-
-Response:
-
-```json
-{
-  "accessToken": "jwt-token",
-  "refreshToken": "refresh-token"
-}
-```
-
----
-
-## Refresh Token
-
-Endpoint:
-
-```text
 POST /v1/auth/refresh
+Body:    { "refreshToken": "<token>" }
+Returns: { "accessToken": "<new-jwt>" }
 ```
 
-Body:
+**Access token expiry:** 15 minutes  
+**Refresh token expiry:** 7 days
 
-```json
-{
-  "refreshToken": "refresh-token"
-}
-```
-
-Response:
-
-```json
-{
-  "accessToken": "new-access-token"
-}
-```
-
----
-
-# Estrutura do JWT
-
-O JWT conterá:
+## JWT Payload
 
 ```json
 {
   "sub": "1",
   "role": "ADMIN",
-  "authorities": [
-    "GET:/v1/users",
-    "DELETE:/v1/users/*"
-  ]
+  "authorities": ["GET:/v1/users", "DELETE:/v1/users/*"]
 }
 ```
 
----
+## Granular Permissions (`tb_permission`)
 
-# Roles do Sistema
+Each row maps a human-readable name to an `endpoint` + `http_method` pair. The ADMIN role receives a wildcard permission `/** / *` seeded in V2 migration.
 
-| Role | Descrição |
-|---|---|
-| ADMIN | Acesso total |
-| GERENTE_DE_ATENDIMENTO | Gerencia clientes e relatórios |
-| FUNCIONARIA | Agenda e atendimentos |
-| CLIENTE | Área do cliente |
+Example seed data:
 
----
+| name             | endpoint         | http_method |
+|------------------|------------------|-------------|
+| Listar Usuários  | /v1/users        | GET         |
+| Atualizar Usuário| /v1/users/*      | PATCH       |
+| Remover Usuário  | /v1/users/*      | DELETE      |
+| Criar Serviço    | /v1/services     | POST        |
+| Atualizar Serviço| /v1/services/*   | PUT         |
+| Remover Serviço  | /v1/services/*   | DELETE      |
+| Acesso Total     | /**              | *           |
 
-# Permissões Granulares
+## Public Routes (no token required)
 
-Tabela:
-
-```text
-tb_permission
+```
+POST /v1/auth/**
+GET  /v1/services
+GET  /v1/products
+GET  /v1/appointments/slots
+     /swagger-ui/**
+     /v3/api-docs/**
 ```
 
-Campos:
+## Key Security Components
 
-| Campo | Descrição |
-|---|---|
-| name | Nome legível |
-| endpoint | Endpoint |
-| http_method | Método HTTP |
-| classe | Domínio |
+**`JwtAuthenticationFilter`** — extracts and validates JWT on every request, loads authorities into `SecurityContext`.
 
----
+**`CustomPermissionEvaluator`** — checks if the authenticated user's authority list contains a matching `METHOD:endpoint` entry.
 
-# Permissão Total do ADMIN
+**`EntityPermissionEvaluator`** — implements `PermissionEvaluator` for fine-grained object-level access (e.g., a CLIENTE can only read/update their own profile).
 
-Migration obrigatória:
-
-```sql
-INSERT INTO tb_permission (
-    name,
-    endpoint,
-    http_method,
-    classe
-)
-VALUES (
-    'Acesso Total',
-    '/**',
-    '*',
-    'Administração'
-);
-```
-
----
-
-## Vincular ao ADMIN
-
-```sql
-INSERT INTO tb_role_permissions (
-    role_id,
-    permission_id
-)
-SELECT
-    r.id,
-    p.id
-FROM tb_role r,
-     tb_permission p
-WHERE r.name = 'ADMIN'
-  AND p.name = 'Acesso Total';
-```
-
----
-
-# Exemplos de Permissões
-
-| Nome | Endpoint | Método |
-|---|---|---|
-| Listar Usuários | /v1/users | GET |
-| Atualizar Usuário | /v1/users/* | PATCH |
-| Remover Usuário | /v1/users/* | DELETE |
-| Criar Serviço | /v1/services | POST |
-| Atualizar Serviço | /v1/services/* | PUT |
-| Remover Serviço | /v1/services/* | DELETE |
-
----
-
-# EntityPermissionEvaluator
+**`VerifyUserPermissions`** — Spring bean (`@verifyUserPermissions`) used in `@PreAuthorize` expressions. Combines authority check with ownership check:
 
 ```java
-@Component
-public class EntityPermissionEvaluator implements PermissionEvaluator {
-
-    @Override
-    public boolean hasPermission(
-            Authentication auth,
-            Serializable targetId,
-            String targetType,
-            Object permission
-    ) {
-
-        User user = (User) auth.getPrincipal();
-
-        TargetDomain domain =
-                TargetDomain.valueOf(targetType.toUpperCase());
-
-        PermissionAction action =
-                PermissionAction.valueOf(
-                        ((String) permission).toUpperCase()
-                );
-
-        if (user.getRoleName().equals("ADMIN")) {
-            return true;
-        }
-
-        return switch (domain) {
-            case USER ->
-                    handleUserPermission(
-                            user,
-                            (Long) targetId,
-                            action
-                    );
-
-            default -> false;
-        };
-    }
-
-    private boolean handleUserPermission(
-            User logged,
-            Long targetId,
-            PermissionAction action
-    ) {
-
-        if (logged.getRoleName()
-                .equals("GERENTE_DE_ATENDIMENTO")) {
-
-            return true;
-        }
-
-        return switch (action) {
-            case READ,
-                 UPDATE,
-                 DELETE -> logged.getId().equals(targetId);
-
-            default -> false;
-        };
-    }
-}
+@PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(#id)")
 ```
 
----
+## Error Responses
 
-# VerifyUserPermissions
+| Exception               | HTTP Status |
+|-------------------------|-------------|
+| AuthenticationException | 401         |
+| AccessDeniedException   | 403         |
+| ResourceNotFoundException | 404       |
 
-```java
-@Component("verifyUserPermissions")
-public class VerifyUserPermissions {
-
-    private final CustomPermissionEvaluator permissionEvaluator;
-    private final HttpServletRequest request;
-
-    public boolean userOwnResourceOrHasPermission(Long userId) {
-
-        Authentication auth =
-                SecurityContextHolder
-                        .getContext()
-                        .getAuthentication();
-
-        User logged = (User) auth.getPrincipal();
-
-        if (
-            permissionEvaluator.hasPermission(
-                auth,
-                request.getRequestURI(),
-                request.getMethod()
-            )
-        ) {
-            return true;
-        }
-
-        if (
-            request.getMethod().equals("DELETE")
-            || request.getMethod().equals("POST")
-        ) {
-            return false;
-        }
-
-        return logged.getId().equals(userId);
-    }
-}
-```
-
----
-
-# SecurityFilterChain
-
-Rotas públicas:
-
-```text
-/v1/auth/**
-/v1/services (GET)
-/v1/products (GET)
-/swagger-ui/**
-/v3/api-docs/**
-```
-
-Demais rotas:
-
-```text
-Autenticadas
-```
-
----
-
-# Tratamento de Exceções
-
-| Exceção | Código |
-|---|---|
-| AuthenticationException | 401 |
-| AccessDeniedException | 403 |
-| ResourceNotFoundException | 404 |
-
----
-
-# Resposta Padrão de Erro
+Standard error body:
 
 ```json
 {
   "timestamp": "2026-05-15T10:00:00",
   "status": 403,
   "error": "Access Denied",
-  "message": "Você não possui permissão",
+  "message": "Você não possui permissão para acessar este recurso.",
   "path": "/v1/users/1"
 }
 ```
 
----
+> Error `message` field is always in **pt-BR** for end-user display.

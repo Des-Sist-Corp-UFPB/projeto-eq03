@@ -1,64 +1,50 @@
 # CI/CD
 
----
+Pipelines run on GitHub Actions. All workflows live in `.github/workflows/`.
 
-# Backend Workflow
+## Backend (`backend-ci.yml`)
 
-Arquivo:
-
-```text
-.github/workflows/backend-ci.yml
-```
-
----
-
-## Passos
+Triggered on push/PR to `main` affecting `salon-back/`.
 
 1. Checkout
-2. Configurar Java 21
-3. Cache Maven
-4. Rodar testes
-5. Build
-6. Docker build
+2. Setup Java 21 (Temurin)
+3. Cache Maven (`~/.m2`)
+4. Run tests: `./mvnw test`
+5. Build JAR: `./mvnw package -DskipTests`
+6. Build Docker image: `docker build -t salon-back .`
 
----
+## Frontend (`frontend-ci.yml`)
 
-# Frontend Workflow
-
-Arquivo:
-
-```text
-.github/workflows/frontend-ci.yml
-```
-
----
-
-## Passos
+Triggered on push/PR to `main` affecting `salon-front/`.
 
 1. Checkout
-2. Configurar Node 20
-3. npm ci
-4. Lint
-5. Testes
-6. Build
+2. Setup Node 20
+3. `npm ci`
+4. Lint: `npm run lint`
+5. Type-check: `npm run typecheck`
+6. Tests: `npm run test`
+7. Build: `npm run build`
 
----
+## Deploy (`deploy.yml`)
 
-# Deploy
+Triggered on push to `main` (after CI passes). Deploys to Linux VPS via SSH.
 
-Arquivo:
+1. SSH into VPS
+2. `git pull origin main`
+3. `docker compose pull`
+4. `docker compose up -d --build`
+5. Nginx reloads automatically via Docker network
 
-```text
-.github/workflows/deploy.yml
-```
+## Environment Variables (prod)
 
----
+Set as GitHub Actions secrets and injected into `docker-compose.yml`:
 
-## Processo
-
-- Docker Compose
-- Nginx
-- Variáveis de ambiente
-- Deploy automatizado
-
----
+| Variable          | Used by  |
+|-------------------|----------|
+| `DB_URL`          | Backend  |
+| `DB_USER`         | Backend  |
+| `DB_PASS`         | Backend  |
+| `JWT_SECRET`      | Backend  |
+| `VPS_HOST`        | Deploy   |
+| `VPS_SSH_KEY`     | Deploy   |
+| `VITE_API_URL`    | Frontend |

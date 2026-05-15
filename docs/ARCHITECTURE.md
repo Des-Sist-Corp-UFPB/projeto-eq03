@@ -1,239 +1,122 @@
-# Arquitetura do Sistema
+# Architecture
 
----
+> All UI text output must be in **pt-BR**.
 
-## Estrutura Geral do Monorepo
+## Monorepo Layout
 
-```text
-cristiane-moura/
-├── backend/
-│
-├── frontend/
-│
+```
+salao-cristiane/
+├── salon-back/
+├── salon-front/
 ├── docs/
-│
 ├── docker-compose.yml
-│
 └── README.md
 ```
 
----
+## Backend (`salon-back`)
 
-# Backend
+```
+src/main/java/br/com/api/
+├── config/
+│   ├── CorsConfig.java
+│   ├── SecurityConfig.java
+│   ├── OpenApiConfig.java
+│   └── BeanConfig.java
+├── security/
+│   ├── JwtService.java
+│   ├── JwtAuthenticationFilter.java
+│   ├── EntityPermissionEvaluator.java
+│   ├── VerifyUserPermissions.java
+│   ├── CustomPermissionEvaluator.java
+│   └── SecurityUserDetailsService.java
+├── controller/
+│   ├── AuthController.java
+│   ├── UserController.java
+│   ├── ServiceController.java
+│   ├── ProductController.java
+│   ├── EmployeeController.java
+│   ├── AppointmentController.java
+│   ├── CashFlowController.java
+│   └── ReportController.java
+├── exception/
+│   ├── GlobalExceptionHandler.java
+│   ├── ResourceNotFoundException.java
+│   ├── BadRequestException.java
+│   └── UnauthorizedException.java
+└── models/
+    ├── user/       { entity, dto, enums, repository, service }
+    ├── service/    { entity, dto, enums, repository, service }
+    ├── product/    { entity, dto, repository, service }
+    ├── employee/   { entity, dto, repository, service }
+    ├── appointment/{ entity, dto, enums, repository, service }
+    ├── cashflow/   { entity, dto, repository, service }
+    └── report/     { dto, service }
 
-```text
-backend/
-├── src/
-│   ├── main/
-│   │   ├── java/
-│   │   │   └── br/com/api/
-│   │   │
-│   │   │       ├── config/
-│   │   │       │   ├── CorsConfig.java
-│   │   │       │   ├── SecurityConfig.java
-│   │   │       │   ├── OpenApiConfig.java
-│   │   │       │   └── BeanConfig.java
-│   │   │       │
-│   │   │       ├── security/
-│   │   │       │   ├── JwtService.java
-│   │   │       │   ├── JwtAuthenticationFilter.java
-│   │   │       │   ├── EntityPermissionEvaluator.java
-│   │   │       │   ├── VerifyUserPermissions.java
-│   │   │       │   ├── CustomPermissionEvaluator.java
-│   │   │       │   └── SecurityUserDetailsService.java
-│   │   │       │
-│   │   │       ├── controller/
-│   │   │       │   ├── AuthController.java
-│   │   │       │   ├── UserController.java
-│   │   │       │   ├── ServiceController.java
-│   │   │       │   ├── ProductController.java
-│   │   │       │   ├── EmployeeController.java
-│   │   │       │   ├── AppointmentController.java
-│   │   │       │   ├── CashFlowController.java
-│   │   │       │   └── ReportController.java
-│   │   │       │
-│   │   │       ├── exception/
-│   │   │       │   ├── GlobalExceptionHandler.java
-│   │   │       │   ├── ResourceNotFoundException.java
-│   │   │       │   ├── BadRequestException.java
-│   │   │       │   └── UnauthorizedException.java
-│   │   │       │
-│   │   │       └── models/
-│   │   │
-│   │   │           ├── user/
-│   │   │           │   ├── entity/
-│   │   │           │   ├── dto/
-│   │   │           │   ├── enums/
-│   │   │           │   ├── repository/
-│   │   │           │   └── service/
-│   │   │
-│   │   │           ├── service/
-│   │   │           │   ├── entity/
-│   │   │           │   ├── dto/
-│   │   │           │   ├── enums/
-│   │   │           │   ├── repository/
-│   │   │           │   └── service/
-│   │   │
-│   │   │           ├── product/
-│   │   │           ├── employee/
-│   │   │           ├── appointment/
-│   │   │           ├── cashflow/
-│   │   │           └── report/
-│   │
-│   │   └── resources/
-│   │       ├── db/
-│   │       │   └── migration/
-│   │       │       ├── V1__create_security_tables.sql
-│   │       │       ├── V2__insert_roles_permissions.sql
-│   │       │       └── V3__create_business_tables.sql
-│   │       │
-│   │       ├── application.yml
-│   │       ├── application-dev.yml
-│   │       └── application-prod.yml
-│   │
-│   └── test/
-│
-└── pom.xml
+resources/
+├── db/migration/
+│   ├── V1__create_security_tables.sql
+│   ├── V2__insert_roles_permissions.sql
+│   └── V3__create_business_tables.sql
+├── application.yml
+├── application-dev.yml
+└── application-prod.yml
 ```
 
----
+## Frontend (`salon-front`)
 
-# Frontend
-
-```text
-frontend/
-├── src/
-│
+```
+src/
 ├── components/
-│   ├── table/
-│   ├── modal/
-│   ├── form/
-│   ├── charts/
-│   ├── layout/
-│   ├── feedback/
-│   └── permissions/
-│
+│   ├── table/         # Reusable paginated/sortable table
+│   ├── modal/         # ModalForm, ConfirmDialog
+│   ├── form/          # Controlled form fields
+│   ├── charts/        # Recharts wrappers
+│   ├── layout/        # Shared layout pieces
+│   ├── feedback/      # Toast, alerts, spinners
+│   ├── permissions/   # PermissionGate component
+│   └── loading/       # Skeleton loaders
+├── context/           # AuthContext
+├── hooks/             # usePermission, useAuth, custom hooks
 ├── layouts/
-│   ├── DefaultLayout.tsx
-│   ├── AdminLayout.tsx
-│   └── CustomerLayout.tsx
-│
+│   ├── DefaultLayout.tsx   # Public pages
+│   ├── AdminLayout.tsx     # Admin sidebar + header
+│   └── CustomerLayout.tsx  # Customer area
 ├── pages/
-│   ├── admin/
-│   ├── public/
-│   ├── customer/
-│   └── auth/
-│
-├── hooks/
-│
-├── context/
-│
+│   ├── public/        # Home, Services, Appointment, Login, Register
+│   ├── admin/         # Dashboard, Users, Employees, Services, Products, Appointments, CashFlow, Reports
+│   ├── customer/      # MyAppointments, Profile
+│   └── auth/          # Login, Register
 ├── services/
-│
-├── utils/
-│
+│   └── api.ts         # Axios instance with interceptors & auto-refresh
+├── styles/
 ├── types/
-│
+├── utils/
 ├── Router.tsx
 ├── App.tsx
 └── main.tsx
 ```
 
----
+## Architectural Patterns
 
-## Padrões Arquiteturais
+**Backend:** REST API · Layered architecture (Controller → Service → Repository) · DTO pattern (records) · Flyway migrations · Spring Security with JWT + Authorities
 
-### Backend
+**Frontend:** SPA · Component composition · Custom hooks · Context API · Domain-separated pages · Reusable layouts
 
-- REST API
-- Camadas separadas
-- DTO Pattern
-- Service Layer
-- Repository Pattern
-- Validation Layer
-- Security Layer
+## Naming Conventions
 
----
+| Layer       | Pattern                          | Example                  |
+|-------------|----------------------------------|--------------------------|
+| DTOs        | `{Domain}Request/Response`       | `UserRequest`            |
+| Entities    | PascalCase, no suffix            | `User`, `Appointment`    |
+| Services    | `{Domain}Service`                | `AppointmentService`     |
+| Controllers | `{Domain}Controller`             | `AuthController`         |
+| Repositories| `{Domain}Repository`             | `ProductRepository`      |
+| Tables      | `tb_{domain}`                    | `tb_appointment`         |
 
-### Frontend
+## Scalability Notes
 
-- SPA
-- Componentização
-- Hooks customizados
-- Context API
-- Separação por domínio
-- Layouts reutilizáveis
-
----
-
-## Padrões de Nomeação
-
-### DTOs
-
-Sem utilizar "DTO" no nome.
-
-Correto:
-
-```text
-UserRequest
-UserResponse
-```
-
-Errado:
-
-```text
-UserDTO
-```
-
----
-
-### Services
-
-```text
-UserService
-AppointmentService
-```
-
----
-
-### Controllers
-
-```text
-UserController
-AuthController
-```
-
----
-
-### Repositories
-
-```text
-UserRepository
-ProductRepository
-```
-
----
-
-## Estratégia de Segurança
-
-Toda rota será protegida utilizando:
-
-- JWT
-- Roles
-- Authorities
-- Endpoint permissions
-- HTTP method permissions
-
----
-
-## Estratégia de Escalabilidade
-
-O projeto foi desenhado para:
-
-- Multiempresa futuramente
-- Microsserviços no futuro
-- Cache distribuído
-- Deploy horizontal
-- CDN para imagens
-
----
+- Designed for future multi-tenant support (one salon per tenant)
+- Service layer decoupled for eventual microservices extraction
+- Ready for distributed cache (Redis)
+- Horizontal scaling via stateless JWT
+- CDN-ready for image/asset serving

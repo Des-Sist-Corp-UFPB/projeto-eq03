@@ -1,258 +1,164 @@
-# API REST
+# API Reference
 
----
+Base URL: `/v1` — All responses in JSON. Protected routes require `Authorization: Bearer <token>`.
 
-## Base URL
+## Auth
 
-```text
-/v1
-```
+| Method | Endpoint            | Auth | Description          |
+|--------|---------------------|------|----------------------|
+| POST   | `/auth/login`       | ✗    | Login, returns JWT   |
+| POST   | `/auth/refresh`     | ✗    | Refresh access token |
+| POST   | `/auth/register`    | ✗    | Customer self-register |
 
----
-
-# AUTH
-
-## Login
-
-```http
-POST /auth/login
-```
-
-Request:
-
+**Login request/response:**
 ```json
-{
-  "email": "admin@email.com",
-  "password": "123456"
-}
+// POST /auth/login
+{ "email": "admin@email.com", "password": "123456" }
+// → { "accessToken": "...", "refreshToken": "..." }
 ```
 
-Response:
+## Users
 
-```json
-{
-  "accessToken": "jwt-token",
-  "refreshToken": "refresh-token"
-}
-```
+| Method | Endpoint              | Auth | Permission           |
+|--------|-----------------------|------|----------------------|
+| GET    | `/users`              | ✓    | ADMIN, GERENTE       |
+| GET    | `/users/details/id/{id}` | ✓ | Owner or ADMIN       |
+| PATCH  | `/users/{id}`         | ✓    | Owner or ADMIN       |
+| DELETE | `/users/{id}`         | ✓    | ADMIN                |
 
----
+## Services (beauty services)
 
-# USERS
+| Method | Endpoint          | Auth | Permission     |
+|--------|-------------------|------|----------------|
+| GET    | `/services`       | ✗    | Public         |
+| POST   | `/services`       | ✓    | ADMIN          |
+| PUT    | `/services/{id}`  | ✓    | ADMIN          |
+| DELETE | `/services/{id}`  | ✓    | ADMIN          |
 
-## Listar usuários
+## Products
 
-```http
-GET /users
-```
+| Method | Endpoint          | Auth | Permission     |
+|--------|-------------------|------|----------------|
+| GET    | `/products`       | ✗    | Public         |
+| POST   | `/products`       | ✓    | ADMIN          |
+| PUT    | `/products/{id}`  | ✓    | ADMIN          |
+| DELETE | `/products/{id}`  | ✓    | ADMIN          |
 
----
+## Employees
 
-## Buscar usuário
+| Method | Endpoint              | Auth | Permission |
+|--------|-----------------------|------|------------|
+| GET    | `/employees`          | ✓    | ADMIN      |
+| GET    | `/employees/{id}`     | ✓    | ADMIN      |
+| POST   | `/employees`          | ✓    | ADMIN      |
+| PUT    | `/employees/{id}`     | ✓    | ADMIN      |
+| DELETE | `/employees/{id}`     | ✓    | ADMIN      |
 
-```http
-GET /users/details/id/{id}
-```
+## Appointments
 
----
+| Method | Endpoint                        | Auth | Permission       |
+|--------|---------------------------------|------|------------------|
+| GET    | `/appointments/slots`           | ✗    | Public           |
+| POST   | `/appointments`                 | ✓    | CLIENTE          |
+| GET    | `/appointments/my`              | ✓    | Owner            |
+| GET    | `/appointments`                 | ✓    | ADMIN, GERENTE   |
+| PATCH  | `/appointments/{id}/cancel`     | ✓    | Owner or ADMIN   |
+| PATCH  | `/appointments/{id}/status`     | ✓    | ADMIN, FUNCIONARIA |
 
-## Atualizar usuário
+## Cash Flow
 
-```http
-PATCH /users/{id}
-```
+| Method | Endpoint              | Auth | Permission |
+|--------|-----------------------|------|------------|
+| GET    | `/cashflow`           | ✓    | ADMIN      |
+| POST   | `/cashflow`           | ✓    | ADMIN      |
+| DELETE | `/cashflow/{id}`      | ✓    | ADMIN      |
 
----
+## Reports
 
-## Remover usuário
-
-```http
-DELETE /users/{id}
-```
-
----
-
-# SERVICES
-
-## Listar serviços
-
-```http
-GET /services
-```
-
----
-
-## Criar serviço
-
-```http
-POST /services
-```
-
----
-
-## Atualizar serviço
-
-```http
-PUT /services/{id}
-```
+| Method | Endpoint                      | Auth | Permission |
+|--------|-------------------------------|------|------------|
+| GET    | `/reports/financial`          | ✓    | ADMIN      |
+| GET    | `/reports/appointments`       | ✓    | ADMIN, GERENTE |
 
 ---
 
-## Remover serviço
+## Database Schema
 
-```http
-DELETE /services/{id}
-```
+### `tb_user`
+| Column     | Type    | Notes              |
+|------------|---------|--------------------|
+| id         | bigint  | PK                 |
+| name       | varchar |                    |
+| email      | varchar | unique             |
+| password   | varchar | bcrypt             |
+| phone      | varchar |                    |
+| role_id    | bigint  | FK → tb_role       |
+| created_at | timestamp |                  |
 
----
+### `tb_role`
+| Column | Type    |
+|--------|---------|
+| id     | bigint  |
+| name   | varchar |
 
-# PRODUCTS
+### `tb_permission`
+| Column      | Type    | Notes                     |
+|-------------|---------|---------------------------|
+| id          | bigint  |                           |
+| name        | varchar | Human-readable label      |
+| endpoint    | varchar | e.g. `/v1/users/*`        |
+| http_method | varchar | GET, POST, PUT, DELETE, * |
+| classe      | varchar | Domain grouping           |
 
-## Listar produtos
+### `tb_service`
+| Column      | Type    |
+|-------------|---------|
+| id          | bigint  |
+| name        | varchar |
+| description | text    |
+| price       | numeric |
+| duration_min| integer |
+| active      | boolean |
 
-```http
-GET /products
-```
+### `tb_product`
+| Column | Type    |
+|--------|---------|
+| id     | bigint  |
+| name   | varchar |
+| stock  | integer |
+| price  | numeric |
 
----
+### `tb_employee`
+| Column  | Type    | Notes         |
+|---------|---------|---------------|
+| id      | bigint  |               |
+| user_id | bigint  | FK → tb_user  |
+| bio     | text    |               |
 
-## Criar produto
+### `tb_appointment`
+| Column        | Type      | Notes                |
+|---------------|-----------|----------------------|
+| id            | bigint    |                      |
+| client_id     | bigint    | FK → tb_user         |
+| employee_id   | bigint    | FK → tb_employee     |
+| service_id    | bigint    | FK → tb_service      |
+| scheduled_at  | timestamp |                      |
+| status        | varchar   | PENDING/CONFIRMED/DONE/CANCELLED |
 
-```http
-POST /products
-```
+### `tb_cashflow`
+| Column      | Type      | Notes              |
+|-------------|-----------|--------------------|
+| id          | bigint    |                    |
+| type        | varchar   | INCOME / EXPENSE   |
+| amount      | numeric   |                    |
+| description | varchar   |                    |
+| date        | date      |                    |
+| appointment_id | bigint | FK (nullable)      |
 
----
+## Flyway Migrations
 
-## Atualizar produto
-
-```http
-PUT /products/{id}
-```
-
----
-
-## Remover produto
-
-```http
-DELETE /products/{id}
-```
-
----
-
-# APPOINTMENTS
-
-## Criar agendamento
-
-```http
-POST /appointments
-```
-
----
-
-## Horários disponíveis
-
-```http
-GET /appointments/slots
-```
-
----
-
-# DATABASE.md
-
-# Banco de Dados
-
----
-
-# Tabelas Principais
-
-## tb_user
-
-| Campo | Tipo |
-|---|---|
-| id | bigint |
-| name | varchar |
-| email | varchar |
-| password | varchar |
-| role_id | bigint |
-
----
-
-## tb_role
-
-| Campo | Tipo |
-|---|---|
-| id | bigint |
-| name | varchar |
-
----
-
-## tb_permission
-
-| Campo | Tipo |
-|---|---|
-| id | bigint |
-| name | varchar |
-| endpoint | varchar |
-| http_method | varchar |
-
----
-
-## tb_service
-
-| Campo | Tipo |
-|---|---|
-| id | bigint |
-| name | varchar |
-| description | text |
-| price | numeric |
-
----
-
-## tb_product
-
-| Campo | Tipo |
-|---|---|
-| id | bigint |
-| name | varchar |
-| stock | integer |
-
----
-
-## tb_appointment
-
-| Campo | Tipo |
-|---|---|
-| id | bigint |
-| client_id | bigint |
-| employee_id | bigint |
-
----
-
-# Migrations Flyway
-
-## V1__create_security_tables.sql
-
-- Roles
-- Permissions
-- Users
-
----
-
-## V2__insert_roles_permissions.sql
-
-- Inserções iniciais
-- ADMIN
-- GERENTE
-
----
-
-## V3__create_business_tables.sql
-
-- Serviços
-- Produtos
-- Funcionárias
-- Agendamentos
-- Fluxo de caixa
-
----
+| Version | File                               | Creates                                          |
+|---------|------------------------------------|--------------------------------------------------|
+| V1      | `V1__create_security_tables.sql`   | `tb_role`, `tb_permission`, `tb_user`, join tables |
+| V2      | `V2__insert_roles_permissions.sql` | Seed ADMIN, GERENTE, FUNCIONARIA, CLIENTE roles  |
+| V3      | `V3__create_business_tables.sql`   | `tb_service`, `tb_product`, `tb_employee`, `tb_appointment`, `tb_cashflow` |
