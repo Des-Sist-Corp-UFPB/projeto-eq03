@@ -2,6 +2,7 @@ package com.cristiane.salon.models.user.service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
 import com.cristiane.salon.models.user.entity.Role;
@@ -38,8 +39,31 @@ public class UserService {
         return UserResponse.fromEntity(user);
     }
 
-    @Transactional
-    public UserResponse update(Long id, UserUpdateRequest request) {
+    @Transactional    public UserResponse create(UserCreateRequest request) {
+        if (userRepository.findByEmail(request.email()).isPresent()) {
+            throw new BadRequestException("Email já está em uso");
+        }
+
+        Role role = roleRepository.findById(request.roleId())
+                .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada"));
+
+        User user = new User();
+        user.setName(request.name());
+        user.setEmail(request.email());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setPhone(request.phone());
+        user.setRole(role);
+        
+        if (request.active() != null) {
+            user.setActive(request.active());
+        } else {
+            user.setActive(true);
+        }
+
+        return UserResponse.fromEntity(userRepository.save(user));
+    }
+
+    @Transactional    public UserResponse update(Long id, UserUpdateRequest request) {
         User user = userRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
 

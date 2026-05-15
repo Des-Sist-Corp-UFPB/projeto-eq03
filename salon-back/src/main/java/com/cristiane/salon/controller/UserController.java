@@ -1,5 +1,6 @@
 package com.cristiane.salon.controller;
 
+import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
 import com.cristiane.salon.models.user.service.UserService;
@@ -27,7 +28,12 @@ public class UserController {
     public ResponseEntity<List<UserResponse>> findAll() {
         return ResponseEntity.ok(userService.findAll());
     }
-
+    @PostMapping
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Cria um novo usuário (Admin)")
+    public ResponseEntity<UserResponse> create(@Valid @RequestBody UserCreateRequest request) {
+        return ResponseEntity.ok(userService.create(request));
+    }
     @GetMapping("/details/id/{id}")
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(#id)")
     @Operation(summary = "Busca um usuário por ID (Dono ou Admin)")
