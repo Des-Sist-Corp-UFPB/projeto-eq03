@@ -1,6 +1,7 @@
 import { Outlet, Navigate, Link } from 'react-router-dom';
 import { Container, Row, Col, Nav } from 'react-bootstrap';
 import { useAuth } from '../hooks/useAuth';
+import './AdminLayout.css';
 
 export const AdminLayout = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();

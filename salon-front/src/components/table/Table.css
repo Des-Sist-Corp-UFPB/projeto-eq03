@@ -1,0 +1,10 @@
+/* Table.css */
+.table {
+  vertical-align: middle;
+}
+
+.table th {
+  font-weight: 600;
+  color: var(--secondary-color);
+  border-bottom: 2px solid var(--border-color);
+}

@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { Table as BSTable, Pagination, Form, InputGroup } from 'react-bootstrap';
 import { Search } from 'lucide-react';
+import './Table.css';
 
 interface Column<T> {
   key: keyof T | string;

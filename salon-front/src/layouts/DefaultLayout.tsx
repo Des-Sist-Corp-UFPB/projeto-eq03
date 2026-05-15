@@ -1,6 +1,7 @@
 import { Outlet, Link } from 'react-router-dom';
 import { Container, Navbar, Nav } from 'react-bootstrap';
 import { useAuth } from '../hooks/useAuth';
+import './Layouts.css';
 
 export const DefaultLayout = () => {
   const { isAuthenticated, logout } = useAuth();
