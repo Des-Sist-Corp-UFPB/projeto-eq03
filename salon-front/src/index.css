@@ -1,5 +1,5 @@
 :root {
-  /* Cores Base - Sal�o de Beleza (Elegante e Moderno) */
+  /* Cores Base - Salão de Beleza (Elegante e Moderno) */
   --primary-color: #be8a83; /* Rose Gold suave */
   --primary-hover: #a1706a;
   --secondary-color: #3b3036; /* Dark plum para contraste */
@@ -11,7 +11,7 @@
   --border-color: #eae1e1;
   --accent-color: #e5a49c;
 
-  /* Sobrescrevendo variáveis do Bootstrap 5 para integra��o */
+  /* Sobrescrevendo variáveis do Bootstrap 5 para integração */
   --bs-primary: var(--primary-color);
   --bs-primary-rgb: 190, 138, 131;
   --bs-secondary: var(--secondary-color);
@@ -22,7 +22,7 @@
   --bs-link-color: var(--primary-color);
   --bs-link-hover-color: var(--primary-hover);
 
-  /* Vari�veis de estilo autoral */
+  /* Variáveis de estilo autoral */
   --radius-sm: 8px;
   --radius-md: 12px;
   --radius-lg: 20px;
@@ -31,6 +31,11 @@
 
   --font-sans: 'Montserrat', system-ui, 'Segoe UI', Roboto, sans-serif;
   --font-heading: 'Playfair Display', system-ui, 'Segoe UI', Roboto, sans-serif;
+}
+
+html, body, #root {
+  height: 100%;
+  margin: 0;
 }
 
 body {
@@ -49,7 +54,7 @@ h1, h2, h3, h4, h5, h6 {
   color: var(--secondary-color);
 }
 
-/* Estilos de Componentes Globais Gen�ricos */
+/* Estilos de Componentes Globais Genéricos */
 .card {
   background-color: var(--surface-color);
   border: 1px solid var(--border-color);

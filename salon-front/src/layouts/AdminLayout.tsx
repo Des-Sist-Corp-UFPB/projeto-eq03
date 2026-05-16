@@ -18,7 +18,7 @@ export const AdminLayout = () => {
 
   return (
     <Container fluid className="px-0">
-      <Row className="g-0">
+      <Row className="g-0 min-vh-100">
         <Col md={2} className="admin-sidebar min-vh-100 p-3">
           <h4 className="text-white mb-4">Admin Salão</h4>
           <Nav className="flex-column">

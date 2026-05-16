@@ -37,7 +37,7 @@ export const Login = () => {
         <div className="auth-image"></div>
         <div className="auth-form-container">
           <h2>Bem-vinda de volta</h2>
-          <p className="subtitle">Fa�a login para gerenciar seus agendamentos</p>
+          <p className="subtitle">Faça login para gerenciar seus agendamentos</p>
 
           {errorMsg && <Alert variant="danger">{errorMsg}</Alert>}
           
@@ -47,7 +47,7 @@ export const Login = () => {
               <Form.Control 
                 type="email" 
                 placeholder="Seu email"
-                {...register('email', { required: 'Email � obrigat�rio' })}
+                {...register('email', { required: 'Email é obrigatório' })}
                 isInvalid={!!errors.email}
               />
               <Form.Control.Feedback type="invalid">
@@ -60,7 +60,7 @@ export const Login = () => {
               <Form.Control 
                 type="password" 
                 placeholder="Sua senha"
-                {...register('password', { required: 'Senha � obrigat�ria' })}
+                {...register('password', { required: 'Senha é obrigatória' })}
                 isInvalid={!!errors.password}
               />
               <Form.Control.Feedback type="invalid">
@@ -73,7 +73,7 @@ export const Login = () => {
             </Button>
             
             <div className="text-center">
-              <span className="text-muted">N�o tem uma conta? </span>
+              <span className="text-muted">Não tem uma conta? </span>
               <Link to="/register" className="text-decoration-none fw-semibold">Cadastre-se</Link>
             </div>
           </Form>

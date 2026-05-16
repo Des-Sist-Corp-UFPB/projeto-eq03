@@ -24,7 +24,7 @@ export const Register = () => {
       if (err.response?.data?.message) {
         setErrorMsg(err.response.data.message);
       } else {
-        setErrorMsg('Erro ao realizar cadastro. Tente novam�n.e.');
+        setErrorMsg('Erro ao realizar cadastro. Tente novamente.');
       }
     } finally {
       setIsLoading(false);
@@ -36,7 +36,7 @@ export const Register = () => {
       <div className="auth-card">
         <div className="auth-form-container" style={{ maxWidth: '550px' }}>
           <h2>Cadastre-se</h2>
-          <p className="subtitle">Crie sua conta para agendar seus servi�os</p>
+          <p className="subtitle">Crie sua conta para agendar seus serviços</p>
 
           {errorMsg && <Alert variant="danger">{errorMsg}</Alert>}
           
@@ -46,7 +46,7 @@ export const Register = () => {
               <Form.Control 
                 type="text" 
                 placeholder="Seu nome completo"
-                {...register('name', { required: 'Nome � obrigat�rio', minLength: { value: 3, message: 'M�nimo 3 caracteres'} })}
+                {...register('name', { required: 'Nome é obrigatório', minLength: { value: 3, message: 'Mínimo 3 caracteres'} })}
                 isInvalid={!!errors.name}
               />
               <Form.Control.Feedback type="invalid">
@@ -59,7 +59,7 @@ export const Register = () => {
               <Form.Control 
                 type="email" 
                 placeholder="Seu email"
-                {...register('email', { required: 'Email � obrigat�rio' })}
+                {...register('email', { required: 'Email é obrigatório' })}
                 isInvalid={!!errors.email}
               />
               <Form.Control.Feedback type="invalid">
@@ -80,8 +80,8 @@ export const Register = () => {
               <Form.Label>Senha</Form.Label>
               <Form.Control 
                 type="password" 
-                placeholder="Sua senha (m�n. 6 caracteres)"
-                {...register('password', { required: 'Senha � obrigat�ria', minLength: { value: 6, message: 'M�nimo 6 caracteres'} })}
+                placeholder="Sua senha (mín. 6 caracteres)"
+                {...register('password', { required: 'Senha é obrigatória', minLength: { value: 6, message: 'Mínimo 6 caracteres'} })}
                 isInvalid={!!errors.password}
               />
               <Form.Control.Feedback type="invalid">
@@ -94,7 +94,7 @@ export const Register = () => {
             </Button>
             
             <div className="text-center">
-              <span className="text-muted">J� tem uma conta? </span>
+              <span className="text-muted">Já tem uma conta? </span>
               <Link to="/login" className="text-decoration-none fw-semibold">Entre aqui</Link>
             </div>
           </Form>
