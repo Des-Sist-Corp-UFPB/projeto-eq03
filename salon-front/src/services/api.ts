@@ -8,6 +8,14 @@ const api = axios.create({
   },
 });
 
+// Axios simples sem interceptadores para refresh (evita loop infinito)
+const plainAxios = axios.create({
+  baseURL: 'http://localhost:8080/v1',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+});
+
 let isRefreshing = false;
 let failedQueue: Array<{
   resolve: (value?: unknown) => void;

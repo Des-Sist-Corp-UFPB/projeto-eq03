@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Form, Button, Alert } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
-import axios from 'axios';
+import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import './Auth.css';
 
@@ -17,7 +17,7 @@ export const Login = () => {
     setIsLoading(true);
     setErrorMsg('');
     try {
-      const response = await axios.post('http://localhost:8080/v1/auth/login', data);
+      const response = await api.post('/auth/login', data);
       login(response.data.accessToken, response.data.refreshToken);
       const pending = localStorage.getItem('pending_appointment');
       navigate(pending ? '/appointment' : '/');

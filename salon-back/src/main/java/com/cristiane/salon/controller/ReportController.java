@@ -25,7 +25,7 @@ public class ReportController {
     private final ReportService reportService;
 
     @GetMapping("/financial")
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Gera relatório financeiro de receitas, despesas e lucro (Admin)")
     public ResponseEntity<FinancialReportResponse> getFinancialReport(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
@@ -34,7 +34,7 @@ public class ReportController {
     }
 
     @GetMapping("/appointments")
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Gera relatório de agendamentos e métricas de atendimento (Admin)")
     public ResponseEntity<AppointmentReportResponse> getAppointmentReport(
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,

@@ -23,7 +23,7 @@ export const reportsApi = {
     const params: any = {};
     if (from) params.from = from;
     if (to) params.to = to;
-    const { data } = await api.get<FinancialReportResponse>('/v1/reports/financial', { params });
+    const { data } = await api.get<FinancialReportResponse>('/reports/financial', { params });
     return data;
   },
 
@@ -31,7 +31,7 @@ export const reportsApi = {
     const params: any = {};
     if (from) params.from = from;
     if (to) params.to = to;
-    const { data } = await api.get<AppointmentReportResponse>('/v1/reports/appointments', { params });
+    const { data } = await api.get<AppointmentReportResponse>('/reports/appointments', { params });
     return data;
   }
 };

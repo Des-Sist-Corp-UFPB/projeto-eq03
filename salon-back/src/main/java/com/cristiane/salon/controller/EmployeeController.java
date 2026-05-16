@@ -24,7 +24,7 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @GetMapping
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Lista todas as funcionárias (Admin)")
     public ResponseEntity<List<EmployeeResponse>> findAll() {
         return ResponseEntity.ok(employeeService.findAll());
@@ -38,28 +38,28 @@ public class EmployeeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Busca uma funcionária por ID (Admin)")
     public ResponseEntity<EmployeeResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.findById(id));
     }
 
     @PostMapping
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Cria uma nova funcionária (Admin)")
     public ResponseEntity<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Atualiza uma funcionária (Admin)")
     public ResponseEntity<EmployeeResponse> update(@PathVariable Long id, @Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.ok(employeeService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @PreAuthorize("hasAnyRole('ADMIN')")
     @Operation(summary = "Remove uma funcionária (Admin)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         employeeService.delete(id);

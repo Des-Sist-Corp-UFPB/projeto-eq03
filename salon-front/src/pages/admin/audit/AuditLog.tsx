@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Filter } from 'lucide-react';
 import './AuditLog.css';
+import api from '../../../services/api';
 
 interface AuditLog {
   id: number;
@@ -28,23 +29,18 @@ export const AuditLog = () => {
   const loadAuditLogs = async () => {
     setIsLoading(true);
     try {
-      let url = `${import.meta.env.VITE_API_URL}/v1/audit?page=${page}&size=${PAGE_SIZE}`;
+      const params = new URLSearchParams();
+      params.append('page', page.toString());
+      params.append('size', PAGE_SIZE.toString());
       
-      if (filterAction) url += `&action=${filterAction}`;
-      if (filterEntity) url += `&entityType=${filterEntity}`;
-      if (filterUser) url += `&userEmail=${filterUser}`;
+      if (filterAction) params.append('action', filterAction);
+      if (filterEntity) params.append('entityType', filterEntity);
+      if (filterUser) params.append('userEmail', filterUser);
       
-      const response = await fetch(url, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
-      });
+      const { data } = await api.get(`/audit?${params.toString()}`);
       
-      if (response.ok) {
-        const data = await response.json();
-        setAuditLogs(data.content);
-        setTotalItems(data.totalElements);
-      }
+      setAuditLogs(data.content);
+      setTotalItems(data.totalElements);
     } catch (error) {
       console.error('Erro ao carregar logs de auditoria', error);
     } finally {
