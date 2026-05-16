@@ -95,7 +95,15 @@ public class AppointmentService {
 
     @Transactional
     public AppointmentResponse create(AppointmentRequest request) {
-        User client = getAuthenticatedUser();
+        User currentUser = getAuthenticatedUser();
+        User client;
+
+        if ("ADMIN".equals(currentUser.getRoleName()) && request.clientId() != null) {
+            client = userRepository.findById(request.clientId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado"));
+        } else {
+            client = currentUser;
+        }
         
         Employee employee = employeeRepository.findById(request.employeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Funcionário não encontrado"));

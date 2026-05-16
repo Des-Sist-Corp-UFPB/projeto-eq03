@@ -11,5 +11,7 @@ public record AppointmentRequest(
         Long serviceId,
 
         @NotNull(message = "A data e hora são obrigatórias")
-        LocalDateTime scheduledAt
+        LocalDateTime scheduledAt,
+
+        Long clientId
 ) {}

@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { Container, Row, Col, Card, Form, Button, Alert } from 'react-bootstrap';
+import { Container, Form, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
+import { Clock, User as UserIcon, Calendar, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
 import { salonServicesApi } from '../services/services/services';
 import type { SalonServiceData } from '../services/services/services';
 import { employeesApi } from '../admin/employees/services/employees';
@@ -8,6 +9,7 @@ import type { EmployeeData } from '../admin/employees/services/employees';
 import { appointmentsApi } from './services/appointments';
 import type { TimeSlotResponse } from './services/appointments';
 import { useAuth } from '../../hooks/useAuth';
+import './PublicAppointment.css';
 
 export const PublicAppointment = () => {
   const [step, setStep] = useState(1);
@@ -21,6 +23,7 @@ export const PublicAppointment = () => {
   const [selectedTime, setSelectedTime] = useState<string>('');
   
   const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
 
   const { isAuthenticated } = useAuth();
@@ -37,6 +40,8 @@ export const PublicAppointment = () => {
         setEmployees(employeesData);
       } catch (error) {
         console.error('Erro ao buscar dados', error);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
     fetchInitialData();
@@ -62,15 +67,26 @@ export const PublicAppointment = () => {
   };
 
   const handleNext = () => {
-    if (step === 1 && !selectedService) return alert('Selecione um serviço');
-    if (step === 2 && !selectedEmployee) return alert('Selecione um profissional');
-    if (step === 3 && (!selectedDate || !selectedTime)) return alert('Selecione a data e o horário');
+    if (step === 1 && !selectedService) return;
+    if (step === 2 && !selectedEmployee) return;
+    if (step === 3 && (!selectedDate || !selectedTime)) return;
     setStep(step + 1);
+    window.scrollTo(0, 0);
+  };
+
+  const handleBack = () => {
+    setStep(step - 1);
+    window.scrollTo(0, 0);
   };
 
   const handleConfirm = async () => {
     if (!isAuthenticated) {
-      alert('Você precisa estar logado para agendar. Redirecionando...');
+      localStorage.setItem('pending_appointment', JSON.stringify({
+        serviceId: selectedService,
+        employeeId: selectedEmployee,
+        date: selectedDate,
+        time: selectedTime
+      }));
       navigate('/login');
       return;
     }
@@ -83,7 +99,6 @@ export const PublicAppointment = () => {
         employeeId: selectedEmployee!,
         scheduledAt: `${selectedDate}T${selectedTime}`
       });
-      alert('Agendamento realizado com sucesso!');
       navigate('/my-appointments');
     } catch (error: any) {
       setErrorMsg(error.response?.data?.message || 'Erro ao agendar.');
@@ -92,145 +107,204 @@ export const PublicAppointment = () => {
     }
   };
 
+  if (isInitialLoading) {
+    return (
+      <div className="d-flex justify-content-center align-items-center min-vh-100">
+        <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  }
+
+  const steps = [
+    { n: 1, label: 'Serviço', icon: <Clock size={16} /> },
+    { n: 2, label: 'Profissional', icon: <UserIcon size={16} /> },
+    { n: 3, label: 'Data e Hora', icon: <Calendar size={16} /> },
+    { n: 4, label: 'Confirmar', icon: <CheckCircle size={16} /> }
+  ];
+
   return (
-    <Container className="py-5">
-      <Row className="justify-content-center">
-        <Col md={8}>
-          <h2 className="text-center mb-4">Agende seu Horário</h2>
-          
-          <div className="d-flex justify-content-between mb-4">
-            <Badge bg={step >= 1 ? 'primary' : 'secondary'} className="p-2 fs-6">1. Serviço</Badge>
-            <Badge bg={step >= 2 ? 'primary' : 'secondary'} className="p-2 fs-6">2. Profissional</Badge>
-            <Badge bg={step >= 3 ? 'primary' : 'secondary'} className="p-2 fs-6">3. Data e Hora</Badge>
-            <Badge bg={step >= 4 ? 'primary' : 'secondary'} className="p-2 fs-6">4. Confirmar</Badge>
+    <div className="appointment-container fade-in-up">
+      <div className="appointment-header">
+        <h2>Reserve seu Momento</h2>
+        <p className="text-muted">Siga os passos abaixo para agendar seu atendimento exclusivo.</p>
+      </div>
+
+      <div className="stepper">
+        {steps.map((s) => (
+          <div key={s.n} className={`step-item ${step === s.n ? 'active' : ''} ${step > s.n ? 'completed' : ''}`}>
+            <div className="step-number">
+              {step > s.n ? <CheckCircle size={20} /> : s.n}
+            </div>
+            <div className="step-label">{s.label}</div>
           </div>
+        ))}
+      </div>
 
-          <Card className="shadow-sm">
-            <Card.Body className="p-4">
-              {errorMsg && <Alert variant="danger">{errorMsg}</Alert>}
-              
-              {step === 1 && (
-                <div>
-                  <h4 className="mb-4">Escolha o serviço</h4>
-                  <div className="d-grid gap-3">
-                    {services.map(srv => (
-                      <Button 
-                        key={srv.id} 
-                        variant={selectedService === srv.id ? 'primary' : 'outline-primary'}
-                        className="text-start p-3"
-                        onClick={() => setSelectedService(srv.id!)}
-                      >
-                        <div className="d-flex justify-content-between align-items-center">
-                          <strong>{srv.name}</strong>
-                          <span>R$ {srv.price.toFixed(2)}</span>
-                        </div>
-                        <small className="d-block">{srv.durationMin} minutos</small>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
+      <div className="appointment-content">
+        {errorMsg && <Alert variant="danger" className="mb-4">{errorMsg}</Alert>}
 
-              {step === 2 && (
-                <div>
-                  <h4 className="mb-4">Escolha o profissional</h4>
-                  <div className="d-grid gap-3">
-                    {employees.map(emp => (
-                      <Button 
-                        key={emp.id} 
-                        variant={selectedEmployee === emp.id ? 'primary' : 'outline-primary'}
-                        className="text-start p-3"
-                        onClick={() => setSelectedEmployee(emp.id!)}
-                      >
-                        <strong>{emp.name}</strong>
-                        <small className="d-block">{emp.bio || 'Profissional parceira'}</small>
-                      </Button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div>
-                  <h4 className="mb-4">Escolha data e horário</h4>
-                  <Form.Group className="mb-4">
-                    <Form.Label>Data</Form.Label>
-                    <Form.Control 
-                      type="date" 
-                      min={new Date().toISOString().split('T')[0]}
-                      value={selectedDate}
-                      onChange={(e) => setSelectedDate(e.target.value)}
-                    />
-                  </Form.Group>
-                  
-                  {selectedDate && (
-                    <div>
-                      <Form.Label>Horários Disponíveis</Form.Label>
-                      {isLoading ? (
-                        <p>Carregando horários...</p>
-                      ) : slots.length === 0 ? (
-                        <p>Nenhum horário disponível para esta data.</p>
-                      ) : (
-                        <div className="d-flex flex-wrap gap-2">
-                          {slots.filter(s => s.available).map((slot, i) => (
-                            <Button
-                              key={i}
-                              variant={selectedTime === slot.time ? 'primary' : 'outline-primary'}
-                              onClick={() => setSelectedTime(slot.time)}
-                            >
-                              {slot.time.substring(0, 5)}
-                            </Button>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {step === 4 && (
-                <div>
-                  <h4 className="mb-4">Confirme seu agendamento</h4>
-                  <div className="bg-light p-4 rounded mb-4">
-                    <p><strong>Serviço:</strong> {services.find(s => s.id === selectedService)?.name}</p>
-                    <p><strong>Profissional:</strong> {employees.find(e => e.id === selectedEmployee)?.name}</p>
-                    <p><strong>Data:</strong> {selectedDate}</p>
-                    <p><strong>Horário:</strong> {selectedTime}</p>
-                  </div>
-                  {!isAuthenticated && (
-                    <Alert variant="warning">
-                      Você será redirecionado para a tela de login/cadastro antes de confirmar.
-                    </Alert>
-                  )}
-                </div>
-              )}
-
-              <div className="d-flex justify-content-between mt-5">
-                <Button 
-                  variant="secondary" 
-                  onClick={() => setStep(step - 1)} 
-                  disabled={step === 1 || isLoading}
+        {step === 1 && (
+          <div>
+            <h4 className="mb-4 text-center">O que vamos fazer hoje?</h4>
+            <div className="selection-grid">
+              {services.map(srv => (
+                <div 
+                  key={srv.id} 
+                  className={`option-card ${selectedService === srv.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedService(srv.id!)}
                 >
-                  Voltar
-                </Button>
-                
-                {step < 4 ? (
-                  <Button variant="primary" onClick={handleNext}>
-                    Próximo
-                  </Button>
+                  <span className="price-tag">R$ {srv.price.toFixed(2)}</span>
+                  <h5 className="mb-1">{srv.name}</h5>
+                  <p className="text-muted small mb-2">{srv.description || 'Tratamento especializado para você.'}</p>
+                  <div className="duration">
+                    <Clock size={14} />
+                    {srv.durationMin} minutos
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 2 && (
+          <div>
+            <h4 className="mb-4 text-center">Com quem você deseja agendar?</h4>
+            <div className="selection-grid">
+              {employees.map(emp => (
+                <div 
+                  key={emp.id} 
+                  className={`option-card ${selectedEmployee === emp.id ? 'selected' : ''}`}
+                  onClick={() => setSelectedEmployee(emp.id!)}
+                >
+                  <div className="d-flex align-items-center gap-3">
+                    <div className="avatar-placeholder">
+                      {emp.name.charAt(0)}
+                    </div>
+                    <div>
+                      <h5 className="mb-0">{emp.name}</h5>
+                      <p className="text-muted small mb-0">{emp.bio || 'Profissional especialista'}</p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {step === 3 && (
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h4 className="mb-4 text-center">Quando seria melhor para você?</h4>
+            <Form.Group className="mb-5">
+              <Form.Label className="fw-bold">Selecione o dia</Form.Label>
+              <Form.Control 
+                type="date" 
+                className="custom-input"
+                min={new Date().toISOString().split('T')[0]}
+                value={selectedDate}
+                onChange={(e) => setSelectedDate(e.target.value)}
+              />
+            </Form.Group>
+            
+            {selectedDate && (
+              <div>
+                <Form.Label className="fw-bold mb-3">Horários disponíveis</Form.Label>
+                {isLoading ? (
+                  <div className="text-center py-4">
+                    <Spinner animation="border" size="sm" variant="primary" />
+                  </div>
+                ) : slots.length === 0 ? (
+                  <Alert variant="info">Nenhum horário disponível para esta data.</Alert>
                 ) : (
-                  <Button variant="success" onClick={handleConfirm} disabled={isLoading}>
-                    {isLoading ? 'Confirmando...' : 'Confirmar Agendamento'}
-                  </Button>
+                  <div className="slots-container">
+                    {slots.map((slot, i) => (
+                      <button
+                        key={i}
+                        className={`slot-btn ${selectedTime === slot.time ? 'selected' : ''}`}
+                        disabled={!slot.available}
+                        onClick={() => setSelectedTime(slot.time)}
+                      >
+                        {slot.time.substring(0, 5)}
+                      </button>
+                    ))}
+                  </div>
                 )}
               </div>
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-    </Container>
+            )}
+          </div>
+        )}
+
+        {step === 4 && (
+          <div style={{ maxWidth: '600px', margin: '0 auto' }}>
+            <h4 className="mb-4 text-center">Tudo certo?</h4>
+            <div className="summary-card">
+              <div className="summary-header">
+                <CheckCircle size={40} className="mb-2" />
+                <h5>Resumo do Agendamento</h5>
+              </div>
+              <div className="summary-body">
+                <div className="summary-item">
+                  <span className="summary-label">Serviço</span>
+                  <span className="summary-value">{services.find(s => s.id === selectedService)?.name}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Profissional</span>
+                  <span className="summary-value">{employees.find(e => e.id === selectedEmployee)?.name}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Data</span>
+                  <span className="summary-value">{new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                </div>
+                <div className="summary-item">
+                  <span className="summary-label">Horário</span>
+                  <span className="summary-value">{selectedTime.substring(0, 5)}</span>
+                </div>
+                <div className="summary-item pt-3">
+                  <span className="summary-label fw-bold text-dark">Total</span>
+                  <span className="summary-value text-primary fs-5">R$ {services.find(s => s.id === selectedService)?.price.toFixed(2)}</span>
+                </div>
+              </div>
+            </div>
+            
+            {!isAuthenticated && (
+              <Alert variant="warning" className="mt-4">
+                Você precisará entrar na sua conta para finalizar o agendamento.
+              </Alert>
+            )}
+          </div>
+        )}
+
+        <div className="nav-footer">
+          <button 
+            className="btn-nav btn-outline-custom d-flex align-items-center gap-2"
+            onClick={handleBack} 
+            disabled={step === 1 || isLoading}
+          >
+            <ArrowLeft size={18} />
+            Voltar
+          </button>
+          
+          {step < 4 ? (
+            <button 
+              className="btn-nav btn-primary-custom d-flex align-items-center gap-2"
+              onClick={handleNext}
+              disabled={(step === 1 && !selectedService) || (step === 2 && !selectedEmployee) || (step === 3 && (!selectedDate || !selectedTime))}
+            >
+              Próximo
+              <ArrowRight size={18} />
+            </button>
+          ) : (
+            <button 
+              className="btn-nav btn-primary-custom d-flex align-items-center gap-2"
+              onClick={handleConfirm} 
+              disabled={isLoading}
+            >
+              {isLoading ? 'Confirmando...' : 'Finalizar Agendamento'}
+              <CheckCircle size={18} />
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 
-// Workaround for Badge not imported above
-import { Badge } from 'react-bootstrap';

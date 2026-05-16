@@ -9,6 +9,7 @@ export interface AppointmentRequest {
   employeeId: number;
   serviceId: number;
   scheduledAt: string;
+  clientId?: number;
 }
 
 export interface AppointmentResponse {

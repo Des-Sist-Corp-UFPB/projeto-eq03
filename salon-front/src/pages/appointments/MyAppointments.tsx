@@ -12,11 +12,19 @@ export const MyAppointments = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
 
+  const parseDate = (dateValue: any): number => {
+    if (Array.isArray(dateValue)) {
+      const [year, month, day, hour, minute] = dateValue;
+      return new Date(year, month - 1, day, hour, minute).getTime();
+    }
+    return new Date(dateValue).getTime();
+  };
+
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
       const data = await appointmentsApi.getMyAppointments();
-      data.sort((a, b) => new Date(b.scheduledAt).getTime() - new Date(a.scheduledAt).getTime());
+      data.sort((a, b) => parseDate(b.scheduledAt) - parseDate(a.scheduledAt));
       setAppointments(data);
     } catch (error) {
       console.error('Erro ao carregar agendamentos', error);
@@ -52,8 +60,19 @@ export const MyAppointments = () => {
     }
   };
 
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString);
+  const formatDate = (dateValue: any) => {
+    let date: Date;
+    if (Array.isArray(dateValue)) {
+      const [year, month, day, hour, minute] = dateValue;
+      date = new Date(year, month - 1, day, hour, minute);
+    } else {
+      date = new Date(dateValue);
+    }
+
+    if (isNaN(date.getTime())) {
+      return { dayStr: '--', timeStr: '--', yearStr: '----' };
+    }
+
     return {
       dayStr: new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date),
       timeStr: new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date),
