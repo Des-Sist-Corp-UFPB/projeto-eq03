@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
+import { Form, Button, Alert } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import './Auth.css';
 
 export const Login = () => {
   const { register, handleSubmit, formState: { errors } } = useForm();
@@ -31,10 +32,13 @@ export const Login = () => {
   };
 
   return (
-    <Container className="py-5">
-      <Row className="justify-content-center">
-        <Col md={6} lg={4}>
-          <h2 className="text-center mb-4">Entrar</h2>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-image"></div>
+        <div className="auth-form-container">
+          <h2>Bem-vinda de volta</h2>
+          <p className="subtitle">Faça login para gerenciar seus agendamentos</p>
+
           {errorMsg && <Alert variant="danger">{errorMsg}</Alert>}
           
           <Form onSubmit={handleSubmit(onSubmit)}>
@@ -43,7 +47,7 @@ export const Login = () => {
               <Form.Control 
                 type="email" 
                 placeholder="Seu email"
-                {...register('email', { required: 'Email Ã© obrigatÃ³rio' })}
+                {...register('email', { required: 'Email é obrigatório' })}
                 isInvalid={!!errors.email}
               />
               <Form.Control.Feedback type="invalid">
@@ -56,7 +60,7 @@ export const Login = () => {
               <Form.Control 
                 type="password" 
                 placeholder="Sua senha"
-                {...register('password', { required: 'Senha Ã© obrigatÃ³ria' })}
+                {...register('password', { required: 'Senha é obrigatória' })}
                 isInvalid={!!errors.password}
               />
               <Form.Control.Feedback type="invalid">
@@ -64,16 +68,17 @@ export const Login = () => {
               </Form.Control.Feedback>
             </Form.Group>
 
-            <Button variant="primary" type="submit" className="w-100 mb-3" disabled={isLoading}>
-              {isLoading ? 'Entrando...' : 'Entrar'}
+            <Button variant="primary" type="submit" className="w-100 mb-4" disabled={isLoading}>
+              {isLoading ? 'Acessando...' : 'Entrar na minha conta'}
             </Button>
             
             <div className="text-center">
-              <Link to="/register">NÃ£o tem uma conta? Cadastre-se</Link>
+              <span className="text-muted">Não tem uma conta? </span>
+              <Link to="/register" className="text-decoration-none fw-semibold">Cadastre-se</Link>
             </div>
           </Form>
-        </Col>
-      </Row>
-    </Container>
+        </div>
+      </div>
+    </div>
   );
 };

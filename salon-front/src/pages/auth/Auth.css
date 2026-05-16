@@ -1,0 +1,76 @@
+.auth-page {
+  min-height: calc(100vh - 76px); /* adjusting for navbar */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, var(--bg-color) 0%, #f7ebeb 100%);
+  padding: 2rem 1rem;
+}
+
+.auth-card {
+  background: var(--surface-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+  width: 100%;
+  max-width: 900px;
+  display: flex;
+  border: none;
+}
+
+.auth-image {
+  flex: 1;
+  background: url('https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000&auto=format&fit=crop') center/cover no-repeat;
+  display: none;
+}
+
+@media (min-width: 992px) {
+  .auth-image {
+    display: block;
+  }
+}
+
+.auth-form-container {
+  flex: 1;
+  padding: 4rem 3rem;
+  max-width: 500px;
+  margin: 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.auth-form-container h2 {
+  font-family: var(--font-heading);
+  color: var(--secondary-color);
+  font-weight: 700;
+  margin-bottom: 0.5rem;
+  font-size: 2rem;
+}
+
+.auth-form-container p.subtitle {
+  color: var(--text-light);
+  margin-bottom: 2.5rem;
+}
+
+.auth-form-container .form-control {
+  background-color: var(--bg-color);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-sm);
+  padding: 0.8rem 1rem;
+  transition: all 0.2s ease;
+}
+
+.auth-form-container .form-control:focus {
+  background-color: var(--surface-color);
+  box-shadow: 0 0 0 3px rgba(190, 138, 131, 0.2);
+  border-color: var(--primary-color);
+}
+
+.auth-form-container .btn-primary {
+  padding: 0.8rem;
+  font-size: 1rem;
+  margin-top: 1rem;
+  border-radius: var(--radius-sm);
+}

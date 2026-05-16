@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { Container, Row, Col, Form, Button, Alert } from 'react-bootstrap';
+import { Form, Button, Alert } from 'react-bootstrap';
 import { useForm } from 'react-hook-form';
 import { useNavigate, Link } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../hooks/useAuth';
+import './Auth.css';
 
 export const Register = () => {
   const { register, handleSubmit, formState: { errors } } = useForm();
@@ -31,10 +32,12 @@ export const Register = () => {
   };
 
   return (
-    <Container className="py-5">
-      <Row className="justify-content-center">
-        <Col md={6} lg={5}>
-          <h2 className="text-center mb-4">Cadastre-se</h2>
+    <div className="auth-page">
+      <div className="auth-card">
+        <div className="auth-form-container" style={{ maxWidth: '550px' }}>
+          <h2>Cadastre-se</h2>
+          <p className="subtitle">Crie sua conta para agendar seus serviços</p>
+
           {errorMsg && <Alert variant="danger">{errorMsg}</Alert>}
           
           <Form onSubmit={handleSubmit(onSubmit)}>
@@ -43,7 +46,7 @@ export const Register = () => {
               <Form.Control 
                 type="text" 
                 placeholder="Seu nome completo"
-                {...register('name', { required: 'Nome Ã© obrigatÃ³rio', minLength: { value: 3, message: 'MÃ­nimo 3 caracteres'} })}
+                {...register('name', { required: 'Nome é obrigatório', minLength: { value: 3, message: 'Mínimo 3 caracteres'} })}
                 isInvalid={!!errors.name}
               />
               <Form.Control.Feedback type="invalid">
@@ -56,7 +59,7 @@ export const Register = () => {
               <Form.Control 
                 type="email" 
                 placeholder="Seu email"
-                {...register('email', { required: 'Email Ã© obrigatÃ³rio' })}
+                {...register('email', { required: 'Email é obrigatório' })}
                 isInvalid={!!errors.email}
               />
               <Form.Control.Feedback type="invalid">
@@ -77,8 +80,8 @@ export const Register = () => {
               <Form.Label>Senha</Form.Label>
               <Form.Control 
                 type="password" 
-                placeholder="Sua senha (mÃ­n. 6 caracteres)"
-                {...register('password', { required: 'Senha Ã© obrigatÃ³ria', minLength: { value: 6, message: 'MÃ­nimo 6 caracteres'} })}
+                placeholder="Sua senha (mín. 6 caracteres)"
+                {...register('password', { required: 'Senha é obrigatória', minLength: { value: 6, message: 'Mínimo 6 caracteres'} })}
                 isInvalid={!!errors.password}
               />
               <Form.Control.Feedback type="invalid">
@@ -86,16 +89,18 @@ export const Register = () => {
               </Form.Control.Feedback>
             </Form.Group>
 
-            <Button variant="primary" type="submit" className="w-100 mb-3" disabled={isLoading}>
-              {isLoading ? 'Cadastrando...' : 'Cadastrar'}
+            <Button variant="primary" type="submit" className="w-100 mb-4" disabled={isLoading}>
+              {isLoading ? 'Cadastrando...' : 'Criar minha conta'}
             </Button>
             
             <div className="text-center">
-              <Link to="/login">JÃ¡ tem uma conta? Entre aqui</Link>
+              <span className="text-muted">Já tem uma conta? </span>
+              <Link to="/login" className="text-decoration-none fw-semibold">Entre aqui</Link>
             </div>
           </Form>
-        </Col>
-      </Row>
-    </Container>
+        </div>
+        <div className="auth-image"></div>
+      </div>
+    </div>
   );
 };
