@@ -1,0 +1,42 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Production
+dist/
+build/
+target/
+
+# Misc
+.DS_Store
+.env
+.env.local
+.env.*.local
+*.log
+
+logs/
+logs/*.log
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+Thumbs.db
+
+# Build outputs
+salon-back/target/
+salon-front/dist/
+
+# Maven
+.m2/
+
+# Logs directory (but keep salon.log in version control)
+/logs/
+!/logs
+!/logs/salon.log
+logs/*.log.*.gz

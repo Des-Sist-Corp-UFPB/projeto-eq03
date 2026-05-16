@@ -15,6 +15,7 @@ import { MyAppointments } from './pages/appointments/MyAppointments';
 import { AdminAppointments } from './pages/admin/appointments/AdminAppointments';
 import { CashFlow } from './pages/admin/cashflow/CashFlow';
 import { Reports } from './pages/admin/reports/Reports';
+import { AuditLog } from './pages/admin/audit/AuditLog';
 import { NotFound } from './pages/error/NotFound';
 import { Profile } from './pages/profile/Profile';
 
@@ -38,6 +39,7 @@ export const Router = () => {
         <Route path="/admin/appointments" element={<AdminAppointments />} />
         <Route path="/admin/cashflow" element={<CashFlow />} />
         <Route path="/admin/reports" element={<Reports />} />
+        <Route path="/admin/audit" element={<AuditLog />} />
       </Route>
 
       <Route element={<CustomerLayout />}>

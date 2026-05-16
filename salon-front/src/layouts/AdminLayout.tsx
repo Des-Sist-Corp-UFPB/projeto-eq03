@@ -30,6 +30,7 @@ export const AdminLayout = () => {
             <Nav.Link as={Link} to="/admin/appointments" className="text-white">Agendamentos</Nav.Link>
             <Nav.Link as={Link} to="/admin/cashflow" className="text-white">Fluxo de Caixa</Nav.Link>
             <Nav.Link as={Link} to="/admin/reports" className="text-white">Relatórios</Nav.Link>
+            <Nav.Link as={Link} to="/admin/audit" className="text-white">Auditoria</Nav.Link>
             <Nav.Link onClick={logout} className="text-white mt-5 text-danger">Sair</Nav.Link>
           </Nav>
         </Col>
