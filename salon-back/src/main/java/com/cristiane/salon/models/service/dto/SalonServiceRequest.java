@@ -11,7 +11,7 @@ public record SalonServiceRequest(
 
         String description,
 
-        @NotNull(message = "O preço é obrigatório")
+        /** Opcional: exibido como &quot;a partir de&quot; no site */
         @Min(value = 0, message = "O preço não pode ser negativo")
         BigDecimal price,
 

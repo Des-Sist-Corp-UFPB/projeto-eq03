@@ -26,7 +26,8 @@ public class SalonService {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(nullable = false, precision = 10, scale = 2)
+    /** Opcional: referência &quot;a partir de&quot;; valor final no caixa */
+    @Column(precision = 10, scale = 2)
     private BigDecimal price;
 
     @Column(name = "duration_min", nullable = false)

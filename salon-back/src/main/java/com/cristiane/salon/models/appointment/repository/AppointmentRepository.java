@@ -14,7 +14,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     
     List<Appointment> findByClientId(Long clientId);
     
-    @Query("SELECT a FROM Appointment a WHERE a.employee.id = :employeeId AND a.scheduledAt >= :startOfDay AND a.scheduledAt < :endOfDay AND a.status != 'CANCELLED'")
+    @Query("SELECT a FROM Appointment a WHERE a.employee.id = :employeeId AND a.scheduledAt >= :startOfDay AND a.scheduledAt < :endOfDay AND a.scheduledAt IS NOT NULL AND a.status NOT IN ('CANCELLED', 'DECLINED')")
     List<Appointment> findActiveAppointmentsByEmployeeAndDate(
             @Param("employeeId") Long employeeId, 
             @Param("startOfDay") LocalDateTime startOfDay, 

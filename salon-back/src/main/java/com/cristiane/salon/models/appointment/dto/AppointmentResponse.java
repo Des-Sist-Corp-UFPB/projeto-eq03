@@ -1,6 +1,8 @@
 package com.cristiane.salon.models.appointment.dto;
 
 import com.cristiane.salon.models.appointment.entity.Appointment;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 public record AppointmentResponse(
@@ -12,6 +14,8 @@ public record AppointmentResponse(
         Long serviceId,
         String serviceName,
         LocalDateTime scheduledAt,
+        LocalDate preferredDate,
+        String clientNotes,
         String status
 ) {
     public static AppointmentResponse fromEntity(Appointment appointment) {
@@ -24,6 +28,8 @@ public record AppointmentResponse(
                 appointment.getSalonService().getId(),
                 appointment.getSalonService().getName(),
                 appointment.getScheduledAt(),
+                appointment.getPreferredDate(),
+                appointment.getClientNotes(),
                 appointment.getStatus().name()
         );
     }

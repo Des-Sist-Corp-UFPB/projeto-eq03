@@ -60,7 +60,9 @@
 }
 
 .appointment-card.pending { border-left: 4px solid #f59f00; }
+.appointment-card.requested { border-left: 4px solid #339af0; }
 .appointment-card.confirmed { border-left: 4px solid var(--primary-color); }
+.appointment-card.declined { border-left: 4px solid #868e96; opacity: 0.85; }
 .appointment-card.done { border-left: 4px solid #37b24d; opacity: 0.8; }
 .appointment-card.cancelled { border-left: 4px solid #f03e3e; opacity: 0.6; filter: grayscale(0.5); }
 
@@ -139,7 +141,9 @@
   letter-spacing: 0.5px;
 }
 .status-badge.pending { background-color: #fff3bf; color: #e67700; }
+.status-badge.requested { background-color: #d0ebff; color: #1864ab; }
 .status-badge.confirmed { background-color: rgba(190,138,131,0.15); color: var(--primary-hover); }
+.status-badge.declined { background-color: #e9ecef; color: #495057; }
 .status-badge.done { background-color: #ebfbee; color: #2b8a3e; }
 .status-badge.cancelled { background-color: #ffe3e3; color: #c92a2a; }
 

@@ -52,20 +52,19 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public AppointmentReportResponse generateAppointmentReport(LocalDate from, LocalDate to) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now();
-
-        LocalDateTime startOfDay = from.atStartOfDay();
-        LocalDateTime endOfDay = to.atTime(LocalTime.MAX);
+        final LocalDate fromDate = from == null ? LocalDate.now().withDayOfMonth(1) : from;
+        final LocalDate toDate = to == null ? LocalDate.now() : to;
 
         List<Appointment> appointments = appointmentRepository.findAll().stream()
-                .filter(a -> !a.getScheduledAt().isBefore(startOfDay) && !a.getScheduledAt().isAfter(endOfDay))
+                .filter(a -> isAppointmentInReportPeriod(a, fromDate, toDate))
                 .collect(Collectors.toList());
 
-        long pending = appointments.stream().filter(a -> a.getStatus() == AppointmentStatus.PENDING).count();
+        long pending = appointments.stream().filter(a ->
+                a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.REQUESTED).count();
         long confirmed = appointments.stream().filter(a -> a.getStatus() == AppointmentStatus.CONFIRMED).count();
         long done = appointments.stream().filter(a -> a.getStatus() == AppointmentStatus.DONE).count();
-        long cancelled = appointments.stream().filter(a -> a.getStatus() == AppointmentStatus.CANCELLED).count();
+        long cancelled = appointments.stream().filter(a ->
+                a.getStatus() == AppointmentStatus.CANCELLED || a.getStatus() == AppointmentStatus.DECLINED).count();
 
         Map<String, Long> byEmployee = appointments.stream()
                 .collect(Collectors.groupingBy(a -> a.getEmployee().getUser().getName(), Collectors.counting()));
@@ -73,7 +72,7 @@ public class ReportService {
         Map<String, Long> byService = appointments.stream()
                 .collect(Collectors.groupingBy(a -> a.getSalonService().getName(), Collectors.counting()));
 
-        String period = from + " a " + to;
+        String period = fromDate + " a " + toDate;
 
         return new AppointmentReportResponse(
                 appointments.size(),
@@ -85,5 +84,21 @@ public class ReportService {
                 byService,
                 period
         );
+    }
+
+    private static boolean isAppointmentInReportPeriod(Appointment a, LocalDate from, LocalDate to) {
+        LocalDateTime startOfDay = from.atStartOfDay();
+        LocalDateTime endOfDay = to.atTime(LocalTime.MAX);
+        if (a.getScheduledAt() != null) {
+            return !a.getScheduledAt().isBefore(startOfDay) && !a.getScheduledAt().isAfter(endOfDay);
+        }
+        if (a.getPreferredDate() != null) {
+            return !a.getPreferredDate().isBefore(from) && !a.getPreferredDate().isAfter(to);
+        }
+        if (a.getCreatedAt() != null) {
+            LocalDate d = a.getCreatedAt().toLocalDate();
+            return !d.isBefore(from) && !d.isAfter(to);
+        }
+        return false;
     }
 }

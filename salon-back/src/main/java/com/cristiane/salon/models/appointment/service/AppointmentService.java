@@ -5,16 +5,16 @@ import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
-import com.cristiane.salon.models.appointment.dto.TimeSlotResponse;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
-import com.cristiane.salon.models.employee.entity.Employee;
-import com.cristiane.salon.models.employee.repository.EmployeeRepository;
-import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.models.cashflow.entity.CashFlow;
 import com.cristiane.salon.models.cashflow.enums.CashFlowType;
 import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
+import com.cristiane.salon.models.employee.entity.Employee;
+import com.cristiane.salon.models.employee.repository.EmployeeRepository;
+import com.cristiane.salon.models.service.entity.SalonService;
+import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -22,10 +22,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -39,112 +38,152 @@ public class AppointmentService {
     private final UserRepository userRepository;
     private final CashFlowRepository cashFlowRepository;
 
-    // Horário de funcionamento fixo (ex: 09:00 as 18:00)
-    private static final LocalTime START_TIME = LocalTime.of(9, 0);
-    private static final LocalTime END_TIME = LocalTime.of(18, 0);
-    private static final int SLOT_MINUTES = 30; // Intervalos de 30 min para agendamento
-
     private User getAuthenticatedUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
                 .orElseThrow(() -> new UnauthorizedException("Usuário não autenticado"));
     }
 
-    @Transactional(readOnly = true)
-    public List<TimeSlotResponse> getAvailableSlots(LocalDate date, Long employeeId) {
-        if (date.isBefore(LocalDate.now())) {
-            throw new BadRequestException("A data não pode ser no passado");
-        }
+    private boolean isStaff(User user) {
+        String role = user.getRoleName();
+        return "ADMIN".equals(role) || "GERENTE_DE_ATENDIMENTO".equals(role);
+    }
 
-        LocalDateTime startOfDay = date.atStartOfDay();
-        LocalDateTime endOfDay = date.atTime(LocalTime.MAX);
+    private void assertNoScheduleConflict(Long employeeId, LocalDateTime scheduledAt, SalonService service,
+                                         Long ignoreAppointmentId) {
+        List<Appointment> existing = appointmentRepository.findActiveAppointmentsByEmployeeAndDate(
+                employeeId,
+                scheduledAt.toLocalDate().atStartOfDay(),
+                scheduledAt.toLocalDate().atTime(LocalTime.MAX)
+        );
 
-        List<Appointment> existingAppointments = appointmentRepository
-                .findActiveAppointmentsByEmployeeAndDate(employeeId, startOfDay, endOfDay);
+        LocalDateTime requestEnd = scheduledAt.plusMinutes(service.getDurationMin());
 
-        List<TimeSlotResponse> slots = new ArrayList<>();
-        LocalTime currentTime = START_TIME;
-
-        while (currentTime.isBefore(END_TIME)) {
-            final LocalTime slotTime = currentTime;
-            
-            // Check if slot overlaps with any existing appointment
-            boolean isAvailable = true;
-            for (Appointment apt : existingAppointments) {
-                LocalTime aptStart = apt.getScheduledAt().toLocalTime();
-                LocalTime aptEnd = aptStart.plusMinutes(apt.getSalonService().getDurationMin());
-
-                // Se o slot estiver dentro do horário de um agendamento existente
-                if ((slotTime.equals(aptStart) || slotTime.isAfter(aptStart)) && slotTime.isBefore(aptEnd)) {
-                    isAvailable = false;
-                    break;
-                }
+        for (Appointment apt : existing) {
+            if (ignoreAppointmentId != null && apt.getId().equals(ignoreAppointmentId)) {
+                continue;
             }
+            LocalDateTime aptStart = apt.getScheduledAt();
+            LocalDateTime aptEnd = aptStart.plusMinutes(apt.getSalonService().getDurationMin());
 
-            // Não permitir agendamentos no passado para o dia atual
-            if (date.equals(LocalDate.now()) && slotTime.isBefore(LocalTime.now())) {
-                isAvailable = false;
+            boolean overlaps = scheduledAt.isBefore(aptEnd) && aptStart.isBefore(requestEnd);
+            if (overlaps) {
+                throw new BadRequestException("Este horário já está ocupado para esta profissional");
             }
-
-            slots.add(new TimeSlotResponse(currentTime, isAvailable));
-            currentTime = currentTime.plusMinutes(SLOT_MINUTES);
         }
-
-        return slots;
     }
 
     @Transactional
     public AppointmentResponse create(AppointmentRequest request) {
         User currentUser = getAuthenticatedUser();
-        User client;
+        boolean staffCreatesForClient = isStaff(currentUser) && request.clientId() != null;
 
-        if ("ADMIN".equals(currentUser.getRoleName()) && request.clientId() != null) {
+        User client;
+        if (staffCreatesForClient) {
             client = userRepository.findById(request.clientId())
                     .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado"));
         } else {
             client = currentUser;
         }
-        
+
         Employee employee = employeeRepository.findById(request.employeeId())
-                .orElseThrow(() -> new ResourceNotFoundException("Funcionário não encontrado"));
-                
-        com.cristiane.salon.models.service.entity.SalonService service = salonServiceRepository.findById(request.serviceId())
+                .orElseThrow(() -> new ResourceNotFoundException("Profissional não encontrado"));
+
+        SalonService service = salonServiceRepository.findById(request.serviceId())
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
 
         if (!service.getActive()) {
             throw new BadRequestException("Este serviço não está disponível");
         }
 
-        if (request.scheduledAt().isBefore(LocalDateTime.now())) {
-            throw new BadRequestException("Não é possível agendar no passado");
+        if (staffCreatesForClient) {
+            if (request.scheduledAt() == null) {
+                throw new BadRequestException("Informe data e hora do agendamento");
+            }
+            if (request.scheduledAt().isBefore(LocalDateTime.now())) {
+                throw new BadRequestException("Não é possível agendar no passado");
+            }
+            assertNoScheduleConflict(employee.getId(), request.scheduledAt(), service, null);
+
+            Appointment appointment = new Appointment();
+            appointment.setClient(client);
+            appointment.setEmployee(employee);
+            appointment.setSalonService(service);
+            appointment.setScheduledAt(request.scheduledAt());
+            appointment.setPreferredDate(request.preferredDate());
+            appointment.setClientNotes(request.clientNotes());
+            appointment.setStatus(AppointmentStatus.CONFIRMED);
+
+            return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
         }
 
-        // Validação simples de disponibilidade
-        List<Appointment> existingAppointments = appointmentRepository.findActiveAppointmentsByEmployeeAndDate(
-                employee.getId(),
-                request.scheduledAt().toLocalDate().atStartOfDay(),
-                request.scheduledAt().toLocalDate().atTime(LocalTime.MAX)
-        );
+        if (isStaff(currentUser)) {
+            throw new BadRequestException("Para criar solicitação como equipe, informe o cliente");
+        }
 
-        LocalDateTime requestEnd = request.scheduledAt().plusMinutes(service.getDurationMin());
+        if (!"CLIENTE".equals(currentUser.getRoleName())) {
+            throw new BadRequestException("Apenas clientes podem enviar solicitação por este fluxo");
+        }
 
-        for (Appointment apt : existingAppointments) {
-            LocalDateTime aptStart = apt.getScheduledAt();
-            LocalDateTime aptEnd = aptStart.plusMinutes(apt.getSalonService().getDurationMin());
+        if (request.scheduledAt() != null) {
+            throw new BadRequestException("O horário será definido pelo salão após aceitar seu pedido");
+        }
 
-            if ((request.scheduledAt().isEqual(aptStart) || request.scheduledAt().isAfter(aptStart)) && request.scheduledAt().isBefore(aptEnd) ||
-                (requestEnd.isAfter(aptStart) && (requestEnd.isEqual(aptEnd) || requestEnd.isBefore(aptEnd)))) {
-                throw new BadRequestException("O horário selecionado não está disponível para este funcionário");
-            }
+        String notes = request.clientNotes();
+        if (notes != null && notes.length() > 4000) {
+            throw new BadRequestException("Observações muito longas (máx. 4000 caracteres)");
         }
 
         Appointment appointment = new Appointment();
         appointment.setClient(client);
         appointment.setEmployee(employee);
         appointment.setSalonService(service);
-        appointment.setScheduledAt(request.scheduledAt());
-        appointment.setStatus(AppointmentStatus.PENDING);
+        appointment.setPreferredDate(request.preferredDate());
+        appointment.setClientNotes(notes);
+        appointment.setStatus(AppointmentStatus.REQUESTED);
 
+        return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
+    }
+
+    @Transactional
+    public AppointmentResponse confirm(Long id, LocalDateTime scheduledAt) {
+        if (!isStaff(getAuthenticatedUser())) {
+            throw new UnauthorizedException("Apenas a equipe pode confirmar horários");
+        }
+
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        if (appointment.getStatus() != AppointmentStatus.REQUESTED) {
+            throw new BadRequestException("Apenas solicitações pendentes de confirmação podem ser aprovadas");
+        }
+
+        if (scheduledAt.isBefore(LocalDateTime.now())) {
+            throw new BadRequestException("Não é possível confirmar um horário no passado");
+        }
+
+        assertNoScheduleConflict(appointment.getEmployee().getId(), scheduledAt, appointment.getSalonService(), null);
+
+        appointment.setScheduledAt(scheduledAt);
+        appointment.setStatus(AppointmentStatus.CONFIRMED);
+
+        return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
+    }
+
+    @Transactional
+    public AppointmentResponse decline(Long id) {
+        if (!isStaff(getAuthenticatedUser())) {
+            throw new UnauthorizedException("Apenas a equipe pode recusar solicitações");
+        }
+
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        if (appointment.getStatus() != AppointmentStatus.REQUESTED) {
+            throw new BadRequestException("Apenas solicitações em análise podem ser recusadas");
+        }
+
+        appointment.setStatus(AppointmentStatus.DECLINED);
         return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
     }
 
@@ -169,14 +208,22 @@ public class AppointmentService {
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
 
         User currentUser = getAuthenticatedUser();
-        boolean isAdmin = "ADMIN".equals(currentUser.getRoleName());
-        
+        boolean isAdmin = isStaff(currentUser);
+
         if (!isAdmin && !appointment.getClient().getId().equals(currentUser.getId())) {
             throw new UnauthorizedException("Você não tem permissão para cancelar este agendamento");
         }
 
         if (appointment.getStatus() == AppointmentStatus.DONE) {
             throw new BadRequestException("Não é possível cancelar um agendamento já concluído");
+        }
+
+        if (appointment.getStatus() == AppointmentStatus.DECLINED) {
+            throw new BadRequestException("Esta solicitação já foi recusada");
+        }
+
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BadRequestException("Este agendamento já está cancelado");
         }
 
         appointment.setStatus(AppointmentStatus.CANCELLED);
@@ -190,24 +237,36 @@ public class AppointmentService {
 
         try {
             AppointmentStatus status = AppointmentStatus.valueOf(statusStr.toUpperCase());
+            if (status == AppointmentStatus.REQUESTED) {
+                throw new BadRequestException("Status inválido para esta operação");
+            }
+            if ((status == AppointmentStatus.CONFIRMED || status == AppointmentStatus.DONE)
+                    && appointment.getScheduledAt() == null) {
+                throw new BadRequestException("É necessário ter data e hora definidas neste agendamento");
+            }
             appointment.setStatus(status);
-            
-            // Auto-create INCOME cash flow entry when appointment status -> DONE
+
             if (status == AppointmentStatus.DONE) {
-                boolean alreadyBilled = cashFlowRepository.findAll().stream()
-                        .anyMatch(cf -> cf.getAppointment() != null && cf.getAppointment().getId().equals(id));
-                
-                if (!alreadyBilled) {
-                    CashFlow cashFlow = new CashFlow();
-                    cashFlow.setType(CashFlowType.INCOME);
-                    cashFlow.setAmount(appointment.getSalonService().getPrice());
-                    cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName());
-                    cashFlow.setDate(LocalDate.now());
-                    cashFlow.setAppointment(appointment);
-                    cashFlowRepository.save(cashFlow);
+                SalonService svc = appointment.getSalonService();
+                BigDecimal servicePrice = svc.getPrice();
+                boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
+
+                if (shouldAutoBill) {
+                    boolean alreadyBilled = cashFlowRepository.findAll().stream()
+                            .anyMatch(cf -> cf.getAppointment() != null && cf.getAppointment().getId().equals(id));
+
+                    if (!alreadyBilled) {
+                        CashFlow cashFlow = new CashFlow();
+                        cashFlow.setType(CashFlowType.INCOME);
+                        cashFlow.setAmount(servicePrice);
+                        cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + svc.getName());
+                        cashFlow.setDate(java.time.LocalDate.now());
+                        cashFlow.setAppointment(appointment);
+                        cashFlowRepository.save(cashFlow);
+                    }
                 }
             }
-            
+
             return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Status inválido");

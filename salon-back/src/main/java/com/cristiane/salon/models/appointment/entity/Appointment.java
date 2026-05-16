@@ -10,6 +10,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Getter
@@ -36,8 +39,19 @@ public class Appointment {
     @JoinColumn(name = "salon_service_id", nullable = false)
     private SalonService salonService;
 
-    @Column(name = "scheduled_at", nullable = false)
+    /** Definido pela equipe ao confirmar o pedido do cliente */
+    @Column(name = "scheduled_at")
     private LocalDateTime scheduledAt;
+
+    @Column(name = "preferred_date")
+    private LocalDate preferredDate;
+
+    @Column(name = "client_notes", columnDefinition = "TEXT")
+    private String clientNotes;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

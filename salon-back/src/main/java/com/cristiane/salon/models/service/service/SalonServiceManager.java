@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.service.service;
 
+import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.service.dto.SalonServiceRequest;
 import com.cristiane.salon.models.service.dto.SalonServiceResponse;
@@ -37,6 +38,9 @@ public class SalonServiceManager {
         SalonService service = new SalonService();
         service.setName(request.name());
         service.setDescription(request.description());
+        if (request.price() != null && request.price().signum() < 0) {
+            throw new BadRequestException("O preço não pode ser negativo");
+        }
         service.setPrice(request.price());
         service.setDurationMin(request.durationMin());
         service.setActive(request.active() != null ? request.active() : true);
@@ -49,9 +53,12 @@ public class SalonServiceManager {
         SalonService service = salonServiceRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
 
+        if (request.price() != null && request.price().signum() < 0) {
+            throw new BadRequestException("O preço não pode ser negativo");
+        }
         if (request.name() != null) service.setName(request.name());
         if (request.description() != null) service.setDescription(request.description());
-        if (request.price() != null) service.setPrice(request.price());
+        service.setPrice(request.price());
         if (request.durationMin() != null) service.setDurationMin(request.durationMin());
         if (request.active() != null) service.setActive(request.active());
 

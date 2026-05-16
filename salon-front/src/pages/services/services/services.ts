@@ -4,7 +4,8 @@ export interface SalonServiceData {
   id?: number;
   name: string;
   description: string;
-  price: number;
+  /** Opcional: referência &quot;a partir de&quot; */
+  price?: number | null;
   durationMin: number;
   active: boolean;
 }

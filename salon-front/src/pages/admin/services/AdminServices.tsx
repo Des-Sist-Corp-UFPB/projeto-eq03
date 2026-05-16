@@ -44,7 +44,7 @@ export const AdminServices = () => {
       setEditingService(service);
       setValue('name', service.name);
       setValue('description', service.description);
-      setValue('price', service.price);
+      setValue('price', service.price ?? undefined);
       setValue('durationMin', service.durationMin);
       setValue('active', service.active);
     } else {
@@ -56,10 +56,11 @@ export const AdminServices = () => {
 
   const onSubmit = async (data: SalonServiceData) => {
     try {
+      const payload = { ...data, price: data.price ?? null };
       if (editingService?.id) {
-        await salonServicesApi.update(editingService.id, data);
+        await salonServicesApi.update(editingService.id, payload);
       } else {
-        await salonServicesApi.create(data);
+        await salonServicesApi.create(payload);
       }
       setShowForm(false);
       loadServices();
@@ -85,8 +86,9 @@ export const AdminServices = () => {
     { key: 'name', label: 'Nome' },
     { 
       key: 'price', 
-      label: 'Preço',
-      render: (item: SalonServiceData) => `R$ ${item.price.toFixed(2)}`
+      label: 'Referência',
+      render: (item: SalonServiceData) =>
+        item.price != null ? `A partir de R$ ${item.price.toFixed(2)}` : '—'
     },
     { 
       key: 'durationMin', 
@@ -174,14 +176,19 @@ export const AdminServices = () => {
         </Form.Group>
 
         <Form.Group className="mb-3">
-          <Form.Label>Preço (R$)</Form.Label>
+          <Form.Label>Valor de referência — &quot;a partir de&quot; (opcional)</Form.Label>
           <Form.Control 
             type="number" 
             step="0.01" 
-            {...register('price', { required: 'Preço é obrigatório', min: { value: 0, message: 'Não pode ser negativo'} })}
-            isInvalid={!!errors.price}
+            min="0"
+            placeholder="Deixe em branco se o valor for combinado ou lançado só no caixa"
+            {...register('price', {
+              setValueAs: (v) => (v === '' || v === undefined || v === null ? undefined : Number(v))
+            })}
           />
-          <Form.Control.Feedback type="invalid">{errors.price?.message}</Form.Control.Feedback>
+          <Form.Text className="text-muted">
+            O preço final pode ser registrado no fluxo de caixa ao concluir o atendimento.
+          </Form.Text>
         </Form.Group>
 
         <Form.Group className="mb-3">

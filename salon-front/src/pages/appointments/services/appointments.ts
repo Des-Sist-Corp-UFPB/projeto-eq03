@@ -1,14 +1,13 @@
 import api from '../../../services/api';
 
-export interface TimeSlotResponse {
-  time: string;
-  available: boolean;
-}
-
-export interface AppointmentRequest {
+export interface AppointmentRequestBody {
   employeeId: number;
   serviceId: number;
-  scheduledAt: string;
+  /** Fluxo admin: horário já definido */
+  scheduledAt?: string | null;
+  /** Fluxo cliente: dia preferido */
+  preferredDate?: string | null;
+  clientNotes?: string | null;
   clientId?: number;
 }
 
@@ -20,20 +19,27 @@ export interface AppointmentResponse {
   employeeName: string;
   serviceId: number;
   serviceName: string;
-  scheduledAt: string;
+  scheduledAt: string | null;
+  preferredDate?: string | null;
+  clientNotes?: string | null;
   status: string;
 }
 
 export const appointmentsApi = {
-  getSlots: async (date: string, employeeId: number) => {
-    const { data } = await api.get<TimeSlotResponse[]>('/appointments/slots', {
-      params: { date, employeeId }
+  create: async (request: AppointmentRequestBody) => {
+    const { data } = await api.post<AppointmentResponse>('/appointments', request);
+    return data;
+  },
+
+  confirm: async (id: number, scheduledAtIso: string) => {
+    const { data } = await api.patch<AppointmentResponse>(`/appointments/${id}/confirm`, {
+      scheduledAt: scheduledAtIso
     });
     return data;
   },
 
-  create: async (request: AppointmentRequest) => {
-    const { data } = await api.post<AppointmentResponse>('/appointments', request);
+  decline: async (id: number) => {
+    const { data } = await api.patch<AppointmentResponse>(`/appointments/${id}/decline`);
     return data;
   },
 

@@ -33,7 +33,6 @@ public class SecurityConfig {
                 .requestMatchers("/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/services").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/products").permitAll()
-                .requestMatchers(HttpMethod.GET, "/v1/appointments/slots").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/employees/booking").permitAll()
                 
                 // Swagger & API Docs

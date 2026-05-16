@@ -41,7 +41,9 @@ export const PublicServices = () => {
               <div className="service-card">
                 <div className="service-header">
                   <h3 className="service-title">{service.name}</h3>
-                  <span className="service-price">R$ {service.price.toFixed(2)}</span>
+                  {service.price != null ? (
+                    <span className="service-price">A partir de R$ {service.price.toFixed(2)}</span>
+                  ) : null}
                 </div>
                 <div className="service-body">
                   <p className="service-desc">{service.description || 'Tratamento especial para os seus cuidados.'}</p>

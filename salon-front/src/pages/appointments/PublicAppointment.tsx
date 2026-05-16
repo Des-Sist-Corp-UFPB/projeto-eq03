@@ -1,27 +1,30 @@
 import { useState, useEffect } from 'react';
 import { Form, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Clock, User as UserIcon, Calendar, CheckCircle, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Clock, User as UserIcon, Calendar, CheckCircle, ArrowLeft, ArrowRight, MessageSquare } from 'lucide-react';
 import { salonServicesApi } from '../services/services/services';
 import type { SalonServiceData } from '../services/services/services';
 import { employeesApi } from '../admin/employees/services/employees';
 import type { EmployeeData } from '../admin/employees/services/employees';
 import { appointmentsApi } from './services/appointments';
-import type { TimeSlotResponse } from './services/appointments';
 import { useAuth } from '../../hooks/useAuth';
 import './PublicAppointment.css';
+
+function priceTagLabel(price: number | null | undefined): string | null {
+  if (price == null || Number.isNaN(price)) return null;
+  return `A partir de R$ ${price.toFixed(2)}`;
+}
 
 export const PublicAppointment = () => {
   const [step, setStep] = useState(1);
   const [services, setServices] = useState<SalonServiceData[]>([]);
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
-  const [slots, setSlots] = useState<TimeSlotResponse[]>([]);
-  
+
   const [selectedService, setSelectedService] = useState<number | null>(null);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
-  const [selectedDate, setSelectedDate] = useState<string>('');
-  const [selectedTime, setSelectedTime] = useState<string>('');
-  
+  const [preferredDate, setPreferredDate] = useState<string>('');
+  const [clientNotes, setClientNotes] = useState<string>('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
@@ -36,15 +39,14 @@ export const PublicAppointment = () => {
         const p = JSON.parse(raw) as {
           serviceId?: number;
           employeeId?: number;
-          date?: string;
-          time?: string;
+          preferredDate?: string;
+          clientNotes?: string;
         };
         if (p.serviceId) setSelectedService(p.serviceId);
         if (p.employeeId) setSelectedEmployee(p.employeeId);
-        if (p.date) setSelectedDate(p.date);
-        if (p.time) setSelectedTime(p.time);
-        if (p.serviceId && p.employeeId && p.date && p.time) setStep(4);
-        else if (p.serviceId && p.employeeId) setStep(3);
+        if (p.preferredDate) setPreferredDate(p.preferredDate);
+        if (p.clientNotes) setClientNotes(p.clientNotes);
+        if (p.serviceId && p.employeeId) setStep(4);
         else if (p.serviceId) setStep(2);
       } catch {
         /* ignore */
@@ -71,29 +73,9 @@ export const PublicAppointment = () => {
     fetchInitialData();
   }, []);
 
-  useEffect(() => {
-    if (selectedEmployee && selectedDate) {
-      loadSlots();
-    }
-  }, [selectedEmployee, selectedDate]);
-
-  const loadSlots = async () => {
-    setIsLoading(true);
-    try {
-      const data = await appointmentsApi.getSlots(selectedDate, selectedEmployee!);
-      setSlots(data);
-    } catch (error) {
-      console.error('Erro ao buscar horários', error);
-      setSlots([]);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
   const handleNext = () => {
     if (step === 1 && !selectedService) return;
     if (step === 2 && !selectedEmployee) return;
-    if (step === 3 && (!selectedDate || !selectedTime)) return;
     setStep(step + 1);
     window.scrollTo(0, 0);
   };
@@ -103,13 +85,13 @@ export const PublicAppointment = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleConfirm = async () => {
+  const handleSubmit = async () => {
     if (!isAuthenticated) {
       localStorage.setItem('pending_appointment', JSON.stringify({
         serviceId: selectedService,
         employeeId: selectedEmployee,
-        date: selectedDate,
-        time: selectedTime
+        preferredDate: preferredDate || undefined,
+        clientNotes: clientNotes || undefined
       }));
       navigate('/login');
       return;
@@ -121,12 +103,13 @@ export const PublicAppointment = () => {
       await appointmentsApi.create({
         serviceId: selectedService!,
         employeeId: selectedEmployee!,
-        scheduledAt: `${selectedDate}T${selectedTime}`
+        preferredDate: preferredDate || undefined,
+        clientNotes: clientNotes.trim() || undefined
       });
       localStorage.removeItem('pending_appointment');
       navigate('/my-appointments');
     } catch (error: any) {
-      setErrorMsg(error.response?.data?.message || 'Erro ao agendar.');
+      setErrorMsg(error.response?.data?.message || 'Erro ao enviar solicitação.');
     } finally {
       setIsLoading(false);
     }
@@ -143,15 +126,20 @@ export const PublicAppointment = () => {
   const steps = [
     { n: 1, label: 'Serviço', icon: <Clock size={16} /> },
     { n: 2, label: 'Profissional', icon: <UserIcon size={16} /> },
-    { n: 3, label: 'Data e Hora', icon: <Calendar size={16} /> },
-    { n: 4, label: 'Confirmar', icon: <CheckCircle size={16} /> }
+    { n: 3, label: 'Preferências', icon: <Calendar size={16} /> },
+    { n: 4, label: 'Enviar', icon: <CheckCircle size={16} /> }
   ];
+
+  const selectedSrv = services.find(s => s.id === selectedService);
+  const priceLabel = priceTagLabel(selectedSrv?.price);
 
   return (
     <div className="appointment-container fade-in-up">
       <div className="appointment-header">
-        <h2>Reserve seu Momento</h2>
-        <p className="text-muted">Siga os passos abaixo para agendar seu atendimento exclusivo.</p>
+        <h2>Solicitar horário</h2>
+        <p className="text-muted">
+          Monte seu pedido abaixo. O salão confirma data e horário e avisa você por aqui.
+        </p>
       </div>
 
       <div className="stepper">
@@ -170,34 +158,37 @@ export const PublicAppointment = () => {
 
         {step === 1 && (
           <div>
-            <h4 className="mb-4 text-center">O que vamos fazer hoje?</h4>
+            <h4 className="mb-4 text-center">O que vamos fazer?</h4>
             <div className="selection-grid">
-              {services.map(srv => (
-                <div 
-                  key={srv.id} 
-                  className={`option-card ${selectedService === srv.id ? 'selected' : ''}`}
-                  onClick={() => setSelectedService(srv.id!)}
-                >
-                  <span className="price-tag">R$ {srv.price.toFixed(2)}</span>
-                  <h5 className="mb-1">{srv.name}</h5>
-                  <p className="text-muted small mb-2">{srv.description || 'Tratamento especializado para você.'}</p>
-                  <div className="duration">
-                    <Clock size={14} />
-                    {srv.durationMin} minutos
+              {services.map(srv => {
+                const tag = priceTagLabel(srv.price);
+                return (
+                  <div
+                    key={srv.id}
+                    className={`option-card ${selectedService === srv.id ? 'selected' : ''}`}
+                    onClick={() => setSelectedService(srv.id!)}
+                  >
+                    {tag ? <span className="price-tag">{tag}</span> : null}
+                    <h5 className="mb-1">{srv.name}</h5>
+                    <p className="text-muted small mb-2">{srv.description || 'Tratamento especializado para você.'}</p>
+                    <div className="duration">
+                      <Clock size={14} />
+                      {srv.durationMin} minutos
+                    </div>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
 
         {step === 2 && (
           <div>
-            <h4 className="mb-4 text-center">Com quem você deseja agendar?</h4>
+            <h4 className="mb-4 text-center">Com quem você prefere?</h4>
             <div className="selection-grid">
               {employees.map(emp => (
-                <div 
-                  key={emp.id} 
+                <div
+                  key={emp.id}
                   className={`option-card ${selectedEmployee === emp.id ? 'selected' : ''}`}
                   onClick={() => setSelectedEmployee(emp.id!)}
                 >
@@ -218,112 +209,116 @@ export const PublicAppointment = () => {
 
         {step === 3 && (
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h4 className="mb-4 text-center">Quando seria melhor para você?</h4>
-            <Form.Group className="mb-5">
-              <Form.Label className="fw-bold">Selecione o dia</Form.Label>
-              <Form.Control 
-                type="date" 
+            <h4 className="mb-4 text-center">Preferência de dia e observações</h4>
+            <p className="text-muted small text-center mb-4">
+              O horário exato será combinado pela equipe. Indique um dia de preferência, se quiser.
+            </p>
+            <Form.Group className="mb-4">
+              <Form.Label className="fw-bold d-flex align-items-center gap-2">
+                <Calendar size={18} /> Dia de preferência (opcional)
+              </Form.Label>
+              <Form.Control
+                type="date"
                 className="custom-input"
-                min={new Date().toISOString().split('T')[0]}
-                value={selectedDate}
-                onChange={(e) => setSelectedDate(e.target.value)}
+                value={preferredDate}
+                onChange={(e) => setPreferredDate(e.target.value)}
               />
             </Form.Group>
-            
-            {selectedDate && (
-              <div>
-                <Form.Label className="fw-bold mb-3">Horários disponíveis</Form.Label>
-                {isLoading ? (
-                  <div className="text-center py-4">
-                    <Spinner animation="border" size="sm" variant="primary" />
-                  </div>
-                ) : slots.length === 0 ? (
-                  <Alert variant="info">Nenhum horário disponível para esta data.</Alert>
-                ) : (
-                  <div className="slots-container">
-                    {slots.map((slot, i) => (
-                      <button
-                        key={i}
-                        className={`slot-btn ${selectedTime === slot.time ? 'selected' : ''}`}
-                        disabled={!slot.available}
-                        onClick={() => setSelectedTime(slot.time)}
-                      >
-                        {slot.time.substring(0, 5)}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-            )}
+            <Form.Group className="mb-2">
+              <Form.Label className="fw-bold d-flex align-items-center gap-2">
+                <MessageSquare size={18} /> Observações (opcional)
+              </Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={4}
+                className="custom-input"
+                placeholder="Ex.: só de manhã, comentários sobre o cabelo, etc."
+                value={clientNotes}
+                onChange={(e) => setClientNotes(e.target.value)}
+              />
+            </Form.Group>
           </div>
         )}
 
         {step === 4 && (
           <div style={{ maxWidth: '600px', margin: '0 auto' }}>
-            <h4 className="mb-4 text-center">Tudo certo?</h4>
+            <h4 className="mb-4 text-center">Revisar pedido</h4>
             <div className="summary-card">
               <div className="summary-header">
                 <CheckCircle size={40} className="mb-2" />
-                <h5>Resumo do Agendamento</h5>
+                <h5>Resumo da solicitação</h5>
               </div>
               <div className="summary-body">
                 <div className="summary-item">
                   <span className="summary-label">Serviço</span>
-                  <span className="summary-value">{services.find(s => s.id === selectedService)?.name}</span>
+                  <span className="summary-value">{selectedSrv?.name}</span>
                 </div>
                 <div className="summary-item">
                   <span className="summary-label">Profissional</span>
                   <span className="summary-value">{employees.find(e => e.id === selectedEmployee)?.name}</span>
                 </div>
-                <div className="summary-item">
-                  <span className="summary-label">Data</span>
-                  <span className="summary-value">{new Date(selectedDate + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                </div>
-                <div className="summary-item">
-                  <span className="summary-label">Horário</span>
-                  <span className="summary-value">{selectedTime.substring(0, 5)}</span>
-                </div>
-                <div className="summary-item pt-3">
-                  <span className="summary-label fw-bold text-dark">Total</span>
-                  <span className="summary-value text-primary fs-5">R$ {services.find(s => s.id === selectedService)?.price.toFixed(2)}</span>
-                </div>
+                {preferredDate ? (
+                  <div className="summary-item">
+                    <span className="summary-label">Dia preferido</span>
+                    <span className="summary-value">
+                      {new Date(preferredDate + 'T12:00:00').toLocaleDateString('pt-BR')}
+                    </span>
+                  </div>
+                ) : null}
+                {clientNotes.trim() ? (
+                  <div className="summary-item align-items-start">
+                    <span className="summary-label">Observações</span>
+                    <span className="summary-value text-start">{clientNotes.trim()}</span>
+                  </div>
+                ) : null}
+                {priceLabel ? (
+                  <div className="summary-item pt-3">
+                    <span className="summary-label fw-bold text-dark">Referência</span>
+                    <span className="summary-value text-primary fs-6">{priceLabel}</span>
+                  </div>
+                ) : (
+                  <div className="summary-item pt-3">
+                    <span className="summary-label text-muted">Valor</span>
+                    <span className="summary-value text-muted fs-6">Definido no atendimento / caixa</span>
+                  </div>
+                )}
               </div>
             </div>
-            
+
             {!isAuthenticated && (
               <Alert variant="warning" className="mt-4">
-                Você precisará entrar na sua conta para finalizar o agendamento.
+                Você precisará entrar na sua conta para enviar a solicitação.
               </Alert>
             )}
           </div>
         )}
 
         <div className="nav-footer">
-          <button 
+          <button
             className="btn-nav btn-outline-custom d-flex align-items-center gap-2"
-            onClick={handleBack} 
+            onClick={handleBack}
             disabled={step === 1 || isLoading}
           >
             <ArrowLeft size={18} />
             Voltar
           </button>
-          
+
           {step < 4 ? (
-            <button 
+            <button
               className="btn-nav btn-primary-custom d-flex align-items-center gap-2"
               onClick={handleNext}
-              disabled={(step === 1 && !selectedService) || (step === 2 && !selectedEmployee) || (step === 3 && (!selectedDate || !selectedTime))}
+              disabled={(step === 1 && !selectedService) || (step === 2 && !selectedEmployee)}
             >
               Próximo
               <ArrowRight size={18} />
             </button>
           ) : (
-            <button 
+            <button
               className="btn-nav btn-primary-custom d-flex align-items-center gap-2"
-              onClick={handleConfirm} 
+              onClick={handleSubmit}
               disabled={isLoading}
             >
-              {isLoading ? 'Confirmando...' : 'Finalizar Agendamento'}
+              {isLoading ? 'Enviando...' : 'Enviar solicitação'}
               <CheckCircle size={18} />
             </button>
           )}
@@ -332,4 +327,3 @@ export const PublicAppointment = () => {
     </div>
   );
 };
-

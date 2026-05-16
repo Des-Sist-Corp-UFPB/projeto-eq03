@@ -2,19 +2,17 @@ package com.cristiane.salon.controller;
 
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
-import com.cristiane.salon.models.appointment.dto.TimeSlotResponse;
+import com.cristiane.salon.models.appointment.dto.ConfirmAppointmentRequest;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @RestController
@@ -25,19 +23,27 @@ public class AppointmentController {
 
     private final AppointmentService appointmentService;
 
-    @GetMapping("/slots")
-    @Operation(summary = "Busca horários disponíveis para um funcionário em uma data (Público)")
-    public ResponseEntity<List<TimeSlotResponse>> getSlots(
-            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate date,
-            @RequestParam Long employeeId) {
-        return ResponseEntity.ok(appointmentService.getAvailableSlots(date, employeeId));
-    }
-
     @PostMapping
     @PreAuthorize("isAuthenticated()")
-    @Operation(summary = "Cria um agendamento (Cliente autenticado)")
+    @Operation(summary = "Cliente solicita agenda ou equipe cria agendamento com horário")
     public ResponseEntity<AppointmentResponse> create(@Valid @RequestBody AppointmentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(appointmentService.create(request));
+    }
+
+    @PatchMapping("/{id}/confirm")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Confirma solicitação do cliente definindo data e hora")
+    public ResponseEntity<AppointmentResponse> confirm(
+            @PathVariable Long id,
+            @Valid @RequestBody ConfirmAppointmentRequest body) {
+        return ResponseEntity.ok(appointmentService.confirm(id, body.scheduledAt()));
+    }
+
+    @PatchMapping("/{id}/decline")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Recusa solicitação de agendamento do cliente")
+    public ResponseEntity<AppointmentResponse> decline(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.decline(id));
     }
 
     @GetMapping("/my")
