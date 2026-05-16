@@ -1,22 +1,110 @@
-/* Layouts.css - Estilos compartilhados dos layouts das Navbar */
-.navbar {
-  background-color: var(--surface-color) !important;
-  box-shadow: var(--shadow-sm);
+/* =========================================
+   CUSTOMER LAYOUT & NAVIGATION
+========================================= */
+
+.layout-wrapper {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-color);
 }
 
-.navbar-brand {
+.custom-navbar {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  backdrop-filter: blur(10px);
+  border-bottom: 1px solid var(--border-color);
+  box-shadow: 0 4px 20px rgba(59, 48, 54, 0.03);
+  padding: 1rem 0;
+  transition: all 0.3s ease;
+}
+
+.brand-logo {
   font-family: var(--font-heading);
-  font-weight: 700;
-  color: var(--primary-color) !important;
   font-size: 1.5rem;
+  font-weight: 600;
+  color: var(--secondary-color) !important;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
 }
 
-.nav-link {
-  color: var(--text-dark) !important;
+.brand-icon {
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}
+
+.nav-links .nav-link {
+  color: var(--text-light) !important;
   font-weight: 500;
-  transition: color 0.3s;
+  padding: 0.5rem 1.25rem !important;
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+  margin: 0 0.25rem;
 }
 
-.nav-link:hover {
+.nav-links .nav-link:hover {
+  color: var(--secondary-color) !important;
+  background-color: var(--border-color);
+}
+
+.nav-links .active-link {
   color: var(--primary-color) !important;
+  background-color: rgba(190, 138, 131, 0.1);
+}
+
+.logout-btn {
+  color: var(--secondary-color) !important;
+  font-weight: 500;
+  padding: 0.5rem 1.5rem !important;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  transition: all 0.3s ease;
+}
+
+.logout-btn:hover {
+  background-color: var(--bg-color);
+  border-color: var(--secondary-color);
+}
+
+.main-content {
+  flex: 1;
+  padding-top: 100px; /* offset for fixed navbar */
+  padding-bottom: 3rem;
+}
+
+.fade-in-up {
+  animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.loading-screen {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-heading);
+  color: var(--primary-color);
+  font-size: 1.2rem;
+}.auth-btn {
+  background-color: var(--primary-color) !important;
+  color: white !important;
+  padding: 0.5rem 1.5rem !important;
+  border-radius: 20px;
+  font-weight: 500;
+  transition: all 0.3s ease;
+}
+.auth-btn:hover {
+  background-color: var(--primary-hover) !important;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(190, 138, 131, 0.3);
 }
