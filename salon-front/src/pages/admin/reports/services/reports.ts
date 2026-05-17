@@ -20,7 +20,7 @@ export interface AppointmentReportResponse {
 
 export const reportsApi = {
   getFinancialReport: async (from?: string, to?: string) => {
-    const params: any = {};
+    const params: Record<string, string> = {};
     if (from) params.from = from;
     if (to) params.to = to;
     const { data } = await api.get<FinancialReportResponse>('/reports/financial', { params });
@@ -28,7 +28,7 @@ export const reportsApi = {
   },
 
   getAppointmentReport: async (from?: string, to?: string) => {
-    const params: any = {};
+    const params: Record<string, string> = {};
     if (from) params.from = from;
     if (to) params.to = to;
     const { data } = await api.get<AppointmentReportResponse>('/reports/appointments', { params });

@@ -5,27 +5,32 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import './Auth.css';
+import { getApiErrorMessage } from '../../utils/apiError';
+
+interface RegisterFormData {
+  name: string;
+  email: string;
+  phone?: string;
+  password: string;
+}
 
 export const Register = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>();
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: RegisterFormData) => {
     setIsLoading(true);
     setErrorMsg('');
     try {
       const response = await api.post('/auth/register', data);
       login(response.data.accessToken, response.data.refreshToken);
       navigate('/');
-    } catch (err: any) {
-      if (err.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
-      } else {
-        setErrorMsg('Erro ao realizar cadastro. Tente novamente.');
-      }
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Erro ao realizar cadastro. Tente novamente.');
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }

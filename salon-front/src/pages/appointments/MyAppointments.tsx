@@ -4,6 +4,7 @@ import { appointmentsApi } from './services/appointments';
 import type { AppointmentResponse } from './services/appointments';
 import { ConfirmDialog } from '../../components/modal/ConfirmDialog';
 import './Appointments.css';
+import { useAlert } from '../../hooks/useAlert';
 
 export const MyAppointments = () => {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
@@ -12,10 +13,10 @@ export const MyAppointments = () => {
   const [showConfirm, setShowConfirm] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
 
-  const parseInstant = (dateValue: string | unknown[] | null | undefined): number => {
+  const parseInstant = (dateValue: string | number[] | null | undefined): number => {
     if (!dateValue) return 0;
     if (Array.isArray(dateValue)) {
-      const [year, month, day, hour, minute] = dateValue as unknown as number[];
+      const [year, month, day, hour, minute] = dateValue as number[];
       return new Date(year, month - 1, day, hour, minute).getTime();
     }
     return new Date(dateValue as string).getTime();
@@ -27,6 +28,8 @@ export const MyAppointments = () => {
     return 0;
   };
 
+  const { error: showError } = useAlert();
+
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
@@ -34,7 +37,7 @@ export const MyAppointments = () => {
       data.sort((a, b) => sortKey(b) - sortKey(a));
       setAppointments(data);
     } catch (error) {
-      console.error('Erro ao carregar agendamentos', error);
+      await showError('Erro ao carregar agendamentos');
     } finally {
       setIsLoading(false);
     }
@@ -51,8 +54,7 @@ export const MyAppointments = () => {
       setShowConfirm(false);
       loadAppointments();
     } catch (error) {
-      console.error('Erro ao cancelar agendamento', error);
-      alert('Erro ao cancelar agendamento.');
+      await showError('Erro ao cancelar agendamento.');
     }
   };
 
@@ -75,13 +77,13 @@ export const MyAppointments = () => {
     }
   };
 
-  const formatDate = (dateValue: string | unknown[] | null | undefined) => {
+  const formatDate = (dateValue: string | number[] | null | undefined) => {
     let date: Date;
     if (!dateValue) {
       return { dayStr: '--', timeStr: '--', yearStr: '----' };
     }
     if (Array.isArray(dateValue)) {
-      const [year, month, day, hour, minute] = dateValue as unknown as number[];
+      const [year, month, day, hour, minute] = dateValue as number[];
       date = new Date(year, month - 1, day, hour, minute);
     } else {
       date = new Date(dateValue);

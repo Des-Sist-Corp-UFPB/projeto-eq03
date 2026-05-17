@@ -9,6 +9,7 @@ import type { EmployeeData } from '../admin/employees/services/employees';
 import { appointmentsApi } from './services/appointments';
 import { useAuth } from '../../hooks/useAuth';
 import './PublicAppointment.css';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 function priceTagLabel(price: number | null | undefined): string | null {
   if (price == null || Number.isNaN(price)) return null;
@@ -72,8 +73,8 @@ export const PublicAppointment = () => {
         setServices(servicesData.filter(s => s.active));
         setEmployees(employeesData);
       } catch (error) {
-        console.error('Erro ao buscar dados', error);
-        setErrorMsg('Não foi possível carregar serviços ou profissionais. Tente novamente em instantes.');
+        const msg = getApiErrorMessage(error, 'Não foi possível carregar serviços ou profissionais. Tente novamente em instantes.');
+        setErrorMsg(msg);
       } finally {
         setIsInitialLoading(false);
       }
@@ -123,8 +124,9 @@ export const PublicAppointment = () => {
       });
       localStorage.removeItem('pending_appointment');
       navigate('/my-appointments');
-    } catch (error: any) {
-      setErrorMsg(error.response?.data?.message || 'Erro ao enviar solicitação.');
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Erro ao enviar solicitação.');
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }

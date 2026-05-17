@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Filter } from 'lucide-react';
 import './AuditLog.css';
 import api from '../../../services/api';
+import { useAlert } from '../../../hooks/useAlert';
 
 interface AuditLog {
   id: number;
@@ -25,6 +26,7 @@ export const AuditLog = () => {
   const [filterAction, setFilterAction] = useState('');
   const [filterEntity, setFilterEntity] = useState('');
   const [filterUser, setFilterUser] = useState('');
+  const { error: showError } = useAlert();
 
   const loadAuditLogs = async () => {
     setIsLoading(true);
@@ -41,8 +43,8 @@ export const AuditLog = () => {
       
       setAuditLogs(data.content);
       setTotalItems(data.totalElements);
-    } catch (error) {
-      console.error('Erro ao carregar logs de auditoria', error);
+    } catch (err) {
+      await showError('Erro ao carregar logs de auditoria');
     } finally {
       setIsLoading(false);
     }

@@ -5,15 +5,21 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import './Auth.css';
+import { getApiErrorMessage } from '../../utils/apiError';
+
+interface LoginFormData {
+  email: string;
+  password: string;
+}
 
 export const Login = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm();
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: LoginFormData) => {
     setIsLoading(true);
     setErrorMsg('');
     try {
@@ -24,12 +30,9 @@ export const Login = () => {
       // Se chegou aqui sem redirecionar, é cliente
       const pending = localStorage.getItem('pending_appointment');
       navigate(pending ? '/appointment' : '/');
-    } catch (err: any) {
-      if (err.response?.data?.message) {
-        setErrorMsg(err.response.data.message);
-      } else {
-        setErrorMsg('Erro ao realizar login. Tente novamente.');
-      }
+    } catch (err) {
+      const msg = getApiErrorMessage(err, 'Erro ao realizar login. Tente novamente.');
+      setErrorMsg(msg);
     } finally {
       setIsLoading(false);
     }

@@ -25,8 +25,17 @@ export interface AppointmentResponse {
   status: string;
 }
 
-function buildCreatePayload(request: AppointmentRequestBody): Record<string, unknown> {
-  const body: Record<string, unknown> = {
+interface AppointmentCreatePayload {
+  employeeId: number;
+  serviceId: number;
+  scheduledAt?: string | null;
+  clientId?: number | null;
+  preferredDate?: string | null;
+  clientNotes?: string | null;
+}
+
+function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreatePayload {
+  const body: AppointmentCreatePayload = {
     employeeId: request.employeeId,
     serviceId: request.serviceId
   };

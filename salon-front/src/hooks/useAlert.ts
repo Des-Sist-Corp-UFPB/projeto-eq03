@@ -1,6 +1,6 @@
 import { useContext } from 'react';
-import { AlertContext } from '../context/AlertContext';
-import type { AlertType } from '../context/AlertContext';
+import { AlertContext } from '../context/AlertContextBase';
+import type { AlertType } from '../context/AlertContextBase';
 
 interface UseAlertOptions {
   title?: string;

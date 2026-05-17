@@ -3,18 +3,20 @@ import { Row, Col, Spinner } from 'react-bootstrap';
 import { salonServicesApi, displayServiceDuration } from './services/services';
 import type { SalonServiceData } from './services/services';
 import './PublicServices.css';
+import { useAlert } from '../../hooks/useAlert';
 
 export const PublicServices = () => {
   const [services, setServices] = useState<SalonServiceData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const { error: showError } = useAlert();
 
   useEffect(() => {
     const loadServices = async () => {
       try {
         const data = await salonServicesApi.findAll();
         setServices(data.filter(s => s.active));
-      } catch (error) {
-        console.error('Erro ao carregar serviços', error);
+      } catch (err) {
+        showError('Erro ao carregar serviços');
       } finally {
         setIsLoading(false);
       }

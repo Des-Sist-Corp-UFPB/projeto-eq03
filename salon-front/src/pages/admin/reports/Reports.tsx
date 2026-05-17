@@ -8,6 +8,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Download } from 'lucide-react';
+import { useAlert } from '../../../hooks/useAlert';
 
 export const Reports = () => {
   const [financial, setFinancial] = useState<FinancialReportResponse | null>(null);
@@ -17,6 +18,8 @@ export const Reports = () => {
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+
+  const { error: showError } = useAlert();
 
   const loadReports = async () => {
     setIsLoading(true);
@@ -29,9 +32,8 @@ export const Reports = () => {
       setFinancial(finData);
       setAppointments(aptData);
       setCashFlows(cfData);
-    } catch (error) {
-      console.error('Erro ao carregar relatórios', error);
-      alert('Erro ao carregar relatórios');
+    } catch (err) {
+      await showError('Erro ao carregar relatórios');
     } finally {
       setIsLoading(false);
     }
@@ -62,7 +64,7 @@ export const Reports = () => {
     });
 
     // Appointments Summary
-    const finalY = (doc as any).lastAutoTable.finalY || 50;
+    const finalY = (doc as { lastAutoTable?: { finalY?: number } }).lastAutoTable?.finalY || 50;
     doc.text('Resumo de Agendamentos', 14, finalY + 15);
     autoTable(doc, {
       startY: finalY + 20,

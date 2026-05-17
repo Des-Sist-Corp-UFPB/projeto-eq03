@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { productsApi } from './services/products';
 import type { ProductData } from './services/products';
+import { useAlert } from '../../../hooks/useAlert';
 
 export const Products = () => {
   const [products, setProducts] = useState<ProductData[]>([]);
@@ -20,15 +21,15 @@ export const Products = () => {
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
   
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ProductData>();
+  const { error: showError } = useAlert();
 
   const loadProducts = async () => {
     setIsLoading(true);
     try {
       const data = await productsApi.findAll();
       setProducts(data);
-    } catch (error) {
-      console.error('Erro ao carregar produtos', error);
-      alert('Erro ao carregar produtos');
+    } catch (err) {
+      await showError('Erro ao carregar produtos');
     } finally {
       setIsLoading(false);
     }
@@ -61,9 +62,8 @@ export const Products = () => {
       }
       setShowForm(false);
       loadProducts();
-    } catch (error) {
-      console.error('Erro ao salvar produto', error);
-      alert('Erro ao salvar produto. Verifique os dados e tente novamente.');
+    } catch (err) {
+      await showError('Erro ao salvar produto. Verifique os dados e tente novamente.');
     }
   };
 
@@ -73,9 +73,8 @@ export const Products = () => {
       await productsApi.delete(productToDelete);
       setShowConfirm(false);
       loadProducts();
-    } catch (error) {
-      console.error('Erro ao excluir produto', error);
-      alert('Erro ao excluir produto.');
+    } catch (err) {
+      await showError('Erro ao excluir produto.');
     }
   };
 

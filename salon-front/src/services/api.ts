@@ -9,12 +9,14 @@ const api = axios.create({
 });
 
 let isRefreshing = false;
-let failedQueue: Array<{
-  resolve: (value?: unknown) => void;
-  reject: (reason?: any) => void;
-}> = [];
+type FailedPromise = {
+  resolve: (value?: string | null) => void;
+  reject: (reason?: Error | AxiosError) => void;
+};
 
-const processQueue = (error: any, token: string | null = null) => {
+let failedQueue: FailedPromise[] = [];
+
+const processQueue = (error: Error | AxiosError | null, token: string | null = null) => {
   failedQueue.forEach(prom => {
     if (error) {
       prom.reject(error);
@@ -92,7 +94,7 @@ api.interceptors.response.use(
         
         return api(originalRequest);
       } catch (err) {
-        processQueue(err, null);
+        processQueue(err as Error | AxiosError, null);
         localStorage.removeItem('@Salon:token');
         localStorage.removeItem('@Salon:refreshToken');
         window.location.href = '/login';

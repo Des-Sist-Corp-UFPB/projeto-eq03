@@ -5,6 +5,8 @@ import { profileApi } from './services/profile';
 import { useAuth } from '../../hooks/useAuth';
 import type { UserUpdateRequest } from '../admin/users/services/users';
 import { Save, User as UserIcon } from 'lucide-react';
+import { useAlert } from '../../hooks/useAlert';
+import { getApiErrorMessage } from '../../utils/apiError';
 
 export const Profile = () => {
   const { user } = useAuth();
@@ -12,6 +14,8 @@ export const Profile = () => {
   const [isSaving, setIsSaving] = useState(false);
   
   const { register, handleSubmit, setValue } = useForm<UserUpdateRequest>();
+
+  const { error: showError, success: showSuccess } = useAlert();
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -22,9 +26,9 @@ export const Profile = () => {
         setValue('name', data.name);
         setValue('email', data.email);
         setValue('phone', data.phone || '');
-      } catch (error) {
-        console.error('Erro ao carregar perfil', error);
-        alert('Erro ao carregar os dados do perfil.');
+      } catch (err) {
+        const msg = getApiErrorMessage(err, 'Erro ao carregar os dados do perfil.');
+        await showError(msg);
       } finally {
         setIsLoading(false);
       }
@@ -45,10 +49,10 @@ export const Profile = () => {
       }
       
       await profileApi.updateProfile(user.userId, updateData);
-      alert('Perfil atualizado com sucesso!');
+      await showSuccess('Perfil atualizado com sucesso!');
     } catch (error) {
-      console.error('Erro ao atualizar perfil', error);
-      alert('Erro ao atualizar perfil.');
+      const msg = getApiErrorMessage(error, 'Erro ao atualizar perfil.');
+      await showError(msg);
     } finally {
       setIsSaving(false);
     }

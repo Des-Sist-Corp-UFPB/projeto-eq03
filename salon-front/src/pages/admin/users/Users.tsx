@@ -8,6 +8,8 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { usersApi } from './services/users';
 import type { UserData, UserUpdateRequest, UserCreateRequest } from './services/users';
+import { useAlert } from '../../../hooks/useAlert';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 export const Users = () => {
   const [users, setUsers] = useState<UserData[]>([]);
@@ -20,6 +22,7 @@ export const Users = () => {
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
   
   const { register, handleSubmit, reset, setValue } = useForm<UserCreateRequest & UserUpdateRequest>();
+  const { error: showError } = useAlert();
 
   const loadUsers = async () => {
     setIsLoading(true);
@@ -27,8 +30,8 @@ export const Users = () => {
       const data = await usersApi.findAll();
       setUsers(data);
     } catch (error) {
-      console.error('Erro ao carregar usuários', error);
-      alert('Erro ao carregar usuários');
+      const msg = getApiErrorMessage(error, 'Erro ao carregar usuários');
+      await showError(msg);
     } finally {
       setIsLoading(false);
     }
@@ -75,8 +78,8 @@ export const Users = () => {
       setShowForm(false);
       loadUsers();
     } catch (error) {
-      console.error('Erro ao salvar', error);
-      alert('Erro ao salvar. Verifique os dados e tente novamente.');
+      const msg = getApiErrorMessage(error, 'Erro ao salvar. Verifique os dados e tente novamente.');
+      await showError(msg);
     }
   };
 
@@ -87,8 +90,8 @@ export const Users = () => {
       setShowConfirm(false);
       loadUsers();
     } catch (error) {
-      console.error('Erro ao excluir usuário', error);
-      alert('Erro ao excluir usuário.');
+      const msg = getApiErrorMessage(error, 'Erro ao excluir usuário.');
+      await showError(msg);
     }
   };
 

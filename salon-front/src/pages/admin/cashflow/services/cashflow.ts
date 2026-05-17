@@ -11,7 +11,7 @@ export interface CashFlowData {
 
 export const cashFlowApi = {
   findByPeriod: async (from?: string, to?: string) => {
-    const params: any = {};
+    const params: Record<string, string> = {};
     if (from) params.from = from;
     if (to) params.to = to;
     const { data } = await api.get<CashFlowData[]>('/cashflow', { params });

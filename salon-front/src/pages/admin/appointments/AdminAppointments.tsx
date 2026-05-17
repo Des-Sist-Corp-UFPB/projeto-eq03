@@ -12,6 +12,8 @@ import { employeesApi } from '../employees/services/employees';
 import type { EmployeeData } from '../employees/services/employees';
 import { usersApi } from '../users/services/users';
 import type { UserData } from '../users/services/users';
+import { useAlert } from '../../../hooks/useAlert';
+import { getApiErrorMessage } from '../../../utils/apiError';
 
 function toLocalDateTimeIso(dtLocal: string): string {
   if (!dtLocal) return '';
@@ -45,14 +47,16 @@ export const AdminAppointments = () => {
   const [confirmDateTime, setConfirmDateTime] = useState('');
   const [confirmSaving, setConfirmSaving] = useState(false);
 
-  const parseDate = (dateValue: string | unknown[] | null | undefined): number => {
+  const parseDate = (dateValue: string | number[] | null | undefined): number => {
     if (!dateValue) return 0;
     if (Array.isArray(dateValue)) {
-      const [year, month, day, hour, minute] = dateValue as unknown as number[];
+      const [year, month, day, hour, minute] = dateValue as number[];
       return new Date(year, month - 1, day, hour, minute).getTime();
     }
     return new Date(dateValue as string).getTime();
   };
+
+  const { error: showError, confirm } = useAlert();
 
   const loadAppointments = async () => {
     setIsLoading(true);
@@ -72,8 +76,8 @@ export const AdminAppointments = () => {
         return tb - ta;
       });
       setAppointments(data);
-    } catch (error) {
-      console.error('Erro ao carregar agendamentos', error);
+    } catch (err) {
+      await showError('Erro ao carregar agendamentos');
     } finally {
       setIsLoading(false);
     }
@@ -89,8 +93,8 @@ export const AdminAppointments = () => {
       setClients(usersData.filter(u => u.role === 'CLIENTE'));
       setServices(servicesData.filter(s => s.active));
       setEmployees(employeesData);
-    } catch (error) {
-      console.error('Erro ao carregar dados do formulário', error);
+    } catch (err) {
+      await showError('Erro ao carregar dados do formulário');
     }
   };
 
@@ -104,15 +108,14 @@ export const AdminAppointments = () => {
       await appointmentsApi.updateStatus(id, newStatus);
       loadAppointments();
     } catch (error) {
-      console.error('Erro ao atualizar status', error);
-      alert('Erro ao atualizar status');
+      await showError('Erro ao atualizar status');
     }
   };
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedClient || !selectedService || !selectedEmployee || !selectedDateTime) {
-      alert('Preencha todos os campos, incluindo data e hora');
+      await showError('Preencha todos os campos, incluindo data e hora');
       return;
     }
 
@@ -127,9 +130,9 @@ export const AdminAppointments = () => {
       setShowModal(false);
       loadAppointments();
       resetForm();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Erro ao criar agendamento');
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Erro ao criar agendamento');
+      await showError(msg);
     } finally {
       setIsSaving(false);
     }
@@ -149,8 +152,7 @@ export const AdminAppointments = () => {
       setShowConfirm(false);
       loadAppointments();
     } catch (error) {
-      console.error('Erro ao cancelar', error);
-      alert('Erro ao cancelar agendamento');
+        await showError('Erro ao cancelar agendamento');
     }
   };
 
@@ -166,22 +168,23 @@ export const AdminAppointments = () => {
       await appointmentsApi.confirm(confirmTarget.id, toLocalDateTimeIso(confirmDateTime));
       setConfirmTarget(null);
       loadAppointments();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Erro ao confirmar horário');
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Erro ao confirmar horário');
+      await showError(msg);
     } finally {
       setConfirmSaving(false);
     }
   };
 
   const handleDecline = async (id: number) => {
-    if (!window.confirm('Recusar esta solicitação?')) return;
+    const confirmed = await confirm('Recusar esta solicitação?');
+    if (!confirmed) return;
     try {
       await appointmentsApi.decline(id);
       loadAppointments();
-    } catch (error: unknown) {
-      const err = error as { response?: { data?: { message?: string } } };
-      alert(err.response?.data?.message || 'Erro ao recusar');
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Erro ao recusar');
+      await showError(msg);
     }
   };
 
@@ -204,11 +207,11 @@ export const AdminAppointments = () => {
     }
   };
 
-  const formatDate = (dateValue: string | unknown[] | null | undefined) => {
+  const formatDate = (dateValue: string | number[] | null | undefined) => {
     if (!dateValue) return '—';
     let date: Date;
     if (Array.isArray(dateValue)) {
-      const [year, month, day, hour, minute] = dateValue as unknown as number[];
+      const [year, month, day, hour, minute] = dateValue as number[];
       date = new Date(year, month - 1, day, hour, minute);
     } else {
       date = new Date(dateValue);

@@ -1,26 +1,7 @@
-import { createContext, useState, useCallback } from 'react';
+import { useState, useCallback } from 'react';
 import type { ReactNode } from 'react';
-
-export type AlertType = 'success' | 'error' | 'warning' | 'info';
-
-interface AlertConfig {
-  title?: string;
-  message: string;
-  type?: AlertType;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm?: () => void | Promise<void>;
-  onCancel?: () => void;
-  isDangerous?: boolean;
-}
-
-interface AlertContextType {
-  showAlert: (config: AlertConfig) => Promise<boolean>;
-  showConfirm: (config: AlertConfig) => Promise<boolean>;
-  hideAlert: () => void;
-}
-
-export const AlertContext = createContext<AlertContextType | undefined>(undefined);
+import { AlertContext } from './AlertContextBase';
+import type { AlertConfig, AlertType } from './AlertContextBase';
 
 interface AlertState extends AlertConfig {
   id: string;
@@ -253,11 +234,11 @@ const buttonStyles: React.CSSProperties = {
 };
 
 const getIcon = (type: AlertType) => {
-  const icons = {
+  const icons: Record<AlertType, string> = {
     success: '✓',
     error: '✕',
     warning: '⚠',
     info: 'ⓘ',
   };
-  return icons[type] || icons.info;
+  return icons[type] ?? icons.info;
 };

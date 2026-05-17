@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { employeesApi } from './services/employees';
 import type { EmployeeData } from './services/employees';
+import { useAlert } from '../../../hooks/useAlert';
 
 export const Employees = () => {
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
@@ -20,15 +21,15 @@ export const Employees = () => {
   const [employeeToDelete, setEmployeeToDelete] = useState<number | null>(null);
   
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<EmployeeData>();
+  const { error: showError } = useAlert();
 
   const loadEmployees = async () => {
     setIsLoading(true);
     try {
       const data = await employeesApi.findAll();
       setEmployees(data);
-    } catch (error) {
-      console.error('Erro ao carregar funcionárias', error);
-      alert('Erro ao carregar funcionárias');
+    } catch (err) {
+      await showError('Erro ao carregar funcionárias');
     } finally {
       setIsLoading(false);
     }
@@ -59,9 +60,8 @@ export const Employees = () => {
       }
       setShowForm(false);
       loadEmployees();
-    } catch (error) {
-      console.error('Erro ao salvar funcionária', error);
-      alert('Erro ao salvar funcionária. Verifique se o ID de usuário está correto.');
+    } catch (err) {
+      await showError('Erro ao salvar funcionária. Verifique se o ID de usuário está correto.');
     }
   };
 
@@ -71,9 +71,8 @@ export const Employees = () => {
       await employeesApi.delete(employeeToDelete);
       setShowConfirm(false);
       loadEmployees();
-    } catch (error) {
-      console.error('Erro ao excluir funcionária', error);
-      alert('Erro ao excluir funcionária.');
+    } catch (err) {
+      await showError('Erro ao excluir funcionária.');
     }
   };
 

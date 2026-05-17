@@ -8,6 +8,7 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { salonServicesApi, displayServiceDuration } from '../../services/services/services';
 import type { SalonServiceData } from '../../services/services/services';
+import { useAlert } from '../../../hooks/useAlert';
 
 export const AdminServices = () => {
   const [services, setServices] = useState<SalonServiceData[]>([]);
@@ -20,15 +21,15 @@ export const AdminServices = () => {
   const [serviceToDelete, setServiceToDelete] = useState<number | null>(null);
   
   const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<SalonServiceData>();
+  const { error: showError } = useAlert();
 
   const loadServices = async () => {
     setIsLoading(true);
     try {
       const data = await salonServicesApi.findAll();
       setServices(data);
-    } catch (error) {
-      console.error('Erro ao carregar serviços', error);
-      alert('Erro ao carregar serviços');
+    } catch (err) {
+      await showError('Erro ao carregar serviços');
     } finally {
       setIsLoading(false);
     }
@@ -59,7 +60,7 @@ export const AdminServices = () => {
     const hasEst = (data.durationEstimate ?? '').trim().length > 0;
     const hasMin = data.durationMin != null && Number(data.durationMin) > 0;
     if (!hasEst && !hasMin) {
-      alert('Informe o tempo estimado em texto (ex.: em média 50 min) e/ou minutos para encaixe na agenda.');
+      await showError('Informe o tempo estimado em texto (ex.: em média 50 min) e/ou minutos para encaixe na agenda.');
       return;
     }
     try {
@@ -76,9 +77,8 @@ export const AdminServices = () => {
       }
       setShowForm(false);
       loadServices();
-    } catch (error) {
-      console.error('Erro ao salvar serviço', error);
-      alert('Erro ao salvar serviço. Verifique os dados e tente novamente.');
+    } catch (err) {
+      await showError('Erro ao salvar serviço. Verifique os dados e tente novamente.');
     }
   };
 
@@ -88,9 +88,8 @@ export const AdminServices = () => {
       await salonServicesApi.delete(serviceToDelete);
       setShowConfirm(false);
       loadServices();
-    } catch (error) {
-      console.error('Erro ao excluir serviço', error);
-      alert('Erro ao excluir serviço.');
+    } catch (err) {
+      await showError('Erro ao excluir serviço.');
     }
   };
 
