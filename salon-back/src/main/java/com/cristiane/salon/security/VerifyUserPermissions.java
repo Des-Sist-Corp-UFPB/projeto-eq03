@@ -27,6 +27,11 @@ public class VerifyUserPermissions {
         }
         User logged = (User) principal;
 
+        // Give ADMIN full access to everything
+        if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            return true;
+        }
+
         // Check explicit permission via endpoint/method
         if (permissionEvaluator.hasPermission(auth, request.getRequestURI(), request.getMethod())) {
             return true;
