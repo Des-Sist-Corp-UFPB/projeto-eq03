@@ -24,7 +24,7 @@ public class AuditController {
     private final AuditLogService auditLogService;
     
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSADMIN')")
     @Operation(summary = "Lista todos os logs de auditoria com paginação")
     public ResponseEntity<Page<AuditLog>> getAllAuditLogs(
             @RequestParam(defaultValue = "0") int page,
@@ -37,7 +37,7 @@ public class AuditController {
     }
     
     @GetMapping("/user/{userId}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSADMIN')")
     @Operation(summary = "Lista logs de auditoria de um usuário específico")
     public ResponseEntity<Page<AuditLog>> getAuditLogsByUser(
             @PathVariable Long userId,
@@ -50,7 +50,7 @@ public class AuditController {
     }
     
     @GetMapping("/action/{action}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSADMIN')")
     @Operation(summary = "Lista logs de auditoria por tipo de ação")
     public ResponseEntity<Page<AuditLog>> getAuditLogsByAction(
             @PathVariable String action,
@@ -63,7 +63,7 @@ public class AuditController {
     }
     
     @GetMapping("/entity/{entityType}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSADMIN')")
     @Operation(summary = "Lista logs de auditoria por tipo de entidade")
     public ResponseEntity<Page<AuditLog>> getAuditLogsByEntityType(
             @PathVariable String entityType,
@@ -76,7 +76,7 @@ public class AuditController {
     }
     
     @GetMapping("/range")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("hasAnyRole('SYSADMIN')")
     @Operation(summary = "Lista logs de auditoria por período de datas")
     public ResponseEntity<Page<AuditLog>> getAuditLogsByDateRange(
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,

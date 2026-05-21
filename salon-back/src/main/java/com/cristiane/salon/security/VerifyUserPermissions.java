@@ -27,8 +27,17 @@ public class VerifyUserPermissions {
         }
         User logged = (User) principal;
 
-        // Give ADMIN full access to everything
+        // Give SYSADMIN full access to everything
+        if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_SYSADMIN"))) {
+            return true;
+        }
+
+        // Give ADMIN full access to everything except sysadmin and audit endpoints
         if (auth.getAuthorities().stream().anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN"))) {
+            String uri = request.getRequestURI();
+            if (uri != null && (uri.startsWith("/v1/sysadmin") || uri.startsWith("/v1/audit"))) {
+                return false;
+            }
             return true;
         }
 
