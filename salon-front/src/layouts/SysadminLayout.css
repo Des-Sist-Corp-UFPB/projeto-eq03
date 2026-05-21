@@ -1,0 +1,32 @@
+/* SysadminLayout.css */
+.sysadmin-sidebar {
+  background: linear-gradient(135deg, #1e1b29 0%, #312b45 100%) !important;
+  box-shadow: 2px 0 10px rgba(0, 0, 0, 0.15);
+}
+
+.sysadmin-sidebar h4 {
+  font-family: var(--font-heading);
+  letter-spacing: 1px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: 1rem;
+}
+
+.sysadmin-sidebar .nav-link {
+  color: rgba(255, 255, 255, 0.8) !important;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-sm);
+  margin-bottom: 0.5rem;
+  transition: all 0.2s ease-in-out;
+}
+
+.sysadmin-sidebar .nav-link:hover, 
+.sysadmin-sidebar .nav-link.active {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: #fff !important;
+  transform: translateX(3px);
+}
+
+.sysadmin-sidebar .text-danger:hover {
+  background-color: rgba(220, 53, 69, 0.2) !important;
+  color: #ff6b6b !important;
+}

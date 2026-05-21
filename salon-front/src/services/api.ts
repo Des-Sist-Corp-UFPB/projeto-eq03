@@ -2,7 +2,7 @@ import axios, { AxiosError } from 'axios';
 import type { InternalAxiosRequestConfig } from 'axios';
 
 const api = axios.create({
-  baseURL: 'http://localhost:8080/v1',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/v1',
   headers: {
     'Content-Type': 'application/json',
   },
@@ -79,7 +79,7 @@ api.interceptors.response.use(
       }
 
       try {
-        const { data } = await axios.post('http://localhost:8080/v1/auth/refresh', {
+        const { data } = await axios.post(`${import.meta.env.VITE_API_URL || 'http://localhost:8080/v1'}/auth/refresh`, {
           refreshToken,
         });
 

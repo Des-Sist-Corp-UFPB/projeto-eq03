@@ -52,9 +52,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
     setUser(userData);
 
-    // Redirecionar admin para dashboard automaticamente
-    if (redirect && decoded.role === 'ADMIN') {
-      window.location.href = '/admin/dashboard';
+    // Redirecionar admin/sysadmin para dashboard/feature-flags automaticamente
+    if (redirect) {
+      if (decoded.role === 'SYSADMIN') {
+        window.location.href = '/sysadmin/feature-flags';
+      } else if (decoded.role === 'ADMIN') {
+        window.location.href = '/admin/dashboard';
+      }
     }
   }, []);
 

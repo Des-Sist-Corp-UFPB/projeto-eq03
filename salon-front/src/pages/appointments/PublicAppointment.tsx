@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Form, Alert, Spinner } from 'react-bootstrap';
 import { useNavigate } from 'react-router-dom';
-import { Clock, User as UserIcon, Calendar, CheckCircle, ArrowLeft, ArrowRight, MessageSquare } from 'lucide-react';
+import { Clock, User as UserIcon, Calendar, CheckCircle, ArrowLeft, ArrowRight, MessageSquare, CalendarHeart } from 'lucide-react';
 import { salonServicesApi, displayServiceDuration } from '../services/services/services';
 import type { SalonServiceData } from '../services/services/services';
 import { employeesApi } from '../admin/employees/services/employees';
@@ -10,6 +10,7 @@ import { appointmentsApi } from './services/appointments';
 import { useAuth } from '../../hooks/useAuth';
 import './PublicAppointment.css';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { featureFlagsService } from '../../services/featureFlags';
 
 function priceTagLabel(price: number | null | undefined): string | null {
   if (price == null || Number.isNaN(price)) return null;
@@ -37,6 +38,7 @@ export const PublicAppointment = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
+  const [isBookingEnabled, setIsBookingEnabled] = useState(true);
 
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -66,12 +68,17 @@ export const PublicAppointment = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [servicesData, employeesData] = await Promise.all([
+        const [servicesData, employeesData, flagsData] = await Promise.all([
           salonServicesApi.findAll(),
-          employeesApi.findAllForBooking()
+          employeesApi.findAllForBooking(),
+          featureFlagsService.getPublicFlags().catch(() => [] as any[])
         ]);
         setServices(servicesData.filter(s => s.active));
         setEmployees(employeesData);
+        const bookingFlag = flagsData.find(f => f.name === 'CLIENT_BOOKING');
+        if (bookingFlag && !bookingFlag.enabled) {
+          setIsBookingEnabled(false);
+        }
       } catch (error) {
         const msg = getApiErrorMessage(error, 'Não foi possível carregar serviços ou profissionais. Tente novamente em instantes.');
         setErrorMsg(msg);
@@ -136,6 +143,23 @@ export const PublicAppointment = () => {
     return (
       <div className="d-flex justify-content-center align-items-center min-vh-100">
         <Spinner animation="border" variant="primary" />
+      </div>
+    );
+  }
+
+  if (!isBookingEnabled) {
+    return (
+      <div className="appointment-container text-center fade-in-up py-5">
+        <div className="p-5 bg-white shadow-sm border" style={{ borderRadius: '16px', maxWidth: '600px', margin: '40px auto' }}>
+          <CalendarHeart size={64} className="text-muted mb-4" />
+          <h3 className="mb-3 text-secondary">Agendamentos Online Desativados</h3>
+          <p className="text-muted mb-4" style={{ lineHeight: '1.6' }}>
+            Os agendamentos online para clientes estão temporariamente desativados no momento. Por favor, entre em contato direto com o salão para agendar seu horário.
+          </p>
+          <button className="btn btn-primary btn-lg" onClick={() => navigate('/')}>
+            Voltar para o início
+          </button>
+        </div>
       </div>
     );
   }

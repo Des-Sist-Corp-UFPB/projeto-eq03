@@ -2,6 +2,8 @@ import { Routes, Route } from 'react-router-dom';
 import { DefaultLayout } from './layouts/DefaultLayout';
 import { AdminLayout } from './layouts/AdminLayout';
 import { CustomerLayout } from './layouts/CustomerLayout';
+import { SysadminLayout } from './layouts/SysadminLayout';
+import { FeatureFlags } from './pages/sysadmin/FeatureFlags';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
@@ -96,10 +98,21 @@ export const Router = () => {
             </ProtectedRoute>
           }
         />
+      </Route>
+
+      <Route element={<SysadminLayout />}>
         <Route
-          path="/admin/audit"
+          path="/sysadmin/feature-flags"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute requiredRole="SYSADMIN">
+              <FeatureFlags />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sysadmin/audit"
+          element={
+            <ProtectedRoute requiredRole="SYSADMIN">
               <AuditLog />
             </ProtectedRoute>
           }
