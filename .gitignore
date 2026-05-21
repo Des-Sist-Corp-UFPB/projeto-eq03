@@ -40,3 +40,6 @@ salon-front/dist/
 !/logs
 !/logs/salon.log
 logs/*.log.*.gz
+
+# Credentials file
+admin_credentials.txt
