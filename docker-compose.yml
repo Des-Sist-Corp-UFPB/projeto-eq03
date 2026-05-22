@@ -1,6 +1,7 @@
 services:
   db:
     image: postgres:16
+    container_name: salon-db
     environment:
       POSTGRES_DB: salon_dev
       POSTGRES_USER: salon
@@ -14,12 +15,56 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    networks:
+      - salon-network
 
   mailpit:
     image: axllent/mailpit
+    container_name: salon-mailpit
     ports:
       - "1025:1025"
       - "8025:8025"
+    networks:
+      - salon-network
+
+  salon-back:
+    build:
+      context: ./salon-back
+      dockerfile: Dockerfile
+    container_name: salon-back
+    ports:
+      - "8080:8080" # Porta da API exposta opcionalmente para acesso direto
+    environment:
+      - DB_URL=jdbc:postgresql://db:5432/salon_dev
+      - DB_USER=salon
+      - DB_PASS=salon
+      - JWT_SECRET=dev-secret-key-change-in-prod-must-be-at-least-256-bits-long!!
+      - MAIL_HOST=mailpit
+      - MAIL_PORT=1025
+      - SPRING_PROFILES_ACTIVE=prod
+    depends_on:
+      db:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+    networks:
+      - salon-network
+
+  salon-front:
+    build:
+      context: ./salon-front
+      dockerfile: Dockerfile
+    container_name: salon-front
+    ports:
+      - "80:80" # Expõe a aplicação React + Proxy Reverso Nginx na porta HTTP 80
+    depends_on:
+      - salon-back
+    networks:
+      - salon-network
 
 volumes:
   pgdata:
+
+networks:
+  salon-network:
+    driver: bridge
