@@ -71,7 +71,7 @@ export const FeatureFlags = () => {
           {flags.map(flag => (
             <div 
               key={flag.name} 
-              className="bg-white rounded-2xl border border-[#eae1e1]/80 p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group"
+              className="bg-white rounded-2xl border border-[#eae1e1]/80 p-6 flex flex-col justify-between shadow-sm transition-all duration-300 relative overflow-hidden group"
             >
               <div>
                 <div className="flex justify-between items-start gap-4 mb-3">

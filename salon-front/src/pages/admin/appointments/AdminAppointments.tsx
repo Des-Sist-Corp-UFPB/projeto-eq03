@@ -277,7 +277,7 @@ export const AdminAppointments = () => {
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Agendamentos (Admin)</h2>
         <PermissionGate method="POST" endpoint="/v1/appointments">
-          <button onClick={() => setShowModal(true)} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10 hover:shadow-lg">
+          <button onClick={() => setShowModal(true)} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
             <Plus size={18} /> Novo Agendamento
           </button>
         </PermissionGate>

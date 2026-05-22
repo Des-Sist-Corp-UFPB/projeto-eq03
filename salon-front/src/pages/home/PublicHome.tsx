@@ -18,14 +18,14 @@ export const PublicHome = () => {
         <div className="flex flex-wrap justify-center gap-4 pt-4">
           <Link 
             to="/appointment" 
-            className="inline-flex items-center gap-2 px-6 py-3 bg-[#be8a83] text-white hover:bg-[#a6726b] hover:shadow-lg hover:shadow-[#be8a83]/20 font-semibold text-sm rounded-full transition-all hover:-translate-y-0.5 active:translate-y-0"
+            className="inline-flex items-center gap-2 px-6 py-3 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-full transition-all active:translate-y-0"
           >
             <CalendarHeart size={18} />
             Agendar agora
           </Link>
           <Link 
             to="/services" 
-            className="inline-flex items-center gap-2 px-6 py-3 border border-[#be8a83] text-[#be8a83] hover:bg-[#be8a83]/5 font-semibold text-sm rounded-full transition-all hover:-translate-y-0.5 active:translate-y-0"
+            className="inline-flex items-center gap-2 px-6 py-3 border border-[#be8a83] text-[#be8a83] hover:bg-[#be8a83]/5 font-semibold text-sm rounded-full transition-all active:translate-y-0"
           >
             <Scissors size={18} />
             Ver serviços

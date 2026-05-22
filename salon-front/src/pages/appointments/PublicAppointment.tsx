@@ -242,7 +242,7 @@ export const PublicAppointment = () => {
                       className={`relative cursor-pointer p-5 rounded-2xl border-2 transition-all duration-200 ${
                         selectedService === srv.id
                           ? 'border-[#be8a83] bg-[#be8a83]/5 shadow-md shadow-[#be8a83]/10'
-                          : 'border-gray-100 bg-white hover:border-[#be8a83]/50 hover:-translate-y-0.5 hover:shadow-sm'
+                          : 'border-gray-100 bg-white hover:border-[#be8a83]/50'
                       }`}
                     >
                       {tag && (
@@ -289,7 +289,7 @@ export const PublicAppointment = () => {
                     className={`relative cursor-pointer p-5 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${
                       selectedEmployee === emp.id
                         ? 'border-[#be8a83] bg-[#be8a83]/5 shadow-md shadow-[#be8a83]/10'
-                        : 'border-gray-100 bg-white hover:border-[#be8a83]/50 hover:-translate-y-0.5 hover:shadow-sm'
+                        : 'border-gray-100 bg-white hover:border-[#be8a83]/50'
                     }`}
                   >
                     <div className="h-12 w-12 rounded-full bg-gradient-to-br from-[#be8a83] to-[#3b3036] text-white flex items-center justify-center font-bold text-xl shrink-0">
@@ -393,7 +393,7 @@ export const PublicAppointment = () => {
             <button
               onClick={handleNext}
               disabled={(step === 1 && !selectedService) || (step === 2 && !selectedEmployee)}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] hover:shadow-lg hover:shadow-[#be8a83]/20 font-semibold text-sm rounded-xl transition-all disabled:opacity-40 disabled:pointer-events-none"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all disabled:opacity-40 disabled:pointer-events-none"
             >
               Próximo <ArrowRight size={18} />
             </button>
@@ -401,7 +401,7 @@ export const PublicAppointment = () => {
             <button
               onClick={handleSubmit}
               disabled={isLoading}
-              className="flex items-center gap-2 px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] hover:shadow-lg hover:shadow-[#be8a83]/20 font-semibold text-sm rounded-xl transition-all disabled:opacity-40 disabled:pointer-events-none"
+              className="flex items-center gap-2 px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all disabled:opacity-40 disabled:pointer-events-none"
             >
               {isLoading ? 'Enviando...' : 'Enviar solicitação'} <CheckCircle size={18} />
             </button>

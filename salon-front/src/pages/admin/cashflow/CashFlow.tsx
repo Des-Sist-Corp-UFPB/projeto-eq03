@@ -117,7 +117,7 @@ export const CashFlow = () => {
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Fluxo de Caixa</h2>
         <PermissionGate method="POST" endpoint="/v1/cashflow">
-          <button onClick={handleOpenForm} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10 hover:shadow-lg">
+          <button onClick={handleOpenForm} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
             <Plus size={18} /> Novo Registro
           </button>
         </PermissionGate>

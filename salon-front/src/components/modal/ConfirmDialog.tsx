@@ -28,12 +28,12 @@ export const ConfirmDialog = ({
   const getConfirmButtonClasses = () => {
     switch (variant) {
       case 'danger':
-        return 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/15 hover:shadow-lg';
+        return 'bg-red-500 hover:bg-red-600 text-white shadow-md shadow-red-500/15';
       case 'warning':
-        return 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/15 hover:shadow-lg';
+        return 'bg-amber-500 hover:bg-amber-600 text-white shadow-md shadow-amber-500/15';
       case 'primary':
       default:
-        return 'bg-[#be8a83] hover:bg-[#a1706a] text-white shadow-md shadow-[#be8a83]/15 hover:shadow-lg';
+        return 'bg-[#be8a83] hover:bg-[#a1706a] text-white shadow-md shadow-[#be8a83]/15';
     }
   };
 

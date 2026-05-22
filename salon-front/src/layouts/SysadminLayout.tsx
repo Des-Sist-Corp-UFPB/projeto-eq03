@@ -136,7 +136,7 @@ export const SysadminLayout = () => {
             onClick={() => { logout(); closeSidebar(); }}
             className={`w-[calc(100%-16px)] flex items-center rounded-full transition-all duration-200 text-sm font-bold mt-8 text-left relative ${
               isCollapsed ? 'justify-center p-3 mx-1' : 'gap-3 px-5 py-3 mx-2'
-            } text-[#3b3036]/75 hover:text-white bg-[#3b3036]/5 hover:bg-[#be8a83] border border-[#3b3036]/10 hover:border-[#be8a83] shadow-xs hover:shadow-md`}
+            } text-[#3b3036]/75 hover:text-white bg-[#3b3036]/5 hover:bg-[#be8a83] border border-[#3b3036]/10 hover:border-[#be8a83] shadow-xs`}
           >
             <LogOut size={18} className="text-[#3b3036]/60 group-hover:text-white transition-colors" />
             {!isCollapsed && <span>Sair</span>}

@@ -147,7 +147,7 @@ export const Reports = () => {
         <button
           onClick={generatePDF}
           disabled={isLoading}
-          className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-[#be8a83] to-[#e5a49c] hover:from-[#a1706a] hover:to-[#be8a83] text-white font-semibold text-sm rounded-xl transition-all shadow-md shadow-[#be8a83]/10 hover:shadow-lg disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#be8a83] hover:bg-[#a1706a] text-white font-semibold text-sm rounded-xl transition-all shadow-md shadow-[#be8a83]/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
         >
           <Download size={18} /> Exportar PDF
         </button>
@@ -184,27 +184,27 @@ export const Reports = () => {
               Resumo Financeiro <span className="text-sm font-normal text-gray-400">({financial?.period})</span>
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
-              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-emerald-500" />
                 <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Total Receitas</p>
-                <p className="text-xl font-extrabold text-emerald-600">R$ ${(financial?.totalIncome ?? 0).toFixed(2)}</p>
+                <p className="text-xl font-extrabold text-emerald-600">R$ {(financial?.totalIncome ?? 0).toFixed(2)}</p>
               </div>
-              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-rose-500" />
                 <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Despesas Gerais</p>
                 <p className="text-xl font-extrabold text-rose-600">R$ {(financial?.totalExpense ?? 0).toFixed(2)}</p>
               </div>
-              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 to-indigo-500" />
                 <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Salários Fixos</p>
                 <p className="text-xl font-extrabold text-indigo-600">R$ {(financial?.totalSalaryPaid ?? 0).toFixed(2)}</p>
               </div>
-              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-amber-500" />
                 <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Comissões</p>
                 <p className="text-xl font-extrabold text-amber-600">R$ {(financial?.totalCommissionPaid ?? 0).toFixed(2)}</p>
               </div>
-              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group">
+              <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                 <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#be8a83] to-[#e5a49c]" />
                 <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Lucro Líquido</p>
                 <p className={`text-xl font-extrabold ${(financial?.netProfit ?? 0) >= 0 ? 'text-[#be8a83]' : 'text-rose-600'}`}>
@@ -306,7 +306,7 @@ export const Reports = () => {
                 { label: 'Pendentes', value: appointments?.pending, color: 'text-amber-600', stripe: 'from-amber-400 to-amber-500' },
                 { label: 'Cancelados', value: appointments?.cancelled, color: 'text-rose-600', stripe: 'from-rose-400 to-rose-500' },
               ].map((stat, i) => (
-                <div key={i} className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 text-center shadow-sm relative overflow-hidden group hover:shadow-md transition-all duration-300">
+                <div key={i} className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 text-center shadow-sm relative overflow-hidden group transition-all duration-300">
                   <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.stripe}`} />
                   <p className={`text-4xl font-extrabold ${stat.color}`}>{stat.value}</p>
                   <p className="text-xs font-semibold text-[#7a7074] uppercase tracking-wider mt-1">{stat.label}</p>

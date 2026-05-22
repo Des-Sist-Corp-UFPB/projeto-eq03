@@ -67,7 +67,7 @@ export const ModalForm = ({
               <button
                 type="submit"
                 disabled={isSubmitting}
-                className="px-4 py-2 bg-[#be8a83] hover:bg-[#a1706a] text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-md shadow-[#be8a83]/10 hover:shadow-lg disabled:opacity-50"
+                className="px-4 py-2 bg-[#be8a83] hover:bg-[#a1706a] text-white rounded-xl text-sm font-semibold transition-all duration-200 shadow-md shadow-[#be8a83]/10 disabled:opacity-50"
               >
                 {isSubmitting ? 'Salvando...' : submitLabel}
               </button>

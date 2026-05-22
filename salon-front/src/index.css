@@ -101,7 +101,7 @@ h1, h2, h3, h4, h5, h6 {
 
 .glass-card:hover {
   transform: translateY(-2px);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--shadow-sm);
   border-color: rgba(190, 138, 131, 0.3);
 }
 
@@ -125,7 +125,7 @@ h1, h2, h3, h4, h5, h6 {
 .btn-premium:hover:not(:disabled) {
   background-color: var(--primary-hover);
   transform: translateY(-1px);
-  box-shadow: 0 6px 16px rgba(190, 138, 131, 0.25);
+  box-shadow: 0 4px 12px rgba(190, 138, 131, 0.15);
 }
 
 .btn-premium:active:not(:disabled) {

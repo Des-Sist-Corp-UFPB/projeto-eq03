@@ -13,7 +13,7 @@ export const NotFound = () => {
       </p>
       <button 
         onClick={() => navigate('/')}
-        className="px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] hover:shadow-lg hover:shadow-[#be8a83]/20 font-semibold text-sm rounded-full transition-all active:scale-[0.98]"
+        className="px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-full transition-all active:scale-[0.98]"
       >
         Voltar para o Início
       </button>

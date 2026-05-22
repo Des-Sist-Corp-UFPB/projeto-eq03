@@ -96,7 +96,7 @@ export const DefaultLayout = () => {
                   </Link>
                   <Link 
                     to="/register" 
-                    className="px-5 py-2.5 bg-[#be8a83] text-white rounded-full text-sm font-semibold hover:bg-[#a6726b] hover:shadow-lg hover:shadow-[#be8a83]/20 transition-all duration-200 hover:-translate-y-0.5"
+                    className="px-5 py-2.5 bg-[#be8a83] text-white rounded-full text-sm font-semibold hover:bg-[#a6726b] transition-all duration-200"
                   >
                     Criar Conta
                   </Link>
