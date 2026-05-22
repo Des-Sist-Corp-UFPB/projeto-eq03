@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.product.dto;
 
+import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
@@ -16,7 +17,7 @@ public record ProductRequest(
         Integer stock,
 
         @NotNull(message = "O preço é obrigatório")
-        @Min(value = 0, message = "O preço não pode ser negativo")
+        @DecimalMin(value = "0.00", message = "O preço não pode ser negativo")
         BigDecimal price,
 
         Boolean active

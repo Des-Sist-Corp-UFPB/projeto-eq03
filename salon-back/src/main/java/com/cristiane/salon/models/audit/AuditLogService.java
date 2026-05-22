@@ -76,6 +76,18 @@ public class AuditLogService {
     public Page<AuditLog> getAllAuditLogs(Pageable pageable) {
         return auditLogRepository.findAll(pageable);
     }
+
+    public Page<AuditLog> getAllAuditLogs(String action, String entityType, String userEmail, Pageable pageable) {
+        String searchAction = (action == null || action.trim().isEmpty()) ? null : action.trim();
+        String searchEntity = (entityType == null || entityType.trim().isEmpty()) ? null : entityType.trim();
+        
+        String searchEmail = null;
+        if (userEmail != null && !userEmail.trim().isEmpty()) {
+            searchEmail = "%" + userEmail.trim().toLowerCase() + "%";
+        }
+        
+        return auditLogRepository.findWithFilters(searchAction, searchEntity, searchEmail, pageable);
+    }
     
     public Page<AuditLog> getAuditLogsByUser(Long userId, Pageable pageable) {
         return auditLogRepository.findByUserId(userId, pageable);

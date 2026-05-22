@@ -25,14 +25,17 @@ public class AuditController {
     
     @GetMapping
     @PreAuthorize("hasAnyRole('SYSADMIN')")
-    @Operation(summary = "Lista todos os logs de auditoria com paginação")
+    @Operation(summary = "Lista todos os logs de auditoria com paginação e filtros opcionais")
     public ResponseEntity<Page<AuditLog>> getAllAuditLogs(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy) {
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String userEmail) {
         
         PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.DESC, sortBy);
-        Page<AuditLog> logs = auditLogService.getAllAuditLogs(pageRequest);
+        Page<AuditLog> logs = auditLogService.getAllAuditLogs(action, entityType, userEmail, pageRequest);
         return ResponseEntity.ok(logs);
     }
     
