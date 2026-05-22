@@ -31,7 +31,7 @@ export function Table<T>({
   emptyMessage = 'Nenhum registro encontrado.'
 }: TableProps<T>) {
   return (
-    <div className="w-full bg-white rounded-2xl p-6 shadow-sm border border-[#eae1e1] mb-8">
+    <div className="w-full bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-[#eae1e1]/80 shadow-sm mb-8 animate-fade-in-up">
       {onSearchChange && (
         <div className="mb-4 flex justify-end">
           <div className="relative w-full max-w-xs">
@@ -43,7 +43,7 @@ export function Table<T>({
               placeholder="Buscar..."
               value={searchTerm}
               onChange={(e) => onSearchChange(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-[#eae1e1] rounded-lg bg-white text-[#2a2528] placeholder-[#7a7074]/60 focus:outline-none focus:ring-2 focus:ring-[#be8a83] focus:border-transparent transition-all"
+              className="input-premium pl-10 pr-4 py-2"
             />
           </div>
         </div>
@@ -54,7 +54,7 @@ export function Table<T>({
           <thead>
             <tr className="text-[#7a7074] font-semibold text-xs uppercase tracking-wider">
               {columns.map((col, index) => (
-                <th key={String(col.key) + index} className="px-4 py-3">
+                <th key={String(col.key) + index} className="px-4 py-3 pb-4">
                   {col.label}
                 </th>
               ))}
@@ -63,7 +63,7 @@ export function Table<T>({
           <tbody className="text-sm text-[#2a2528]">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-8 text-center text-[#7a7074]/80 bg-white border border-[#eae1e1] rounded-xl">
+                <td colSpan={columns.length} className="px-4 py-8 text-center text-[#7a7074]/80 bg-white/50 border border-[#eae1e1] rounded-xl">
                   {emptyMessage}
                 </td>
               </tr>
@@ -76,7 +76,7 @@ export function Table<T>({
                     return (
                       <td
                         key={String(col.key) + index}
-                        className={`px-4 py-4 align-middle bg-white border-y border-[#eae1e1] group-hover:bg-[#fcf9f9] transition-colors ${
+                        className={`px-4 py-4 align-middle bg-white/60 border-y border-[#eae1e1] group-hover:bg-[#fcf9f9] transition-all duration-200 ${
                           isFirst ? 'border-l rounded-l-xl' : ''
                         } ${isLast ? 'border-r rounded-r-xl' : ''}`}
                       >

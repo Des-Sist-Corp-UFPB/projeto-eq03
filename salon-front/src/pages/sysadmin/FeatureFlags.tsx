@@ -47,7 +47,7 @@ export const FeatureFlags = () => {
   };
 
   return (
-    <div className="max-w-7xl mx-auto space-y-6">
+    <div className="max-w-7xl mx-auto space-y-6 animate-fade-in-up">
       {/* Header */}
       <div className="flex items-center gap-3">
         <ShieldAlert size={32} className="text-[#be8a83]" />
@@ -71,7 +71,7 @@ export const FeatureFlags = () => {
           {flags.map(flag => (
             <div 
               key={flag.name} 
-              className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col justify-between shadow-xs hover:shadow-md transition-shadow duration-300"
+              className="bg-white rounded-2xl border border-[#eae1e1]/80 p-6 flex flex-col justify-between shadow-sm hover:shadow-md transition-all duration-300 relative overflow-hidden group"
             >
               <div>
                 <div className="flex justify-between items-start gap-4 mb-3">
@@ -93,7 +93,7 @@ export const FeatureFlags = () => {
                 </p>
               </div>
 
-              <div className="flex justify-between items-center pt-4 border-t border-gray-100">
+              <div className="flex justify-between items-center pt-4 border-t border-[#eae1e1]/80">
                 <span className="text-xs font-semibold text-[#3b3036]/60 uppercase tracking-wider">Alternar Status</span>
                 {togglingName === flag.name ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
@@ -105,7 +105,7 @@ export const FeatureFlags = () => {
                       checked={flag.enabled}
                       onChange={() => handleToggle(flag.name, flag.enabled)}
                     />
-                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#be8a83]"></div>
+                    <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#be8a83] shadow-inner"></div>
                   </label>
                 )}
               </div>

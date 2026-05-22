@@ -85,38 +85,38 @@ export const Profile = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label className="label-premium">
                 Nome Completo
               </label>
               <input 
                 type="text" 
                 {...register('name', { required: true })} 
-                className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
+                className="input-premium"
               />
             </div>
             
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label className="label-premium">
                 Telefone
               </label>
               <input 
                 type="tel" 
                 {...register('phone')} 
                 placeholder="(11) 99999-9999" 
-                className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
+                className="input-premium"
               />
             </div>
           </div>
           
           <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+            <label className="label-premium">
               E-mail
             </label>
             <input 
               type="email" 
               {...register('email', { required: true })} 
               disabled 
-              className="w-full text-sm px-4 py-2.5 bg-gray-100 border border-gray-200 rounded-xl text-gray-500 cursor-not-allowed outline-none"
+              className="input-premium bg-gray-100 text-gray-500 cursor-not-allowed opacity-60"
             />
             <p className="text-xs text-gray-400">
               O email não pode ser alterado, pois é usado para login.
@@ -125,14 +125,14 @@ export const Profile = () => {
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label className="label-premium">
                 Nova Senha
               </label>
               <input 
                 type="password" 
                 {...register('password')} 
                 placeholder="Deixe em branco para não alterar" 
-                className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
+                className="input-premium"
               />
             </div>
           </div>
@@ -141,7 +141,7 @@ export const Profile = () => {
             <button 
               type="submit" 
               disabled={isSaving}
-              className="flex items-center justify-center gap-2 px-5 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-xs disabled:opacity-50 disabled:pointer-events-none"
+              className="btn-premium disabled:opacity-50"
             >
               {isSaving ? (
                 <div className="animate-spin rounded-full h-4 w-4 border-t-2 border-b-2 border-white"></div>

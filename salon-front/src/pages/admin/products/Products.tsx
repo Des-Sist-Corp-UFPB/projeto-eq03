@@ -10,8 +10,8 @@ import type { ProductData } from './services/products';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { useAlert } from '../../../hooks/useAlert';
 
-const inputCls = 'w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all';
-const labelCls = 'block text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider mb-1.5';
+const inputCls = 'input-premium';
+const labelCls = 'label-premium';
 
 export const Products = () => {
   const [products, setProducts] = useState<ProductData[]>([]);
@@ -96,12 +96,12 @@ export const Products = () => {
       render: (item: ProductData) => (
         <div className="flex gap-2">
           <PermissionGate method="PUT" endpoint={`/v1/products/${item.id}`}>
-            <button onClick={() => handleOpenForm(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all">
+            <button onClick={() => handleOpenForm(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer">
               <Edit size={15} />
             </button>
           </PermissionGate>
           <PermissionGate method="DELETE" endpoint={`/v1/products/${item.id}`}>
-            <button onClick={() => { setProductToDelete(item.id!); setShowConfirm(true); }} className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all">
+            <button onClick={() => { setProductToDelete(item.id!); setShowConfirm(true); }} className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer">
               <Trash2 size={15} />
             </button>
           </PermissionGate>
@@ -121,14 +121,14 @@ export const Products = () => {
               const val = e.target.value;
               setFilterActive(val === 'ALL' ? undefined : val === 'ACTIVE');
             }}
-            className="text-sm px-3 py-2 bg-white border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all"
+            className="input-premium py-2 text-sm w-auto cursor-pointer"
           >
             <option value="ALL">Todos os Registros</option>
             <option value="ACTIVE">Apenas Ativos</option>
             <option value="INACTIVE">Apenas Inativos</option>
           </select>
           <PermissionGate method="POST" endpoint="/v1/products">
-            <button onClick={() => handleOpenForm()} className="flex items-center gap-2 px-4 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-xs">
+            <button onClick={() => handleOpenForm()} className="btn-premium">
               <Plus size={18} /> Novo Produto
             </button>
           </PermissionGate>

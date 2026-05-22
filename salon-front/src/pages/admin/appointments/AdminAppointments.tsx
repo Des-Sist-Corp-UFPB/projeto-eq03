@@ -14,8 +14,8 @@ import type { UserData } from '../users/services/users';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
-const selectCls = 'w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all';
-const labelCls = 'block text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider mb-1.5';
+const selectCls = 'input-premium';
+const labelCls = 'label-premium';
 
 function toLocalDateTimeIso(dtLocal: string): string {
   if (!dtLocal) return '';
@@ -177,7 +177,7 @@ export const AdminAppointments = () => {
     };
     const labels: Record<string, string> = { PENDING: 'Pendente', REQUESTED: 'Solicitado', CONFIRMED: 'Confirmado', DECLINED: 'Recusado', DONE: 'Concluído', CANCELLED: 'Cancelado' };
     return (
-      <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-semibold whitespace-nowrap ${styles[status] || 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${styles[status] || 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
         {labels[status] || status}
       </span>
     );
@@ -224,14 +224,14 @@ export const AdminAppointments = () => {
         <div className="flex flex-col items-start gap-2">
           {getStatusBadge(item.status)}
           {item.status === 'REQUESTED' && (
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap gap-1.5 mt-1">
               <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/confirm`}>
-                <button onClick={() => { setConfirmTarget(item); setConfirmDateTime(''); }} className="px-2.5 py-1 bg-[#be8a83] text-white hover:bg-[#a6726b] text-xs font-semibold rounded-lg transition-all">
+                <button onClick={() => { setConfirmTarget(item); setConfirmDateTime(''); }} className="px-2.5 py-1 bg-[#be8a83] text-white hover:bg-[#a6726b] text-xs font-semibold rounded-lg transition-all cursor-pointer">
                   Definir horário
                 </button>
               </PermissionGate>
               <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/decline`}>
-                <button onClick={() => handleDecline(item.id)} className="px-2.5 py-1 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all">
+                <button onClick={() => handleDecline(item.id)} className="px-2.5 py-1 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all cursor-pointer">
                   Recusar
                 </button>
               </PermissionGate>
@@ -242,7 +242,7 @@ export const AdminAppointments = () => {
               <select
                 value={item.status}
                 onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all"
+                className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all cursor-pointer mt-1"
                 style={{ width: '140px' }}
               >
                 <option value="PENDING">Pendente</option>
@@ -262,7 +262,7 @@ export const AdminAppointments = () => {
           <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/cancel`}>
             <button
               onClick={() => { setAppointmentToCancel(item.id); setShowConfirm(true); }}
-              className="px-2.5 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all whitespace-nowrap"
+              className="px-2.5 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer hover:border-rose-300"
             >
               Cancelar
             </button>
@@ -273,20 +273,20 @@ export const AdminAppointments = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Agendamentos (Admin)</h2>
         <PermissionGate method="POST" endpoint="/v1/appointments">
-          <button onClick={() => setShowModal(true)} className="flex items-center gap-2 px-4 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-xs">
+          <button onClick={() => setShowModal(true)} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10 hover:shadow-lg">
             <Plus size={18} /> Novo Agendamento
           </button>
         </PermissionGate>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#3b3036]/60 py-8">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
-          Carregando agendamentos...
+        <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#be8a83]"></div>
+          <span>Carregando agendamentos...</span>
         </div>
       ) : (
         <Table columns={columns} data={appointments} keyExtractor={(item) => item.id?.toString() || Math.random().toString()} />
@@ -294,9 +294,9 @@ export const AdminAppointments = () => {
 
       {/* Create Appointment Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#261f23]/40 backdrop-blur-md">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-2xl border border-[#eae1e1]/85 overflow-hidden animate-scale-up">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#eae1e1] bg-[#fcf9f9]/50">
               <h3 className="font-heading text-lg font-bold text-[#3b3036]">Novo Agendamento</h3>
               <button onClick={() => setShowModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"><X size={20} /></button>
             </div>
@@ -330,13 +330,13 @@ export const AdminAppointments = () => {
                     <p className="text-xs text-gray-400 mt-1">Horário livre — sem grade fixa no sistema.</p>
                   </div>
                 </div>
-                <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
+                <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
                   O agendamento nasce já <strong>confirmado</strong>. Clientes pelo site enviam uma <strong>solicitação</strong> para você aceitar e marcar o horário.
                 </div>
               </div>
-              <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2 border border-gray-200 font-semibold text-sm text-[#3b3036] hover:bg-gray-50 rounded-xl transition-all">Fechar</button>
-                <button type="submit" disabled={isSaving} className="px-5 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all disabled:opacity-50">
+              <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#eae1e1] bg-[#fcf9f9]/50">
+                <button type="button" onClick={() => setShowModal(false)} className="px-5 py-2.5 border border-[#eae1e1] font-semibold text-sm text-[#3b3036] hover:bg-white hover:border-[#be8a83]/50 rounded-xl transition-all">Fechar</button>
+                <button type="submit" disabled={isSaving} className="px-5 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-md shadow-[#be8a83]/10 disabled:opacity-50">
                   {isSaving ? 'Salvando...' : 'Criar Agendamento'}
                 </button>
               </div>
@@ -347,9 +347,9 @@ export const AdminAppointments = () => {
 
       {/* Confirm DateTime Modal */}
       {confirmTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-gray-100 overflow-hidden">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gray-50/50">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#261f23]/40 backdrop-blur-md">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-md border border-[#eae1e1]/85 overflow-hidden animate-scale-up">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-[#eae1e1] bg-[#fcf9f9]/50">
               <h3 className="font-heading text-lg font-bold text-[#3b3036]">Confirmar horário</h3>
               {!confirmSaving && <button onClick={() => setConfirmTarget(null)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"><X size={20} /></button>}
             </div>
@@ -362,9 +362,9 @@ export const AdminAppointments = () => {
                 <input type="datetime-local" value={confirmDateTime} onChange={(e) => setConfirmDateTime(e.target.value)} className={selectCls} />
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
-              <button type="button" onClick={() => setConfirmTarget(null)} disabled={confirmSaving} className="px-5 py-2 border border-gray-200 font-semibold text-sm text-[#3b3036] hover:bg-gray-50 rounded-xl transition-all disabled:opacity-50">Cancelar</button>
-              <button onClick={submitConfirm} disabled={confirmSaving || !confirmDateTime} className="px-5 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all disabled:opacity-50">
+            <div className="flex justify-end gap-3 px-6 py-4 border-t border-[#eae1e1] bg-[#fcf9f9]/50">
+              <button type="button" onClick={() => setConfirmTarget(null)} disabled={confirmSaving} className="px-5 py-2.5 border border-[#eae1e1] font-semibold text-sm text-[#3b3036] hover:bg-white hover:border-[#be8a83]/50 rounded-xl transition-all disabled:opacity-50">Cancelar</button>
+              <button onClick={submitConfirm} disabled={confirmSaving || !confirmDateTime} className="px-5 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-md shadow-[#be8a83]/10 disabled:opacity-50">
                 {confirmSaving ? 'Salvando...' : 'Confirmar solicitação'}
               </button>
             </div>

@@ -10,8 +10,8 @@ import type { CashFlowData } from './services/cashflow';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { useAlert } from '../../../hooks/useAlert';
 
-const inputCls = 'w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all';
-const labelCls = 'block text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider mb-1.5';
+const inputCls = 'input-premium';
+const labelCls = 'label-premium';
 
 export const CashFlow = () => {
   const [cashFlows, setCashFlows] = useState<CashFlowData[]>([]);
@@ -102,7 +102,8 @@ export const CashFlow = () => {
         <PermissionGate method="DELETE" endpoint={`/v1/cashflow/${item.id}`}>
           <button
             onClick={() => { setItemToDelete(item.id!); setShowConfirm(true); }}
-            className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all"
+            className="p-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 border border-[#eae1e1] hover:border-rose-200 rounded-xl transition-all cursor-pointer"
+            title="Excluir Registro"
           >
             <Trash2 size={15} />
           </button>
@@ -112,37 +113,37 @@ export const CashFlow = () => {
   ];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-fade-in-up">
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Fluxo de Caixa</h2>
         <PermissionGate method="POST" endpoint="/v1/cashflow">
-          <button onClick={handleOpenForm} className="flex items-center gap-2 px-4 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-xs">
+          <button onClick={handleOpenForm} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10 hover:shadow-lg">
             <Plus size={18} /> Novo Registro
           </button>
         </PermissionGate>
       </div>
 
-      <div className="flex flex-wrap gap-4 items-end bg-white rounded-2xl border border-gray-100 p-4 shadow-xs">
-        <div className="space-y-1.5">
+      <div className="flex flex-wrap gap-4 items-end bg-white/80 backdrop-blur-md rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm">
+        <div className="space-y-1">
           <label className={labelCls}>De</label>
           <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={inputCls} />
         </div>
-        <div className="space-y-1.5">
+        <div className="space-y-1">
           <label className={labelCls}>Até</label>
           <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputCls} />
         </div>
         <button
           onClick={() => { setDateFrom(''); setDateTo(''); }}
-          className="px-4 py-2.5 border border-gray-200 text-sm font-semibold text-[#3b3036]/80 hover:bg-gray-50 rounded-xl transition-all"
+          className="px-5 py-2.5 border border-[#eae1e1] text-sm font-semibold text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] bg-white rounded-xl transition-all duration-200 cursor-pointer"
         >
           Limpar Filtros
         </button>
       </div>
 
       {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#3b3036]/60 py-8">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
-          Carregando registros...
+        <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
+          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#be8a83]"></div>
+          <span>Carregando registros...</span>
         </div>
       ) : (
         <Table columns={columns} data={cashFlows} keyExtractor={(item) => item.id!} />
@@ -159,18 +160,18 @@ export const CashFlow = () => {
           </div>
           <div>
             <label className={labelCls}>Valor (R$)</label>
-            <input type="number" step="0.01" className={`${inputCls} ${errors.amount ? 'border-rose-300' : ''}`} {...register('amount', { required: 'Valor é obrigatório', min: { value: 0.01, message: 'Valor inválido' } })} />
-            {errors.amount && <span className="text-xs text-rose-500 font-semibold">{errors.amount.message}</span>}
+            <input type="number" step="0.01" className={`${inputCls} ${errors.amount ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`} {...register('amount', { required: 'Valor é obrigatório', min: { value: 0.01, message: 'Valor inválido' } })} />
+            {errors.amount && <span className="text-xs text-rose-500 font-semibold mt-1 block">{errors.amount.message}</span>}
           </div>
           <div>
             <label className={labelCls}>Descrição</label>
-            <input type="text" className={`${inputCls} ${errors.description ? 'border-rose-300' : ''}`} {...register('description', { required: 'Descrição é obrigatória' })} />
-            {errors.description && <span className="text-xs text-rose-500 font-semibold">{errors.description.message}</span>}
+            <input type="text" className={`${inputCls} ${errors.description ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`} {...register('description', { required: 'Descrição é obrigatória' })} />
+            {errors.description && <span className="text-xs text-rose-500 font-semibold mt-1 block">{errors.description.message}</span>}
           </div>
           <div>
             <label className={labelCls}>Data</label>
-            <input type="date" className={`${inputCls} ${errors.date ? 'border-rose-300' : ''}`} {...register('date', { required: 'Data é obrigatória' })} />
-            {errors.date && <span className="text-xs text-rose-500 font-semibold">{errors.date.message}</span>}
+            <input type="date" className={`${inputCls} ${errors.date ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`} {...register('date', { required: 'Data é obrigatória' })} />
+            {errors.date && <span className="text-xs text-rose-500 font-semibold mt-1 block">{errors.date.message}</span>}
           </div>
         </div>
       </ModalForm>

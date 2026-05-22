@@ -59,15 +59,15 @@ export const Login = () => {
           
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label className="label-premium">
                 E-mail
               </label>
               <input
                 type="email"
                 placeholder="seuemail@exemplo.com"
                 {...register('email', { required: 'Email é obrigatório' })}
-                className={`w-full text-sm px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 outline-none transition-all ${
-                  errors.email ? 'border-rose-300 focus:border-rose-500' : 'border-gray-200 focus:border-[#be8a83]'
+                className={`input-premium ${
+                  errors.email ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
               />
               {errors.email && (
@@ -76,15 +76,15 @@ export const Login = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label className="label-premium">
                 Senha
               </label>
               <input
                 type="password"
                 placeholder="Sua senha"
                 {...register('password', { required: 'Senha é obrigatória' })}
-                className={`w-full text-sm px-4 py-3 bg-gray-50 border rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 outline-none transition-all ${
-                  errors.password ? 'border-rose-300 focus:border-rose-500' : 'border-gray-200 focus:border-[#be8a83]'
+                className={`input-premium ${
+                  errors.password ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
               />
               {errors.password && (
@@ -95,7 +95,7 @@ export const Login = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full mt-6 py-3 bg-[#be8a83] text-white font-semibold text-sm rounded-xl hover:bg-[#a6726b] hover:shadow-lg hover:shadow-[#be8a83]/20 transition-all duration-200 active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none"
+              className="btn-premium w-full py-3 mt-6"
             >
               {isLoading ? 'Acessando...' : 'Entrar na minha conta'}
             </button>

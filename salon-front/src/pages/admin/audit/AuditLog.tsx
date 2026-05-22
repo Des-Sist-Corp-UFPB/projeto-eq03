@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Filter, Eye, X, AlertCircle } from 'lucide-react';
+import { Filter, Eye, X, AlertCircle, Copy, Check } from 'lucide-react';
 import api from '../../../services/api';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
@@ -27,6 +27,7 @@ export const AuditLog = () => {
   const [filterEntity, setFilterEntity] = useState('');
   const [filterUser, setFilterUser] = useState('');
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
+  const [copiedFullJson, setCopiedFullJson] = useState(false);
   const { error: showError } = useAlert();
 
   const loadAuditLogs = async () => {
@@ -104,7 +105,8 @@ export const AuditLog = () => {
 
   const formatUserEmail = (email: string | null) => {
     if (!email || email === 'anonymousUser') return 'Sistema / Visitante';
-    return email;
+    const prefix = email.split('@')[0];
+    return prefix.charAt(0).toUpperCase() + prefix.slice(1);
   };
 
   const getPrettyDetails = (detailsStr?: string) => {
@@ -129,6 +131,16 @@ export const AuditLog = () => {
     return JSON.stringify({ ...log, details: parsedDetails }, null, 2);
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedFullJson(true);
+      setTimeout(() => setCopiedFullJson(false), 2000);
+    } catch {
+      // ignore
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       {/* Header */}
@@ -144,8 +156,8 @@ export const AuditLog = () => {
       {/* Filters Card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="label-premium">
               Usuário / E-mail
             </label>
             <input
@@ -156,12 +168,12 @@ export const AuditLog = () => {
                 setFilterUser(e.target.value);
                 setPage(0);
               }}
-              className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
+              className="input-premium"
             />
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="label-premium">
               Ação
             </label>
             <select
@@ -170,7 +182,7 @@ export const AuditLog = () => {
                 setFilterAction(e.target.value);
                 setPage(0);
               }}
-              className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
+              className="input-premium"
             >
               <option value="">Todas as ações</option>
               <option value="CREATE">CREATE</option>
@@ -181,8 +193,8 @@ export const AuditLog = () => {
             </select>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+          <div className="space-y-1">
+            <label className="label-premium">
               Entidade
             </label>
             <select
@@ -191,7 +203,7 @@ export const AuditLog = () => {
                 setFilterEntity(e.target.value);
                 setPage(0);
               }}
-              className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
+              className="input-premium"
             >
               <option value="">Todas as entidades</option>
               <option value="User">User</option>
@@ -211,7 +223,7 @@ export const AuditLog = () => {
               setFilterUser('');
               setPage(0);
             }}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-200 text-sm font-semibold text-[#3b3036]/80 hover:bg-gray-50 hover:text-[#3b3036] rounded-xl transition-all w-full sm:w-auto"
+            className="flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-200 text-sm font-semibold text-[#3b3036]/80 hover:bg-gray-50 hover:text-[#3b3036] rounded-xl transition-all h-[42px] w-full sm:w-auto cursor-pointer"
           >
             <Filter size={16} /> Limpar Filtros
           </button>
@@ -252,7 +264,7 @@ export const AuditLog = () => {
                     <td className="px-6 py-3.5 text-sm text-[#3b3036]/60 font-medium whitespace-nowrap">
                       {formatDate(log.createdAt)}
                     </td>
-                    <td className="px-6 py-3.5 text-sm font-semibold text-[#3b3036] max-w-[200px] truncate">
+                    <td className="px-6 py-3.5 text-sm font-semibold text-[#3b3036] max-w-[200px] truncate" title={log.userEmail}>
                       {formatUserEmail(log.userEmail)}
                     </td>
                     <td className="px-6 py-3.5 whitespace-nowrap">
@@ -273,7 +285,7 @@ export const AuditLog = () => {
                     <td className="px-6 py-3.5 text-right whitespace-nowrap">
                       <button
                         onClick={() => setSelectedLog(log)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#be8a83] hover:text-white bg-[#be8a83]/5 hover:bg-[#be8a83] border border-[#be8a83]/20 hover:border-transparent rounded-lg transition-all"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#be8a83] hover:text-white bg-[#be8a83]/5 hover:bg-[#be8a83] border border-[#be8a83]/20 hover:border-transparent rounded-lg transition-all cursor-pointer"
                       >
                         <Eye size={14} /> Detalhes
                       </button>
@@ -298,7 +310,7 @@ export const AuditLog = () => {
             <button
               onClick={() => setPage(Math.max(0, page - 1))}
               disabled={page === 0}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
             >
               Anterior
             </button>
@@ -308,7 +320,7 @@ export const AuditLog = () => {
             <button
               onClick={() => setPage(page + 1)}
               disabled={(page + 1) * PAGE_SIZE >= totalItems}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all"
+              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
             >
               Próxima
             </button>
@@ -332,7 +344,7 @@ export const AuditLog = () => {
               </div>
               <button
                 onClick={() => setSelectedLog(null)}
-                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all"
+                className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-all cursor-pointer"
               >
                 <X size={20} />
               </button>
@@ -343,29 +355,29 @@ export const AuditLog = () => {
               {/* Structured Metadata Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-semibold text-[#3b3036]/50 uppercase tracking-wider">Ação</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Ação</span>
                   <span className="mt-1 block">{getActionBadge(selectedLog.action)}</span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-semibold text-[#3b3036]/50 uppercase tracking-wider">Entidade Afetada</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Entidade Afetada</span>
                   <span className="mt-1.5 block text-sm font-semibold text-[#3b3036]">{selectedLog.entityType}</span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-semibold text-[#3b3036]/50 uppercase tracking-wider">ID de Referência</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">ID de Referência</span>
                   <span className="mt-1.5 block text-sm font-mono text-gray-600">{selectedLog.entityId || 'N/A'}</span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-semibold text-[#3b3036]/50 uppercase tracking-wider">Usuário / Autor</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Usuário / Autor</span>
                   <span className="mt-1.5 block text-sm font-semibold text-[#3b3036] truncate" title={selectedLog.userEmail}>
-                    {formatUserEmail(selectedLog.userEmail)}
+                    {selectedLog.userEmail || 'Sistema / Visitante'}
                   </span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-semibold text-[#3b3036]/50 uppercase tracking-wider">Endereço IP</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Endereço IP</span>
                   <span className="mt-1.5 block text-sm font-mono text-gray-600">{selectedLog.ipAddress || 'Desconhecido'}</span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-semibold text-[#3b3036]/50 uppercase tracking-wider">Status Execução</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Status Execução</span>
                   <span className="mt-1 block">{getStatusBadge(selectedLog.status)}</span>
                 </div>
               </div>
@@ -373,16 +385,32 @@ export const AuditLog = () => {
               {/* Pretty parsed details string */}
               {selectedLog.details && (
                 <div className="space-y-2">
-                  <span className="block text-xs font-semibold text-[#3b3036]/60 uppercase tracking-wider">Resumo do Payload / Detalhes</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">Resumo do Payload / Detalhes</span>
                   <pre className="bg-[#261f23] text-[#e5a49c] p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/10 max-h-40 shadow-inner">
                     {getPrettyDetails(selectedLog.details)}
                   </pre>
                 </div>
               )}
 
-              {/* Complete JSON Payload */}
+              {/* Complete JSON Payload with copy tool */}
               <div className="space-y-2">
-                <span className="block text-xs font-semibold text-[#3b3036]/60 uppercase tracking-wider">JSON Completo do Log</span>
+                <div className="flex justify-between items-center">
+                  <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">JSON Completo do Log</span>
+                  <button 
+                    onClick={() => copyToClipboard(getFullLogJson(selectedLog))}
+                    className="flex items-center gap-1 text-xs text-[#be8a83] hover:text-[#a6726b] font-semibold bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200 transition-all cursor-pointer"
+                  >
+                    {copiedFullJson ? (
+                      <>
+                        <Check size={12} /> Copiado!
+                      </>
+                    ) : (
+                      <>
+                        <Copy size={12} /> Copiar JSON
+                      </>
+                    )}
+                  </button>
+                </div>
                 <pre className="bg-[#1e191c] text-green-400 p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/20 max-h-64 shadow-inner">
                   {getFullLogJson(selectedLog)}
                 </pre>
@@ -393,7 +421,7 @@ export const AuditLog = () => {
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-100 bg-gray-50/50">
               <button
                 onClick={() => setSelectedLog(null)}
-                className="px-5 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-xs"
+                className="px-5 py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all shadow-xs cursor-pointer"
               >
                 Fechar Detalhes
               </button>
