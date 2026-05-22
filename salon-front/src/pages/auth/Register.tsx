@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
-import { AlertCircle } from 'lucide-react';
+import { AlertCircle, ArrowLeft } from 'lucide-react';
 
 interface RegisterFormData {
   name: string;
@@ -36,19 +36,57 @@ export const Register = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-[#fcf9f9] to-[#f7ebeb] px-4 py-8">
-      <div className="bg-white rounded-3xl border border-gray-100 shadow-xl overflow-hidden w-full max-w-4xl flex">
-        {/* Left Side: Form */}
-        <div className="w-full lg:w-1/2 px-6 py-12 sm:px-12 flex flex-col justify-center max-w-md mx-auto">
-          <h2 className="font-heading text-3xl font-extrabold text-[#3b3036] tracking-tight">
-            Cadastre-se
-          </h2>
-          <p className="text-sm text-[#3b3036]/60 mt-2 mb-8">
-            Crie sua conta para agendar seus serviços.
+    <div className="min-h-screen w-full flex flex-col md:flex-row bg-white overflow-hidden">
+      {/* Left Side: Photo of the business */}
+      <div className="hidden md:flex md:w-1/2 h-screen relative bg-[url('https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000&auto=format&fit=crop')] bg-center bg-cover flex-col justify-between p-12 text-white">
+        <div className="absolute inset-0 bg-[#3b3036]/40 backdrop-blur-[2px] z-10" />
+        
+        {/* Logo/Brand Title */}
+        <div className="z-20">
+          <Link to="/" className="font-heading text-3xl font-bold tracking-wider text-white hover:text-[#e5a49c] transition-colors">
+            SASS SALON
+          </Link>
+        </div>
+
+        {/* Brand Tagline */}
+        <div className="z-20 space-y-4">
+          <h1 className="font-heading text-4xl lg:text-5xl font-light leading-tight">
+            Seja bem-vinda ao seu momento de autocuidado.
+          </h1>
+          <p className="text-[#fcf9f9]/80 text-sm max-w-md font-sans tracking-wide">
+            Crie sua conta para ter acesso rápido a agendamentos, histórico de serviços e promoções exclusivas.
           </p>
+        </div>
+
+        {/* Footer/Copyright inside image */}
+        <div className="z-20 text-xs text-[#fcf9f9]/60">
+          © {new Date().getFullYear()} Sass Salon. Todos os direitos reservados.
+        </div>
+      </div>
+
+      {/* Right Side: Form */}
+      <div className="w-full md:w-1/2 min-h-screen bg-white flex flex-col justify-center px-6 py-12 sm:px-16 lg:px-24 relative overflow-y-auto">
+        {/* Back Button */}
+        <Link 
+          to="/" 
+          className="absolute top-6 left-6 sm:left-12 flex items-center gap-2 text-sm text-[#7a7074] hover:text-[#3b3036] font-semibold transition-colors group"
+        >
+          <ArrowLeft size={16} className="transform group-hover:-translate-x-1 transition-transform" />
+          Voltar para o início
+        </Link>
+
+        <div className="w-full max-w-md mx-auto space-y-8">
+          <div>
+            <h2 className="font-heading text-3xl font-bold text-[#3b3036] tracking-tight">
+              Cadastre-se
+            </h2>
+            <p className="text-sm text-[#7a7074] mt-2">
+              Crie sua conta para agendar seus serviços em poucos cliques.
+            </p>
+          </div>
 
           {errorMsg && (
-            <div className="mb-6 p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-sm flex items-start gap-2.5 animate-fadeIn">
+            <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-sm flex items-start gap-2.5 animate-fadeIn">
               <AlertCircle size={18} className="shrink-0 mt-0.5" />
               <span>{errorMsg}</span>
             </div>
@@ -121,22 +159,19 @@ export const Register = () => {
             <button
               type="submit"
               disabled={isLoading}
-              className="btn-premium w-full py-3 mt-6"
+              className="w-full py-3 bg-[#be8a83] hover:bg-[#a1706a] text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-[#be8a83]/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2 mt-6"
             >
               {isLoading ? 'Cadastrando...' : 'Criar minha conta'}
             </button>
             
             <div className="text-center pt-4 text-sm">
-              <span className="text-gray-500">Já tem uma conta? </span>
+              <span className="text-[#7a7074]">Já tem uma conta? </span>
               <Link to="/login" className="text-[#be8a83] font-semibold hover:underline">
                 Entre aqui
               </Link>
             </div>
           </form>
         </div>
-
-        {/* Right Side: Image (large screens only) */}
-        <div className="hidden lg:block lg:w-1/2 bg-[url('https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000&auto=format&fit=crop')] bg-center bg-cover"></div>
       </div>
     </div>
   );
