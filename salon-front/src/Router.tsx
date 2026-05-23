@@ -1,4 +1,7 @@
-import { Routes, Route } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Routes, Route, Navigate, Link } from 'react-router-dom';
+import { Lock, ArrowRight } from 'lucide-react';
+
 import { DefaultLayout } from './layouts/DefaultLayout';
 import { AdminLayout } from './layouts/AdminLayout';
 import { CustomerLayout } from './layouts/CustomerLayout';
@@ -21,15 +24,115 @@ import { Reports } from './pages/admin/reports/Reports';
 import { AuditLog } from './pages/admin/audit/AuditLog';
 import { NotFound } from './pages/error/NotFound';
 import { Profile } from './pages/profile/Profile';
+import { featureFlagsService } from './services/featureFlags';
+
+// Componente simples e moderno de Manutenção / Em Breve (suporta tema escuro)
+const MaintenancePage = () => {
+  return (
+    <div className="min-h-screen bg-[#fcf9f9] dark:bg-[#0b0f17] flex flex-col justify-center items-center px-6 py-12 transition-colors duration-300">
+      <div className="max-w-md w-full text-center space-y-8 bg-white dark:bg-[#161c2a] border border-[#eae1e1] dark:border-[#1e293b] rounded-3xl p-8 shadow-sm">
+        <div className="flex justify-center">
+          <div className="w-16 h-16 bg-[#be8a83]/10 dark:bg-[#e5a49c]/10 rounded-full flex items-center justify-center text-[#be8a83] dark:text-[#e5a49c]">
+            <Lock size={32} />
+          </div>
+        </div>
+
+        <div className="space-y-3">
+          <h1 className="font-heading text-3xl font-bold text-[#3b3036] dark:text-white">
+            Portal em Configuração
+          </h1>
+          <p className="text-sm text-[#7a7074] dark:text-[#9ca3af] leading-relaxed">
+            Estamos preparando novidades incríveis para você. No momento, a área pública de clientes está temporariamente desativada para ajustes no salão.
+          </p>
+        </div>
+
+        <div className="pt-4 border-t border-[#eae1e1] dark:border-[#1e293b]">
+          <Link
+            to="/login"
+            className="inline-flex items-center gap-2 text-sm font-semibold text-[#be8a83] dark:text-[#e5a49c] hover:underline"
+          >
+            Acesso Administrativo
+            <ArrowRight size={16} />
+          </Link>
+        </div>
+      </div>
+      <p className="text-xs text-[#7a7074]/60 dark:text-[#9ca3af]/50 mt-6">
+        © {new Date().getFullYear()} Sass Salon. Todos os direitos reservados.
+      </p>
+    </div>
+  );
+};
 
 export const Router = () => {
+  const [isPortalEnabled, setIsPortalEnabled] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    const checkFlags = async () => {
+      try {
+        const flags = await featureFlagsService.getPublicFlags();
+        const portalFlag = flags.find(f => f.name === 'ENABLE_CUSTOMER_PORTAL');
+        // Por segurança, se a flag não existir ainda, assumimos desativada (conforme valor padrão da migration)
+        setIsPortalEnabled(portalFlag ? portalFlag.enabled : false);
+      } catch (error) {
+        console.error("Erro ao carregar feature flags:", error);
+        // Em caso de falha de conexão com a API, assume-se ativa para não bloquear se houver falha de rede temporária
+        setIsPortalEnabled(true);
+      }
+    };
+    checkFlags();
+  }, []);
+
+  if (isPortalEnabled === null) {
+    return (
+      <div className="flex justify-center items-center h-screen bg-[#fcf9f9] dark:bg-[#0b0f17]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#be8a83]"></div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
-      <Route element={<DefaultLayout />}>
-        <Route path="/" element={<PublicHome />} />
-        <Route path="/services" element={<PublicServices />} />
-        <Route path="/appointment" element={<PublicAppointment />} />
-      </Route>
+      {/* Redirecionamentos para rotas administrativas intuitivas */}
+      <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
+      <Route path="/sysadmin" element={<Navigate to="/sysadmin/feature-flags" replace />} />
+
+      {/* Portal do Cliente e Home - Condicional à Feature Flag */}
+      {!isPortalEnabled ? (
+        <>
+          <Route path="/" element={<MaintenancePage />} />
+          <Route path="/services" element={<Navigate to="/" replace />} />
+          <Route path="/appointment" element={<Navigate to="/" replace />} />
+          <Route path="/my-appointments" element={<Navigate to="/" replace />} />
+          <Route path="/profile" element={<Navigate to="/" replace />} />
+        </>
+      ) : (
+        <>
+          <Route element={<DefaultLayout />}>
+            <Route path="/" element={<PublicHome />} />
+            <Route path="/services" element={<PublicServices />} />
+            <Route path="/appointment" element={<PublicAppointment />} />
+          </Route>
+
+          <Route element={<CustomerLayout />}>
+            <Route
+              path="/my-appointments"
+              element={
+                <ProtectedRoute>
+                  <MyAppointments />
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/profile"
+              element={
+                <ProtectedRoute>
+                  <Profile />
+                </ProtectedRoute>
+              }
+            />
+          </Route>
+        </>
+      )}
 
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
@@ -115,25 +218,6 @@ export const Router = () => {
           element={
             <ProtectedRoute requiredRole="SYSADMIN">
               <AuditLog />
-            </ProtectedRoute>
-          }
-        />
-      </Route>
-
-      <Route element={<CustomerLayout />}>
-        <Route
-          path="/my-appointments"
-          element={
-            <ProtectedRoute>
-              <MyAppointments />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/profile"
-          element={
-            <ProtectedRoute>
-              <Profile />
             </ProtectedRoute>
           }
         />
