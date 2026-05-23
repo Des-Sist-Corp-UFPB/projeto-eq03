@@ -33,6 +33,20 @@ export interface AppointmentReportResponse {
   period: string;
 }
 
+export interface PayrollItem {
+  employeeId: number;
+  employeeName: string;
+  remunerationType?: 'SALARIO_FIXO' | 'COMISSIONADO' | 'FIXO_E_COMISSIONADO';
+  commissionScope?: 'INDIVIDUAL' | 'GLOBAL';
+  baseAmount: number;
+  calculatedPay: number;
+}
+
+export interface PayrollReportResponse {
+  items: PayrollItem[];
+  period: string;
+}
+
 export const reportsApi = {
   getFinancialReport: async (from?: string, to?: string) => {
     const params: Record<string, string> = {};
@@ -47,6 +61,14 @@ export const reportsApi = {
     if (from) params.from = from;
     if (to) params.to = to;
     const { data } = await api.get<AppointmentReportResponse>('/reports/appointments', { params });
+    return data;
+  },
+
+  getPayrollReport: async (from?: string, to?: string) => {
+    const params: Record<string, string> = {};
+    if (from) params.from = from;
+    if (to) params.to = to;
+    const { data } = await api.get<PayrollReportResponse>('/reports/payroll', { params });
     return data;
   }
 };

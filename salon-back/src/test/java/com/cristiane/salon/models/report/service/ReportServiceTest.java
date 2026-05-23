@@ -13,6 +13,7 @@ import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.EmployeeFinanceResponse;
+import com.cristiane.salon.models.report.dto.PayrollReportResponse;
 import com.cristiane.salon.models.service.entity.SalonService;
 import com.cristiane.salon.models.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
@@ -239,5 +240,98 @@ class ReportServiceTest {
         assertEquals(1, report.pending());
         assertEquals(2, report.byEmployee().get("Employee 1"));
         assertEquals(2, report.byService().get("Haircut"));
+    }
+
+    @Test
+    void shouldGeneratePayrollReportCorrectly() {
+        // Create Employees
+        User user1 = new User();
+        user1.setName("Alice");
+        Employee emp1 = new Employee();
+        emp1.setId(1L);
+        emp1.setUser(user1);
+        emp1.setRemunerationType(RemunerationType.SALARIO_FIXO);
+        emp1.setRemunerationValue(new BigDecimal("400.00"));
+
+        User user2 = new User();
+        user2.setName("Bob");
+        Employee emp2 = new Employee();
+        emp2.setId(2L);
+        emp2.setUser(user2);
+        emp2.setRemunerationType(RemunerationType.COMISSIONADO);
+        emp2.setCommissionScope(CommissionScope.INDIVIDUAL);
+        emp2.setRemunerationValue(new BigDecimal("10.00")); // 10%
+
+        User user3 = new User();
+        user3.setName("Carol");
+        Employee emp3 = new Employee();
+        emp3.setId(3L);
+        emp3.setUser(user3);
+        emp3.setRemunerationType(RemunerationType.COMISSIONADO);
+        emp3.setCommissionScope(CommissionScope.GLOBAL);
+        emp3.setRemunerationValue(new BigDecimal("5.00")); // 5%
+
+        User user4 = new User();
+        user4.setName("Dave");
+        Employee emp4 = new Employee();
+        emp4.setId(4L);
+        emp4.setUser(user4);
+        emp4.setRemunerationType(RemunerationType.FIXO_E_COMISSIONADO);
+        emp4.setRemunerationValue(new BigDecimal("300.00")); // Base
+        emp4.setCommissionValue(new BigDecimal("10.00")); // 10%
+        emp4.setCommissionScope(CommissionScope.INDIVIDUAL);
+
+        when(employeeRepository.findAll()).thenReturn(List.of(emp1, emp2, emp3, emp4));
+
+        // Create Appointments for period
+        SalonService service = new SalonService();
+        service.setPrice(new BigDecimal("200.00"));
+
+        Appointment aptBob = new Appointment();
+        aptBob.setStatus(AppointmentStatus.DONE);
+        aptBob.setEmployee(emp2);
+        aptBob.setSalonService(service);
+        aptBob.setScheduledAt(LocalDateTime.now());
+
+        Appointment aptAlice = new Appointment();
+        aptAlice.setStatus(AppointmentStatus.DONE);
+        aptAlice.setEmployee(emp1);
+        aptAlice.setSalonService(service);
+        aptAlice.setScheduledAt(LocalDateTime.now());
+
+        Appointment aptDave = new Appointment();
+        aptDave.setStatus(AppointmentStatus.DONE);
+        aptDave.setEmployee(emp4);
+        aptDave.setSalonService(service);
+        aptDave.setScheduledAt(LocalDateTime.now());
+
+        // Total done appointments value = 200 (Bob) + 200 (Alice) + 200 (Dave) = 600
+        when(appointmentRepository.findAll()).thenReturn(List.of(aptBob, aptAlice, aptDave));
+
+        // When
+        PayrollReportResponse response = reportService.generatePayrollReport(LocalDate.now(), LocalDate.now());
+
+        // Then
+        assertEquals(4, response.items().size());
+        
+        // Alice: FIXED -> base = 0, payout = 400
+        PayrollReportResponse.PayrollItem itemAlice = response.items().stream().filter(i -> i.employeeId().equals(1L)).findFirst().orElseThrow();
+        assertEquals(BigDecimal.ZERO, itemAlice.baseAmount());
+        assertEquals(new BigDecimal("400.00"), itemAlice.calculatedPay());
+
+        // Bob: COMMISSIONED INDIVIDUAL (10% of 200) -> base = 200, payout = 20
+        PayrollReportResponse.PayrollItem itemBob = response.items().stream().filter(i -> i.employeeId().equals(2L)).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("200.00"), itemBob.baseAmount());
+        assertEquals(new BigDecimal("20.00"), itemBob.calculatedPay());
+
+        // Carol: COMMISSIONED GLOBAL (5% of 600) -> base = 600, payout = 30
+        PayrollReportResponse.PayrollItem itemCarol = response.items().stream().filter(i -> i.employeeId().equals(3L)).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("600.00"), itemCarol.baseAmount());
+        assertEquals(new BigDecimal("30.00"), itemCarol.calculatedPay());
+
+        // Dave: HYBRID INDIVIDUAL (300 salary + 10% of 200) -> base = 200, payout = 320
+        PayrollReportResponse.PayrollItem itemDave = response.items().stream().filter(i -> i.employeeId().equals(4L)).findFirst().orElseThrow();
+        assertEquals(new BigDecimal("200.00"), itemDave.baseAmount());
+        assertEquals(new BigDecimal("320.00"), itemDave.calculatedPay());
     }
 }

@@ -2,6 +2,7 @@ package com.cristiane.salon.controller;
 
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
+import com.cristiane.salon.models.report.dto.PayrollReportResponse;
 import com.cristiane.salon.models.report.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -40,5 +41,14 @@ public class ReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(reportService.generateAppointmentReport(from, to));
+    }
+
+    @GetMapping("/payroll")
+    @PreAuthorize("hasAnyRole('ADMIN')")
+    @Operation(summary = "Gera folha de pagamento e cálculo de comissões por funcionária (Admin)")
+    public ResponseEntity<PayrollReportResponse> getPayrollReport(
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
+        return ResponseEntity.ok(reportService.generatePayrollReport(from, to));
     }
 }

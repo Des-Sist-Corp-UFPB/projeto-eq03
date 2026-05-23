@@ -13,6 +13,7 @@ import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.EmployeeFinanceResponse;
+import com.cristiane.salon.models.report.dto.PayrollReportResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -157,6 +158,75 @@ public class ReportService {
                 byService,
                 period
         );
+    }
+
+    @Transactional(readOnly = true)
+    public PayrollReportResponse generatePayrollReport(LocalDate from, LocalDate to) {
+        if (from == null) from = LocalDate.now().withDayOfMonth(1);
+        if (to == null) to = LocalDate.now().plusDays(30);
+
+        final LocalDate finalFrom = from;
+        final LocalDate finalTo = to;
+
+        List<Appointment> doneAppointments = appointmentRepository.findAll().stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.DONE && isAppointmentInReportPeriod(a, finalFrom, finalTo))
+                .collect(Collectors.toList());
+
+        BigDecimal globalDoneAppointmentsValue = doneAppointments.stream()
+                .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        List<Employee> employees = employeeRepository.findAll();
+        List<PayrollReportResponse.PayrollItem> items = new ArrayList<>();
+
+        for (Employee employee : employees) {
+            List<Appointment> empDoneAppointments = doneAppointments.stream()
+                    .filter(a -> a.getEmployee().getId().equals(employee.getId()))
+                    .collect(Collectors.toList());
+
+            BigDecimal empDoneValue = empDoneAppointments.stream()
+                    .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
+                    .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+            BigDecimal payout = BigDecimal.ZERO;
+            BigDecimal baseAmount = BigDecimal.ZERO;
+
+            if (employee.getRemunerationType() == RemunerationType.SALARIO_FIXO) {
+                payout = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
+                baseAmount = BigDecimal.ZERO;
+            } else if (employee.getRemunerationType() == RemunerationType.COMISSIONADO) {
+                BigDecimal pct = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
+                if (employee.getCommissionScope() == CommissionScope.INDIVIDUAL) {
+                    baseAmount = empDoneValue;
+                } else if (employee.getCommissionScope() == CommissionScope.GLOBAL) {
+                    baseAmount = globalDoneAppointmentsValue;
+                }
+                payout = baseAmount.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            } else if (employee.getRemunerationType() == RemunerationType.FIXO_E_COMISSIONADO) {
+                BigDecimal salary = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
+                BigDecimal pct = employee.getCommissionValue() != null ? employee.getCommissionValue() : BigDecimal.ZERO;
+                BigDecimal commissionPart = BigDecimal.ZERO;
+                if (employee.getCommissionScope() == CommissionScope.INDIVIDUAL) {
+                    baseAmount = empDoneValue;
+                } else if (employee.getCommissionScope() == CommissionScope.GLOBAL) {
+                    baseAmount = globalDoneAppointmentsValue;
+                }
+                commissionPart = baseAmount.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+                payout = salary.add(commissionPart);
+            }
+
+            items.add(new PayrollReportResponse.PayrollItem(
+                    employee.getId(),
+                    employee.getUser().getName(),
+                    employee.getRemunerationType(),
+                    employee.getCommissionScope(),
+                    baseAmount,
+                    payout
+            ));
+        }
+
+        String period = from + " a " + to;
+        return new PayrollReportResponse(items, period);
     }
 
     private static boolean isAppointmentInReportPeriod(Appointment a, LocalDate from, LocalDate to) {
