@@ -206,7 +206,10 @@ public class AppointmentService {
         }
 
         appointment.setStatus(AppointmentStatus.DECLINED);
-        return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
+        Appointment saved = appointmentRepository.save(appointment);
+        // Notify client and staff that their request was declined
+        emailService.sendCancellationNotification(saved);
+        return AppointmentResponse.fromEntity(saved);
     }
 
     @Transactional(readOnly = true)
@@ -291,7 +294,16 @@ public class AppointmentService {
                 }
             }
 
-            return AppointmentResponse.fromEntity(appointmentRepository.save(appointment));
+            Appointment saved = appointmentRepository.save(appointment);
+
+            // Trigger email notifications based on resulting status
+            if (status == AppointmentStatus.CONFIRMED) {
+                emailService.sendConfirmationNotificationToClient(saved);
+            } else if (status == AppointmentStatus.CANCELLED || status == AppointmentStatus.DECLINED) {
+                emailService.sendCancellationNotification(saved);
+            }
+
+            return AppointmentResponse.fromEntity(saved);
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Status inválido");
         }

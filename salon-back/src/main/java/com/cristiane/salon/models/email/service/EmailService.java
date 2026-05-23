@@ -8,6 +8,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
@@ -22,6 +23,7 @@ public class EmailService {
     private final TemplateEngine templateEngine;
     private final AuditLogService auditLogService;
 
+    @Async
     public void sendRequestNotificationToStaff(Appointment appointment) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
@@ -67,6 +69,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendConfirmationNotificationToClient(Appointment appointment) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
@@ -118,6 +121,7 @@ public class EmailService {
         }
     }
 
+    @Async
     public void sendCancellationNotification(Appointment appointment) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
