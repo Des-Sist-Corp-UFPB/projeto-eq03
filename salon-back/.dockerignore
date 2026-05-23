@@ -1,0 +1,23 @@
+# Compilados Java — gerados durante o build dentro do container
+target/
+
+# Artefatos Maven local
+.m2/
+
+# Variáveis de ambiente — nunca deve entrar na imagem
+.env
+.env.*
+
+# Logs
+logs/
+*.log
+
+# IDE e sistema operacional
+.idea/
+.vscode/
+*.iml
+.DS_Store
+Thumbs.db
+
+# Testes (já executados em CI, não necessários no build context)
+src/test/

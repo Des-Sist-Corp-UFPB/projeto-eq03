@@ -12,18 +12,19 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
+  # spring.mail: leitura rígida do .env, sem defaults — variáveis ausentes causam erro no boot.
+  # Isso é intencional: produção não deve subir com configuração de e-mail inválida.
   mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:2525}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
-          auth: ${MAIL_SMTP_AUTH:false}
+          auth: ${MAIL_SMTP_AUTH}
           starttls:
-            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
-
+            enable: ${MAIL_SMTP_STARTTLS_ENABLE}
 
 security:
   jwt:

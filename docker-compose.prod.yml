@@ -8,8 +8,8 @@ services:
       POSTGRES_DB: salon_dev
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
-    ports:
-      - "5432:5432"  # Exposto para debug local (DBeaver, psql, etc.)
+    # Sem ports: em produção o banco NÃO é exposto ao host por segurança.
+    # A comunicação ocorre apenas internamente na salon-network.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,17 +17,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: unless-stopped
     networks:
       - salon-network
 
-  mailpit:
-    image: axllent/mailpit
-    container_name: salon-mailpit
-    ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # UI Web do Mailpit
-    networks:
-      - salon-network
+  # mailpit REMOVIDO em produção.
+  # O SMTP real é configurado pelas variáveis MAIL_* no .env do servidor.
 
   salon-back:
     build:
@@ -36,13 +31,12 @@ services:
     container_name: salon-back
     env_file:
       - .env
-    ports:
-      - "8080:8080"  # API exposta para debug local e testes diretos
+    # Sem ports: a API não é exposta ao host em produção.
+    # O Nginx (salon-front) acessa via rede interna: http://salon-back:8080
     depends_on:
       db:
         condition: service_healthy
-      mailpit:
-        condition: service_started
+    restart: unless-stopped
     networks:
       - salon-network
 
@@ -54,9 +48,10 @@ services:
     env_file:
       - .env
     ports:
-      - "80:80"  # Aplicação React + Proxy Reverso Nginx
+      - "80:80"   # Único serviço exposto ao host — todo tráfego passa pelo Nginx
     depends_on:
       - salon-back
+    restart: unless-stopped
     networks:
       - salon-network
 

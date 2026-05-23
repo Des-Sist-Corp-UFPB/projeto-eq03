@@ -1,0 +1,24 @@
+# Dependências Node — reinstaladas dentro do container pelo npm ci
+node_modules/
+
+# Output de build — gerado pelo npm run build dentro do container
+dist/
+
+# Variáveis de ambiente — nunca deve entrar na imagem
+# (VITE_API_URL é passado via ARG no Dockerfile)
+.env
+.env.*
+.env.local
+
+# Logs
+*.log
+npm-debug.log*
+
+# IDE e sistema operacional
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Cache do Vite
+.vite/
