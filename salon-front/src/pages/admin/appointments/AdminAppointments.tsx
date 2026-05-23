@@ -273,24 +273,26 @@ export const AdminAppointments = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex justify-between items-center">
-        <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Agendamentos (Admin)</h2>
-        <PermissionGate method="POST" endpoint="/v1/appointments">
-          <button onClick={() => setShowModal(true)} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
-            <Plus size={18} /> Novo Agendamento
-          </button>
-        </PermissionGate>
-      </div>
-
-      {isLoading ? (
-        <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#be8a83]"></div>
-          <span>Carregando agendamentos...</span>
+    <>
+      <div className="space-y-6 animate-fade-in-up">
+        <div className="flex justify-between items-center">
+          <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Agendamentos (Admin)</h2>
+          <PermissionGate method="POST" endpoint="/v1/appointments">
+            <button onClick={() => setShowModal(true)} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
+              <Plus size={18} /> Novo Agendamento
+            </button>
+          </PermissionGate>
         </div>
-      ) : (
-        <Table columns={columns} data={appointments} keyExtractor={(item) => item.id?.toString() || Math.random().toString()} />
-      )}
+
+        {isLoading ? (
+          <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#be8a83]"></div>
+            <span>Carregando agendamentos...</span>
+          </div>
+        ) : (
+          <Table columns={columns} data={appointments} keyExtractor={(item) => item.id?.toString() || Math.random().toString()} />
+        )}
+      </div>
 
       {/* Create Appointment Modal */}
       {showModal && (
@@ -373,6 +375,6 @@ export const AdminAppointments = () => {
       )}
 
       <ConfirmDialog show={showConfirm} onHide={() => setShowConfirm(false)} onConfirm={confirmCancel} title="Cancelar Agendamento" message="Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita." />
-    </div>
+    </>
   );
 };

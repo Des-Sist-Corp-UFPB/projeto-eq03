@@ -113,41 +113,43 @@ export const CashFlow = () => {
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
-      <div className="flex justify-between items-center">
-        <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Fluxo de Caixa</h2>
-        <PermissionGate method="POST" endpoint="/v1/cashflow">
-          <button onClick={handleOpenForm} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
-            <Plus size={18} /> Novo Registro
+    <>
+      <div className="space-y-6 animate-fade-in-up">
+        <div className="flex justify-between items-center">
+          <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Fluxo de Caixa</h2>
+          <PermissionGate method="POST" endpoint="/v1/cashflow">
+            <button onClick={handleOpenForm} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
+              <Plus size={18} /> Novo Registro
+            </button>
+          </PermissionGate>
+        </div>
+
+        <div className="flex flex-wrap gap-4 items-end bg-white/80 backdrop-blur-md rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm">
+          <div className="space-y-1">
+            <label className={labelCls}>De</label>
+            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={inputCls} />
+          </div>
+          <div className="space-y-1">
+            <label className={labelCls}>Até</label>
+            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputCls} />
+          </div>
+          <button
+            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            className="px-5 py-2.5 border border-[#eae1e1] text-sm font-semibold text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] bg-white rounded-xl transition-all duration-200 cursor-pointer"
+          >
+            Limpar Filtros
           </button>
-        </PermissionGate>
-      </div>
+        </div>
 
-      <div className="flex flex-wrap gap-4 items-end bg-white/80 backdrop-blur-md rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm">
-        <div className="space-y-1">
-          <label className={labelCls}>De</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={inputCls} />
-        </div>
-        <div className="space-y-1">
-          <label className={labelCls}>Até</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputCls} />
-        </div>
-        <button
-          onClick={() => { setDateFrom(''); setDateTo(''); }}
-          className="px-5 py-2.5 border border-[#eae1e1] text-sm font-semibold text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] bg-white rounded-xl transition-all duration-200 cursor-pointer"
-        >
-          Limpar Filtros
-        </button>
+        {isLoading ? (
+          <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#be8a83]"></div>
+            <span>Carregando registros...</span>
+          </div>
+        ) : (
+          <Table columns={columns} data={cashFlows} keyExtractor={(item) => item.id!} />
+        )}
       </div>
-
-      {isLoading ? (
-        <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
-          <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-[#be8a83]"></div>
-          <span>Carregando registros...</span>
-        </div>
-      ) : (
-        <Table columns={columns} data={cashFlows} keyExtractor={(item) => item.id!} />
-      )}
 
       <ModalForm show={showForm} onHide={() => setShowForm(false)} title="Novo Registro" onSubmit={handleSubmit(onSubmit)}>
         <div className="space-y-4">
@@ -177,6 +179,6 @@ export const CashFlow = () => {
       </ModalForm>
 
       <ConfirmDialog show={showConfirm} onHide={() => setShowConfirm(false)} onConfirm={confirmDelete} title="Excluir Registro" message="Tem certeza que deseja excluir este registro? Esta ação afetará os relatórios." />
-    </div>
+    </>
   );
 };
