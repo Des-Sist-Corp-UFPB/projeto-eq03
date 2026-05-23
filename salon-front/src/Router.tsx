@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Routes, Route, Navigate, Link } from 'react-router-dom';
-import { Lock, ArrowRight } from 'lucide-react';
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { Lock } from 'lucide-react';
 
 import { DefaultLayout } from './layouts/DefaultLayout';
 import { AdminLayout } from './layouts/AdminLayout';
@@ -44,16 +44,6 @@ const MaintenancePage = () => {
           <p className="text-sm text-[#7a7074] dark:text-[#9ca3af] leading-relaxed">
             Estamos preparando novidades incríveis para você. No momento, a área pública de clientes está temporariamente desativada para ajustes no salão.
           </p>
-        </div>
-
-        <div className="pt-4 border-t border-[#eae1e1] dark:border-[#1e293b]">
-          <Link
-            to="/login"
-            className="inline-flex items-center gap-2 text-sm font-semibold text-[#be8a83] dark:text-[#e5a49c] hover:underline"
-          >
-            Acesso Administrativo
-            <ArrowRight size={16} />
-          </Link>
         </div>
       </div>
       <p className="text-xs text-[#7a7074]/60 dark:text-[#9ca3af]/50 mt-6">
