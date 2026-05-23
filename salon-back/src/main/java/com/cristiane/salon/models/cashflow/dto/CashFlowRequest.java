@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.util.List;
 
 public record CashFlowRequest(
         @NotBlank(message = "O tipo é obrigatório (INCOME ou EXPENSE)")
@@ -20,5 +21,7 @@ public record CashFlowRequest(
         @NotNull(message = "A data é obrigatória")
         LocalDate date,
         
-        Long appointmentId
+        Long appointmentId,
+
+        List<CashFlowItemRequest> items
 ) {}

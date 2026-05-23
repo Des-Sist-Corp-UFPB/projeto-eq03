@@ -1,5 +1,10 @@
 import api from '../../../../services/api';
 
+export interface CashFlowItemData {
+  productId: number;
+  quantity: number;
+}
+
 export interface CashFlowData {
   id?: number;
   type: 'INCOME' | 'EXPENSE';
@@ -7,6 +12,7 @@ export interface CashFlowData {
   description: string;
   date: string;
   appointmentId?: number | null;
+  items?: CashFlowItemData[];
 }
 
 export const cashFlowApi = {
