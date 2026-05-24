@@ -1,23 +1,24 @@
-# Compilados Java — gerados durante o build dentro do container
+# Build e dependências locais
 target/
+.mvn/
+mvnw
+mvnw.cmd
 
-# Artefatos Maven local
-.m2/
+# Configurações do VS Code, IntelliJ e Eclipse
+.settings/
+.target/
+.classpath
+.project
+.idea/
+*.iml
+.vscode/
 
-# Variáveis de ambiente — nunca deve entrar na imagem
+# Arquivos locais e logs
 .env
-.env.*
-
-# Logs
+.env.local
 logs/
 *.log
 
-# IDE e sistema operacional
-.idea/
-.vscode/
-*.iml
-.DS_Store
-Thumbs.db
-
-# Testes (já executados em CI, não necessários no build context)
-src/test/
+# Evita levar o contexto do git para o build
+.git
+.gitignore
