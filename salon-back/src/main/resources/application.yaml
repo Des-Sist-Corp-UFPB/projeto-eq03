@@ -6,22 +6,10 @@ spring:
   output:
     ansi:
       enabled: always
-  
-  mail:
-    host: ${MAIL_HOST:localhost}
-    port: ${MAIL_PORT:1025}
-    username: ${MAIL_USERNAME:}
-    password: ${MAIL_PASSWORD:}
-    properties:
-      mail:
-        smtp:
-          auth: ${MAIL_SMTP_AUTH:false}
-          ssl:
-            enable: ${MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE:false}
-          starttls:
-            enable: ${MAIL_SMTP_STARTTLS_ENABLE:false}
 
 mail:
+  api-url: ${MAIL_API_URL:https://api.resend.com}
+  password: ${MAIL_PASSWORD:}
   from: ${MAIL_FROM:dev@localhost.com}
   business: ${MAIL_BUSINESS:salao@localhost.com}
 

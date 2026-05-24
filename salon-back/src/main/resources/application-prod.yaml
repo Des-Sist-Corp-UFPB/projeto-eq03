@@ -12,22 +12,10 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-  
-  mail:
-    host: ${MAIL_HOST}
-    port: ${MAIL_PORT}
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
-    properties:
-      mail:
-        smtp:
-          auth: ${MAIL_SMTP_AUTH}
-          ssl:
-            enable: ${MAIL_PROPERTIES_MAIL_SMTP_SSL_ENABLE}
-          starttls:
-            enable: ${MAIL_SMTP_STARTTLS_ENABLE}
 
 mail:
+  api-url: ${MAIL_API_URL:https://api.resend.com}
+  password: ${MAIL_PASSWORD}
   from: ${MAIL_FROM}
   business: ${MAIL_BUSINESS}
 

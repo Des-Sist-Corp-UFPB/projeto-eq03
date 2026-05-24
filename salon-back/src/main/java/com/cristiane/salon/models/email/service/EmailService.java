@@ -3,32 +3,60 @@ package com.cristiane.salon.models.email.service;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.audit.AuditLogService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
-import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.javamail.JavaMailSender;
-import org.springframework.mail.javamail.MimeMessageHelper;
+import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
+
+import java.util.Map;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class EmailService {
 
-    private final JavaMailSender mailSender;
     private final FeatureFlagService featureFlagService;
     private final TemplateEngine templateEngine;
     private final AuditLogService auditLogService;
+
+    private final RestClient.Builder restClientBuilder;
+
+    @Value("${mail.password}")
+    private String apiKey;
 
     @Value("${mail.from:notificacoes@elksandro.com}")
     private String fromEmail;
 
     @Value("${mail.business:elksandrosandro19@gmail.com}")
     private String businessEmail;
+
+    @Value("${mail.api-url}")
+    private String apiUrl;
+
+    private void sendViaHttpApi(String to, String subject, String htmlContent, String replyTo) {
+        RestClient restClient = restClientBuilder.baseUrl(apiUrl).build();
+        
+        Map<String, Object> payload = Map.of(
+                "from", "Cristiane Salon <" + fromEmail + ">",
+                "to", new String[]{to},
+                "subject", subject,
+                "html", htmlContent,
+                "reply_to", replyTo
+        );
+
+        restClient.post()
+                .uri("/emails")
+                .header("Authorization", "Bearer " + apiKey)
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(payload)
+                .retrieve()
+                .toBodilessEntity();
+    }
 
     @Async
     public void sendRequestNotificationToStaff(Appointment appointment) {
@@ -42,16 +70,7 @@ public class EmailService {
             context.setVariable("appointment", appointment);
             String htmlContent = templateEngine.process("mail/appointment-request", context);
 
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom("Cristiane Salon <" + fromEmail + ">");
-            helper.setReplyTo(businessEmail);
-            helper.setTo(businessEmail); // Notificação vai para o e-mail real do salão
-            helper.setSubject("Novo Pedido de Agendamento Recebido");
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
+            sendViaHttpApi(businessEmail, "Novo Pedido de Agendamento Recebido", htmlContent, businessEmail);
             log.info("E-mail de notificação de solicitação enviado com sucesso para a equipe.");
 
             auditLogService.logAction(
@@ -94,16 +113,7 @@ public class EmailService {
             context.setVariable("appointment", appointment);
             String htmlContent = templateEngine.process("mail/appointment-confirmation", context);
 
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom("Cristiane Salon <" + fromEmail + ">");
-            helper.setReplyTo(businessEmail); // Se o cliente responder, vai para a Cristiane
-            helper.setTo(clientEmail);
-            helper.setSubject("Seu Agendamento foi Confirmado!");
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
+            sendViaHttpApi(clientEmail, "Seu Agendamento foi Confirmado!", htmlContent, businessEmail);
             log.info("E-mail de confirmação enviado com sucesso para: {}", clientEmail);
 
             auditLogService.logAction(
@@ -128,7 +138,7 @@ public class EmailService {
         }
     }
 
-    //@Async
+    @Async
     public void sendCancellationNotification(Appointment appointment) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
@@ -143,16 +153,7 @@ public class EmailService {
                 context.setVariable("appointment", appointment);
                 String htmlContent = templateEngine.process("mail/appointment-cancellation", context);
 
-                MimeMessage message = mailSender.createMimeMessage();
-                MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-                helper.setFrom("Cristiane Salon <" + fromEmail + ">");
-                helper.setReplyTo(businessEmail);
-                helper.setTo(clientEmail);
-                helper.setSubject("Agendamento Cancelado");
-                helper.setText(htmlContent, true);
-
-                mailSender.send(message);
+                sendViaHttpApi(clientEmail, "Agendamento Cancelado", htmlContent, businessEmail);
                 log.info("E-mail de cancelamento enviado com sucesso para o cliente: {}", clientEmail);
 
                 auditLogService.logAction(
@@ -183,16 +184,7 @@ public class EmailService {
             context.setVariable("appointment", appointment);
             String htmlContent = templateEngine.process("mail/appointment-cancellation", context);
 
-            MimeMessage message = mailSender.createMimeMessage();
-            MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-
-            helper.setFrom("Cristiane Salon <" + fromEmail + ">");
-            helper.setReplyTo(businessEmail);
-            helper.setTo(businessEmail); // Notificação interna para e-mail real
-            helper.setSubject("Agendamento Cancelado");
-            helper.setText(htmlContent, true);
-
-            mailSender.send(message);
+            sendViaHttpApi(businessEmail, "Agendamento Cancelado", htmlContent, businessEmail);
             log.info("E-mail de cancelamento enviado com sucesso para a equipe.");
 
             auditLogService.logAction(
