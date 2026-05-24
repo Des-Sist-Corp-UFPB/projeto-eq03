@@ -128,7 +128,7 @@ public class EmailService {
         }
     }
 
-    @Async
+    //@Async
     public void sendCancellationNotification(Appointment appointment) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
