@@ -1,6 +1,6 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:17-alpine
     container_name: salon-db
     env_file:
       - .env
@@ -8,8 +8,6 @@ services:
       POSTGRES_DB: salon_dev
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
-    # Sem ports: em produção o banco NÃO é exposto ao host por segurança.
-    # A comunicação ocorre apenas internamente na salon-network.
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,41 +15,30 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
-    restart: unless-stopped
+    restart: always
     networks:
       - salon-network
 
-  # mailpit REMOVIDO em produção.
-  # O SMTP real é configurado pelas variáveis MAIL_* no .env do servidor.
-
   salon-back:
-    build:
-      context: ./salon-back
-      dockerfile: Dockerfile
+    image: ghcr.io/elksandro2/sass-salon/salon-back:latest
     container_name: salon-back
     env_file:
       - .env
-    # Sem ports: a API não é exposta ao host em produção.
-    # O Nginx (salon-front) acessa via rede interna: http://salon-back:8080
     depends_on:
       db:
         condition: service_healthy
-    restart: unless-stopped
+    restart: always
     networks:
       - salon-network
 
   salon-front:
-    build:
-      context: ./salon-front
-      dockerfile: Dockerfile
+    image: ghcr.io/elksandro2/sass-salon/salon-front:latest
     container_name: salon-front
     env_file:
       - .env
-    ports:
-      - "80:80"   # Único serviço exposto ao host — todo tráfego passa pelo Nginx
     depends_on:
       - salon-back
-    restart: unless-stopped
+    restart: always
     networks:
       - salon-network
 
@@ -60,4 +47,4 @@ volumes:
 
 networks:
   salon-network:
-    driver: bridge
+    external: true
