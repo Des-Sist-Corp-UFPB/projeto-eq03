@@ -1,11 +1,11 @@
 services:
   salon-app:
-    image: ghcr.io/elksandro2/sass-salon/salon-app:latest
+    image: ghcr.io/${IMAGE_REPO}/salon-app:latest
     container_name: salon-app
     env_file:
       - .env
     ports:
-      - "80:8080" # Redireciona a porta 80 externa para a 8080 do contêiner unificado
+      - "80:8080"
     restart: always
     networks:
       - salon-network
