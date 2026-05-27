@@ -30,23 +30,13 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      - name: Build & Push Backend Image
+      - name: Build & Push Unified Image
         uses: docker/build-push-action@v6
         with:
-          context: ./salon-back
-          file: ./salon-back/Dockerfile
+          context: .
+          file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ env.REPO_LOWER }}/salon-back:latest
-          cache-from: type=gha
-          cache-to: type=gha,mode=max
-
-      - name: Build & Push Frontend Image
-        uses: docker/build-push-action@v6
-        with:
-          context: ./salon-front
-          file: ./salon-front/Dockerfile
-          push: true
-          tags: ghcr.io/${{ env.REPO_LOWER }}/salon-front:latest
+          tags: ghcr.io/${{ env.REPO_LOWER }}/salon-app:latest
           cache-from: type=gha
           cache-to: type=gha,mode=max
 

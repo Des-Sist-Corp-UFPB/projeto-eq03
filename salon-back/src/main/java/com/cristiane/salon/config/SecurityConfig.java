@@ -56,8 +56,14 @@ public class SecurityConfig {
                 // Swagger & API Docs
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
                 
-                // Everything else requires authentication
-                .anyRequest().authenticated()
+                // Static resources & Frontend SPA routing
+                .requestMatchers(HttpMethod.GET, "/", "/index.html", "/static/**", "/assets/**", "/*.png", "/*.ico", "/*.json", "/*.txt").permitAll()
+                
+                // API routes require authentication (except the permitted ones above)
+                .requestMatchers("/v1/**").authenticated()
+                
+                // Any other request (mostly frontend React routes) is permitted so the SPA config can forward to index.html
+                .anyRequest().permitAll()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)

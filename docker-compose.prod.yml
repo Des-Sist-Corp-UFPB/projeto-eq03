@@ -1,20 +1,11 @@
 services:
-  salon-back:
-    image: ghcr.io/elksandro2/sass-salon/salon-back:latest
-    container_name: salon-back
+  salon-app:
+    image: ghcr.io/elksandro2/sass-salon/salon-app:latest
+    container_name: salon-app
     env_file:
       - .env
-    restart: always
-    networks:
-      - salon-network
-
-  salon-front:
-    image: ghcr.io/elksandro2/sass-salon/salon-front:latest
-    container_name: salon-front
-    env_file:
-      - .env
-    depends_on:
-      - salon-back
+    ports:
+      - "80:8080" # Redireciona a porta 80 externa para a 8080 do contêiner unificado
     restart: always
     networks:
       - salon-network

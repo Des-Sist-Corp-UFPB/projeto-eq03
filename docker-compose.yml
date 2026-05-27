@@ -1,4 +1,4 @@
-services:
+﻿services:
   db:
     image: postgres:16
     container_name: salon-db
@@ -29,34 +29,20 @@ services:
     networks:
       - salon-network
 
-  salon-back:
+  salon-app:
     build:
-      context: ./salon-back
+      context: .
       dockerfile: Dockerfile
-    container_name: salon-back
+    container_name: salon-app
     env_file:
       - .env
     ports:
-      - "8080:8080"  # API exposta para debug local e testes diretos
+      - "80:8080"
     depends_on:
       db:
         condition: service_healthy
       mailpit:
         condition: service_started
-    networks:
-      - salon-network
-
-  salon-front:
-    build:
-      context: ./salon-front
-      dockerfile: Dockerfile
-    container_name: salon-front
-    env_file:
-      - .env
-    ports:
-      - "80:80"  # Aplicação React + Proxy Reverso Nginx
-    depends_on:
-      - salon-back
     networks:
       - salon-network
 
