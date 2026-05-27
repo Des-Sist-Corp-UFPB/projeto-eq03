@@ -41,10 +41,13 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy na VPS
+    name: Deploy na VPS DigitalOcean
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
+      - name: Formata Repositorio Action Runner
+        run: echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+
       - name: Conecta via SSH e Atualiza
         uses: appleboy/ssh-action@v1.0.3
         env:
@@ -56,11 +59,12 @@ jobs:
           PROD_MAIL_FROM: ${{ secrets.MAIL_FROM }}
           PROD_MAIL_BUSINESS: ${{ secrets.MAIL_BUSINESS }}
           PROD_APP_CORS_ALLOWED_ORIGINS: ${{ secrets.APP_CORS_ALLOWED_ORIGINS }}
+          PROD_IMAGE_REPO: ${{ env.REPO_LOWER }}
         with:
           host: ${{ secrets.SSH_HOST }}
           username: ${{ secrets.SSH_USER }}
           key: ${{ secrets.SSH_KEY }}
-          envs: PROD_DB_URL,PROD_DB_USER,PROD_DB_PASS,PROD_JWT_SECRET,PROD_MAIL_PASSWORD,PROD_MAIL_FROM,PROD_MAIL_BUSINESS,PROD_APP_CORS_ALLOWED_ORIGINS
+          envs: PROD_DB_URL,PROD_DB_USER,PROD_DB_PASS,PROD_JWT_SECRET,PROD_MAIL_PASSWORD,PROD_MAIL_FROM,PROD_MAIL_BUSINESS,PROD_APP_CORS_ALLOWED_ORIGINS,PROD_IMAGE_REPO
           script: |
             mkdir -p /app/sass-salon
             cd /app/sass-salon
@@ -78,11 +82,8 @@ jobs:
             echo "VITE_API_URL=/v1" >> .env
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
 
-            # Captura o nome dinamico (em minusculas) do Repositorio do Github pra usar no Pull
-            REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
-            echo "IMAGE_REPO=$REPO_LOWER" >> .env
+            echo "IMAGE_REPO=$PROD_IMAGE_REPO" >> .env
 
-            # Baixa apenas o compose do github (como Ã© monorepo, pegamos via wget da branch main)
             wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
             
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
@@ -90,3 +91,5 @@ jobs:
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -af
+
+
