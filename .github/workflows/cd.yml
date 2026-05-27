@@ -69,8 +69,11 @@ jobs:
             mkdir -p /app/sass-salon
             cd /app/sass-salon
             
+            # Limpa env velho por garantia
+            rm -f .env
+
             # Gera o arquivo .env dinamicamente para o Docker Compose
-            echo "DB_URL=$PROD_DB_URL" > .env
+            echo "DB_URL=$PROD_DB_URL" >> .env
             echo "DB_USER=$PROD_DB_USER" >> .env
             echo "DB_PASS=$PROD_DB_PASS" >> .env
             echo "JWT_SECRET=$PROD_JWT_SECRET" >> .env
@@ -81,15 +84,35 @@ jobs:
             echo "APP_CORS_ALLOWED_ORIGINS=$PROD_APP_CORS_ALLOWED_ORIGINS" >> .env
             echo "VITE_API_URL=/v1" >> .env
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-
             echo "IMAGE_REPO=$PROD_IMAGE_REPO" >> .env
 
-            wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
+            # Forca o carregamento das variaveis exportadas na sessao para o docker compose poder ler ${IMAGE_REPO}
+            export $(cat .env | grep -v '^#')
+
+            # Cria/Sobrescreve docker-compose localmente pra não depender do wget atrasado do github caso a branch esteja lockada
+            cat << 'EOF' > docker-compose.prod.yml
+            services:
+              salon-app:
+                image: ghcr.io/${IMAGE_REPO}/salon-app:latest
+                container_name: salon-app
+                env_file:
+                  - .env
+                ports:
+                  - "80:8080"
+                restart: always
+                networks:
+                  - salon-network
+            volumes: {}
+            networks:
+              salon-network:
+                external: true
+            EOF
             
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -af
+
 
 
