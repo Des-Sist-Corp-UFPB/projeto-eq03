@@ -73,8 +73,8 @@ jobs:
             mkdir -p /app/sass-salon
             cd /app/sass-salon
 
-            # 1. Limpa os fantasmas
-            rm -f .env docker-compose.prod.yml docker-compose.yml docker-compose.override.yml
+            # 1. Limpeza brutal (incluindo possíveis variações .yaml que o Docker lê escondido)
+            rm -f .env docker-compose.yml docker-compose.yaml docker-compose.prod.yml docker-compose.override.yml compose.yml
             unset IMAGE_REPO
             unset COMPOSE_FILE
 
@@ -91,8 +91,26 @@ jobs:
             echo "VITE_API_URL=/v1" >> .env
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
 
-            # 3. Baixa o seu docker-compose.prod.yml limpo da versão EXATA do seu commit mais recente
-            wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
+            # 3. Gera o compose DIRETAMENTE no servidor (À prova de falhas, sem download)
+            cat > docker-compose.prod.yml << 'EOF'
+            services:
+              salon-app:
+                image: ghcr.io/des-sist-corp-ufpb/projeto-eq03/salon-app:latest
+                container_name: salon-app
+                env_file:
+                  - .env
+                ports:
+                  - "80:8080"
+                restart: always
+                networks:
+                  - salon-network
+
+            volumes: {}
+
+            networks:
+              salon-network:
+                external: true
+            EOF
 
             # 4. Faz login e sobe ignorando o sistema do professor
             echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$PROD_GHCR_USER" --password-stdin
