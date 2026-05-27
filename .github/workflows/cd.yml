@@ -91,8 +91,8 @@ jobs:
             echo "VITE_API_URL=/v1" >> .env
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
 
-            # 3. Baixa o seu docker-compose.prod.yml limpo e direto do GitHub
-            wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/main/docker-compose.prod.yml
+            # 3. Baixa o seu docker-compose.prod.yml limpo da versão EXATA do seu commit mais recente
+            wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
 
             # 4. Faz login e sobe ignorando o sistema do professor
             echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$PROD_GHCR_USER" --password-stdin
