@@ -1,4 +1,4 @@
-﻿name: Continuous Deployment
+name: Continuous Deployment
 
 on:
   push:
@@ -41,7 +41,7 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy na VPS DigitalOcean
+    name: Deploy na VPS
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
@@ -86,33 +86,14 @@ jobs:
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
             echo "IMAGE_REPO=$PROD_IMAGE_REPO" >> .env
 
-            # Forca o carregamento das variaveis exportadas na sessao para o docker compose poder ler ${IMAGE_REPO}
+            # Forca o carregamento das variaveis na sessao
             export $(cat .env | grep -v '^#')
 
-            # Cria/Sobrescreve docker-compose localmente pra não depender do wget atrasado do github caso a branch esteja lockada
-            cat << 'EOF' > docker-compose.prod.yml
-            services:
-              salon-app:
-                image: ghcr.io/${IMAGE_REPO}/salon-app:latest
-                container_name: salon-app
-                env_file:
-                  - .env
-                ports:
-                  - "80:8080"
-                restart: always
-                networks:
-                  - salon-network
-            volumes: {}
-            networks:
-              salon-network:
-                external: true
-            EOF
-            
+            # Cria docker-compose usando printf para garantir expansao correta de $IMAGE_REPO
+            printf 'services:\n  salon-app:\n    image: ghcr.io/%s/salon-app:latest\n    container_name: salon-app\n    env_file:\n      - .env\n    ports:\n      - "80:8080"\n    restart: always\n    networks:\n      - salon-network\nvolumes: {}\nnetworks:\n  salon-network:\n    external: true\n' "$IMAGE_REPO" > docker-compose.prod.yml
+
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
             
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -af
-
-
-
