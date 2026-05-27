@@ -73,12 +73,12 @@ jobs:
             mkdir -p /app/sass-salon
             cd /app/sass-salon
 
-            # 1. Limpeza brutal (incluindo possíveis variações .yaml que o Docker lê escondido)
-            rm -f .env docker-compose.yml docker-compose.yaml docker-compose.prod.yml docker-compose.override.yml compose.yml
+            # 1. Limpeza do ambiente
+            rm -f .env docker-compose.yml docker-compose.yaml docker-compose.prod.yml docker-compose.override.yml
             unset IMAGE_REPO
             unset COMPOSE_FILE
 
-            # 2. Monta o .env das variáveis secretas do Github
+            # 2. Monta o .env dinamicamente
             echo "DB_URL=$PROD_DB_URL" >> .env
             echo "DB_USER=$PROD_DB_USER" >> .env
             echo "DB_PASS=$PROD_DB_PASS" >> .env
@@ -91,30 +91,12 @@ jobs:
             echo "VITE_API_URL=/v1" >> .env
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
 
-            # 3. Gera o compose DIRETAMENTE no servidor (À prova de falhas, sem download)
-            cat > docker-compose.prod.yml << 'EOF'
-            services:
-              salon-app:
-                image: ghcr.io/des-sist-corp-ufpb/projeto-eq03/salon-app:latest
-                container_name: salon-app
-                env_file:
-                  - .env
-                ports:
-                  - "80:8080"
-                restart: always
-                networks:
-                  - salon-network
+            # 3. Baixa o docker-compose.prod.yml oficial direto do commit mais recente
+            wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
 
-            volumes: {}
-
-            networks:
-              salon-network:
-                external: true
-            EOF
-
-            # 4. Faz login e sobe ignorando o sistema do professor
+            # 4. Faz login e sobe a aplicação
             echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$PROD_GHCR_USER" --password-stdin
             
-            docker compose --env-file /dev/null -f docker-compose.prod.yml pull
-            docker compose --env-file /dev/null -f docker-compose.prod.yml up -d --remove-orphans
-            docker image prune -f
+            docker compose -f docker-compose.prod.yml pull
+            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker image prune -af
