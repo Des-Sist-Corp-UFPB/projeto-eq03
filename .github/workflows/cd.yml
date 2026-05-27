@@ -116,7 +116,7 @@ jobs:
 
             echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$PROD_GHCR_USER" --password-stdin
 
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
+            docker compose --env-file /dev/null -f docker-compose.prod.yml pull
+            docker compose --env-file /dev/null -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -f
 
