@@ -1,6 +1,6 @@
 services:
   salon-app:
-    image: ghcr.io/${IMAGE_REPO}/salon-app:latest
+    image: ghcr.io/des-sist-corp-ufpb/projeto-eq03/salon-app:latest
     container_name: salon-app
     env_file:
       - .env
