@@ -13,12 +13,18 @@ jobs:
   build-and-push:
     name: Build & Push Images to GHCR
     runs-on: ubuntu-latest
+    outputs:
+      repo_lower: ${{ steps.repo.outputs.repo_lower }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
 
       - name: Downcase Repository Name
-        run: echo "REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> $GITHUB_ENV
+        id: repo
+        run: |
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
+          echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
 
       - name: Log in to GHCR
         uses: docker/login-action@v3
@@ -62,10 +68,6 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
           envs: PROD_DB_URL,PROD_DB_USER,PROD_DB_PASS,PROD_JWT_SECRET,PROD_MAIL_PASSWORD,PROD_MAIL_FROM,PROD_MAIL_BUSINESS,PROD_APP_CORS_ALLOWED_ORIGINS
           script: |
-            # IMAGE_REPO é resolvido em tempo de parse do YAML pelo GitHub Actions
-            # ${{ github.repository }} -> 'Des-Sist-Corp-UFPB/projeto-eq03' -> lowercase inline
-            IMAGE_REPO=$(echo "${{ github.repository }}" | tr '[:upper:]' '[:lower:]')
-
             mkdir -p /app/sass-salon
             cd /app/sass-salon
 
@@ -84,13 +86,14 @@ jobs:
             echo "APP_CORS_ALLOWED_ORIGINS=$PROD_APP_CORS_ALLOWED_ORIGINS" >> .env
             echo "VITE_API_URL=/v1" >> .env
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-            echo "IMAGE_REPO=$IMAGE_REPO" >> .env
+            echo "IMAGE_REPO=${{ needs.build-and-push.outputs.repo_lower }}" >> .env
 
-            # Cria docker-compose usando printf para garantir expansao correta de $IMAGE_REPO
-            printf 'services:\n  salon-app:\n    image: ghcr.io/%s/salon-app:latest\n    container_name: salon-app\n    env_file:\n      - .env\n    ports:\n      - "80:8080"\n    restart: always\n    networks:\n      - salon-network\nvolumes: {}\nnetworks:\n  salon-network:\n    external: true\n' "$IMAGE_REPO" > docker-compose.prod.yml
+            # Cria docker-compose com o nome da imagem hardcoded pelo GitHub Actions (sem variavel shell)
+            printf 'services:\n  salon-app:\n    image: ghcr.io/${{ needs.build-and-push.outputs.repo_lower }}/salon-app:latest\n    container_name: salon-app\n    env_file:\n      - .env\n    ports:\n      - "80:8080"\n    restart: always\n    networks:\n      - salon-network\nvolumes: {}\nnetworks:\n  salon-network:\n    external: true\n' > docker-compose.prod.yml
 
             echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
             docker image prune -af
+
