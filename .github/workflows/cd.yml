@@ -56,11 +56,12 @@ jobs:
       - name: Acionar Gatilho de Pull/Deploy no Servidor do Professor
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          
+          # Usando o nome correto do seu secret: SSH_KEY
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           
-          # Envia "ator:token" para a VPS de forma oculta e segura.
-          # O servidor do professor usa isso para baixar a imagem privada.
+          # Usando o nome correto do seu secret: SSH_USER
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
+            "${{ secrets.SSH_USER }}@${{ secrets.SSH_HOST }}" \
             "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
