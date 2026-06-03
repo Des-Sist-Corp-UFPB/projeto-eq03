@@ -47,6 +47,7 @@ public class SecurityConfig {
             .cors(cors -> {}) // will be configured in CorsConfig
             .authorizeHttpRequests(auth -> auth
                 // Public routes
+                .requestMatchers("/ping").permitAll()
                 .requestMatchers("/v1/auth/**").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/services").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/products").permitAll()

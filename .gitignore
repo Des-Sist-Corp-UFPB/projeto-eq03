@@ -18,6 +18,8 @@ target/
 logs/
 logs/*.log
 
+credenciais.txt
+
 # IDE
 .vscode/
 .idea/
