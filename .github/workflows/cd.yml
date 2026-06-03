@@ -23,7 +23,7 @@ jobs:
       - name: Prepara nome da imagem (lowercase e clean)
         id: repo
         run: |
-          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]' | sed 's/projeto-//')
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
           echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
           echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
           echo "IMAGE=ghcr.io/$REPO_LOWER:latest" >> $GITHUB_ENV
