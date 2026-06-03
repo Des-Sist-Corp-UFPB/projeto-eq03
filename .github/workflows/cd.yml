@@ -95,7 +95,8 @@ jobs:
             wget -qO docker-compose.prod.yml --header="Authorization: token $PROD_GHCR_TOKEN" https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
 
             # 4. Faz login e sobe a aplicação
-            echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$PROD_GHCR_USER" --password-stdin
+            USER_LOWER=$(echo "$PROD_GHCR_USER" | tr '[:upper:]' '[:lower:]')
+            echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$USER_LOWER" --password-stdin
             
             docker compose -f docker-compose.prod.yml pull
             docker compose -f docker-compose.prod.yml up -d --remove-orphans
