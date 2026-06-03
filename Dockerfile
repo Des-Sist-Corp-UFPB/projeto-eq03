@@ -2,7 +2,7 @@
 FROM node:22-alpine AS frontend-build
 WORKDIR /app/frontend
 
-COPY salon-front/package*.json ./
+COPY salon-front/package*.json .
 RUN npm ci
 
 COPY salon-front/ .
