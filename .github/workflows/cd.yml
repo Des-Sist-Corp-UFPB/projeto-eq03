@@ -53,52 +53,14 @@ jobs:
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code (Para pegar o docker-compose.prod.yml)
-        uses: actions/checkout@v4
-
-      - name: Monta o ficheiro .env localmente no Runner
-        env:
-          PROD_DB_URL: ${{ secrets.DB_URL }}
-          PROD_DB_USER: ${{ secrets.DB_USER }}
-          PROD_DB_PASS: ${{ secrets.DB_PASS }}
-          PROD_JWT_SECRET: ${{ secrets.JWT_SECRET }}
-          PROD_MAIL_PASSWORD: ${{ secrets.MAIL_PASSWORD }}
-          PROD_MAIL_FROM: ${{ secrets.MAIL_FROM }}
-          PROD_MAIL_BUSINESS: ${{ secrets.MAIL_BUSINESS }}
-          PROD_APP_CORS_ALLOWED_ORIGINS: ${{ secrets.APP_CORS_ALLOWED_ORIGINS }}
-        run: |
-          echo "DB_URL=$PROD_DB_URL" >> .env
-          echo "DB_USER=$PROD_DB_USER" >> .env
-          echo "DB_PASS=$PROD_DB_PASS" >> .env
-          echo "JWT_SECRET=$PROD_JWT_SECRET" >> .env
-          echo "MAIL_API_URL=https://api.resend.com" >> .env
-          echo "MAIL_PASSWORD=$PROD_MAIL_PASSWORD" >> .env
-          echo "MAIL_FROM=$PROD_MAIL_FROM" >> .env
-          echo "MAIL_BUSINESS=$PROD_MAIL_BUSINESS" >> .env
-          echo "APP_CORS_ALLOWED_ORIGINS=$PROD_APP_CORS_ALLOWED_ORIGINS" >> .env
-          echo "VITE_API_URL=/v1" >> .env
-          echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-
-      - name: Transfere o .env e o Compose para o Servidor via SCP
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: dsc.rodrigor.com
-          # Usa a chave e o username de deploy que o professor forneceu
-          username: ${{ secrets.SSH_USERNAME }}
-          key: ${{ secrets.SSH_DEPLOY_KEY }}
-          port: 22
-          # Copia o .env recém-criado e o compose file
-          source: ".env, docker-compose.prod.yml"
-          # Alvo: A pasta raiz do seu projeto no servidor do professor
-          target: "/home/${{ secrets.SSH_USERNAME }}/app/sass-salon" # Ajuste o caminho final se o professor tiver exigido outro diretório base
-
       - name: Acionar Gatilho de Pull/Deploy no Servidor do Professor
         run: |
           mkdir -p ~/.ssh
           echo "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/deploy_key
           chmod 600 ~/.ssh/deploy_key
           
-          # O comando exigido pelo professor para forçar o servidor a buscar a nova imagem no GHCR
+          # Envia "ator:token" para a VPS de forma oculta e segura.
+          # O servidor do professor usa isso para baixar a imagem privada.
           ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
-            "${{ secrets.SSH_USERNAME }}@dsc.rodrigor.com" \
+            "${{ secrets.SSH_USERNAME }}@${{ secrets.SSH_HOST }}" \
             "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
