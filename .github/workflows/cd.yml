@@ -92,7 +92,7 @@ jobs:
             echo "SPRING_PROFILES_ACTIVE=prod" >> .env
 
             # 3. Baixa o docker-compose.prod.yml oficial direto do commit mais recente
-            wget -qO docker-compose.prod.yml https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
+            wget -qO docker-compose.prod.yml --header="Authorization: token $PROD_GHCR_TOKEN" https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
 
             # 4. Faz login e sobe a aplicação
             echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$PROD_GHCR_USER" --password-stdin
