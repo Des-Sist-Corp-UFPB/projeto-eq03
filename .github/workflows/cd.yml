@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+  workflow_dispatch:
 
 permissions:
   contents: read
@@ -19,14 +20,15 @@ jobs:
       - name: Checkout Code
         uses: actions/checkout@v4
 
-      - name: Downcase Repository Name
+      - name: Prepara nome da imagem (lowercase e clean)
         id: repo
         run: |
-          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]' | sed 's/projeto-//')
           echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
           echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
+          echo "IMAGE=ghcr.io/$REPO_LOWER:latest" >> $GITHUB_ENV
 
-      - name: Log in to GHCR
+      - name: Login no GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -42,17 +44,19 @@ jobs:
           context: .
           file: ./Dockerfile
           push: true
-          tags: ghcr.io/${{ env.REPO_LOWER }}:latest
+          tags: ${{ env.IMAGE }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
   deploy:
-    name: Deploy na VPS
+    name: Deploy na VPS do Professor
     needs: build-and-push
     runs-on: ubuntu-latest
     steps:
-      - name: Conecta via SSH e Atualiza
-        uses: appleboy/ssh-action@v1.0.3
+      - name: Checkout Code (Para pegar o docker-compose.prod.yml)
+        uses: actions/checkout@v4
+
+      - name: Monta o ficheiro .env localmente no Runner
         env:
           PROD_DB_URL: ${{ secrets.DB_URL }}
           PROD_DB_USER: ${{ secrets.DB_USER }}
@@ -62,42 +66,39 @@ jobs:
           PROD_MAIL_FROM: ${{ secrets.MAIL_FROM }}
           PROD_MAIL_BUSINESS: ${{ secrets.MAIL_BUSINESS }}
           PROD_APP_CORS_ALLOWED_ORIGINS: ${{ secrets.APP_CORS_ALLOWED_ORIGINS }}
-          PROD_GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PROD_GHCR_USER: ${{ github.actor }}
+        run: |
+          echo "DB_URL=$PROD_DB_URL" >> .env
+          echo "DB_USER=$PROD_DB_USER" >> .env
+          echo "DB_PASS=$PROD_DB_PASS" >> .env
+          echo "JWT_SECRET=$PROD_JWT_SECRET" >> .env
+          echo "MAIL_API_URL=https://api.resend.com" >> .env
+          echo "MAIL_PASSWORD=$PROD_MAIL_PASSWORD" >> .env
+          echo "MAIL_FROM=$PROD_MAIL_FROM" >> .env
+          echo "MAIL_BUSINESS=$PROD_MAIL_BUSINESS" >> .env
+          echo "APP_CORS_ALLOWED_ORIGINS=$PROD_APP_CORS_ALLOWED_ORIGINS" >> .env
+          echo "VITE_API_URL=/v1" >> .env
+          echo "SPRING_PROFILES_ACTIVE=prod" >> .env
+
+      - name: Transfere o .env e o Compose para o Servidor via SCP
+        uses: appleboy/scp-action@v0.1.7
         with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USER }}
-          key: ${{ secrets.SSH_KEY }}
-          envs: PROD_DB_URL,PROD_DB_USER,PROD_DB_PASS,PROD_JWT_SECRET,PROD_MAIL_PASSWORD,PROD_MAIL_FROM,PROD_MAIL_BUSINESS,PROD_APP_CORS_ALLOWED_ORIGINS,PROD_GHCR_TOKEN,PROD_GHCR_USER
-          script: |
-            mkdir -p /app/sass-salon
-            cd /app/sass-salon
+          host: dsc.rodrigor.com
+          # Usa a chave e o username de deploy que o professor forneceu
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_DEPLOY_KEY }}
+          port: 22
+          # Copia o .env recém-criado e o compose file
+          source: ".env, docker-compose.prod.yml"
+          # Alvo: A pasta raiz do seu projeto no servidor do professor
+          target: "/home/${{ secrets.SSH_USERNAME }}/app/sass-salon" # Ajuste o caminho final se o professor tiver exigido outro diretório base
 
-            # 1. Limpeza do ambiente
-            rm -f .env docker-compose.yml docker-compose.yaml docker-compose.prod.yml docker-compose.override.yml
-            unset IMAGE_REPO
-            unset COMPOSE_FILE
-
-            # 2. Monta o .env dinamicamente
-            echo "DB_URL=$PROD_DB_URL" >> .env
-            echo "DB_USER=$PROD_DB_USER" >> .env
-            echo "DB_PASS=$PROD_DB_PASS" >> .env
-            echo "JWT_SECRET=$PROD_JWT_SECRET" >> .env
-            echo "MAIL_API_URL=https://api.resend.com" >> .env
-            echo "MAIL_PASSWORD=$PROD_MAIL_PASSWORD" >> .env
-            echo "MAIL_FROM=$PROD_MAIL_FROM" >> .env
-            echo "MAIL_BUSINESS=$PROD_MAIL_BUSINESS" >> .env
-            echo "APP_CORS_ALLOWED_ORIGINS=$PROD_APP_CORS_ALLOWED_ORIGINS" >> .env
-            echo "VITE_API_URL=/v1" >> .env
-            echo "SPRING_PROFILES_ACTIVE=prod" >> .env
-
-            # 3. Baixa o docker-compose.prod.yml oficial direto do commit mais recente
-            wget -qO docker-compose.prod.yml --header="Authorization: token $PROD_GHCR_TOKEN" https://raw.githubusercontent.com/${{ github.repository }}/${{ github.sha }}/docker-compose.prod.yml
-
-            # 4. Faz login e sobe a aplicação
-            USER_LOWER=$(echo "$PROD_GHCR_USER" | tr '[:upper:]' '[:lower:]')
-            echo "$PROD_GHCR_TOKEN" | docker login ghcr.io -u "$USER_LOWER" --password-stdin
-            
-            docker compose -f docker-compose.prod.yml pull
-            docker compose -f docker-compose.prod.yml up -d --remove-orphans
-            docker image prune -af
+      - name: Acionar Gatilho de Pull/Deploy no Servidor do Professor
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_DEPLOY_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          
+          # O comando exigido pelo professor para forçar o servidor a buscar a nova imagem no GHCR
+          ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=no \
+            "${{ secrets.SSH_USERNAME }}@dsc.rodrigor.com" \
+            "${{ github.actor }}:${{ secrets.GITHUB_TOKEN }}"
