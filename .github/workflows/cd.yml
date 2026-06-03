@@ -22,7 +22,7 @@ jobs:
       - name: Downcase Repository Name
         id: repo
         run: |
-          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')
+          REPO_LOWER=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]' | sed 's/projeto-//')
           echo "REPO_LOWER=$REPO_LOWER" >> $GITHUB_ENV
           echo "repo_lower=$REPO_LOWER" >> $GITHUB_OUTPUT
 
