@@ -14,7 +14,7 @@ export const PublicServices = () => {
     const loadServices = async () => {
       try {
         const data = await salonServicesApi.findAll();
-        setServices(data.filter(s => s.active));
+        setServices(data.filter((s) => s.active));
       } catch (err) {
         const msg = getApiErrorMessage(err, 'Erro ao carregar serviços');
         await showError(msg);
@@ -45,16 +45,19 @@ export const PublicServices = () => {
       ) : services.length === 0 ? (
         <div className="max-w-md mx-auto text-center py-16 px-6 bg-white rounded-2xl border border-dashed border-[#eae1e1] shadow-xs">
           <Scissors size={48} className="mx-auto text-[#be8a83]/50 mb-4 animate-pulse" />
-          <h3 className="font-heading text-lg font-bold text-[#3b3036] mb-2">Nenhum serviço disponível</h3>
+          <h3 className="font-heading text-lg font-bold text-[#3b3036] mb-2">
+            Nenhum serviço disponível
+          </h3>
           <p className="text-sm text-[#3b3036]/60 leading-relaxed">
-            No momento, não temos serviços cadastrados ou ativos no nosso menu. Por favor, volte mais tarde ou entre em contato conosco.
+            No momento, não temos serviços cadastrados ou ativos no nosso menu. Por favor, volte
+            mais tarde ou entre em contato conosco.
           </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {services.map((service) => (
-            <div 
-              key={service.id} 
+            <div
+              key={service.id}
               className="bg-white rounded-2xl border border-gray-100 p-6 flex flex-col justify-between shadow-xs relative overflow-hidden before:content-[''] before:absolute before:top-0 before:left-0 before:w-full before:h-1 before:bg-gradient-to-r before:from-[#be8a83] before:to-[#e5a49c]"
             >
               <div>

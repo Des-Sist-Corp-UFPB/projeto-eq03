@@ -30,24 +30,24 @@ export const DefaultLayout = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-1.5">
-              <NavLink 
-                to="/services" 
-                className={({ isActive }) => 
+              <NavLink
+                to="/services"
+                className={({ isActive }) =>
                   `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-[#be8a83]/5'
                   }`
                 }
               >
                 Nossos Serviços
               </NavLink>
-              <NavLink 
-                to="/appointment" 
-                className={({ isActive }) => 
+              <NavLink
+                to="/appointment"
+                className={({ isActive }) =>
                   `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-[#be8a83]/5'
                   }`
                 }
@@ -67,12 +67,12 @@ export const DefaultLayout = () => {
               </button>
               {isAuthenticated ? (
                 <div className="flex items-center gap-4">
-                  <NavLink 
-                    to="/my-appointments" 
-                    className={({ isActive }) => 
+                  <NavLink
+                    to="/my-appointments"
+                    className={({ isActive }) =>
                       `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                        isActive 
-                          ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                        isActive
+                          ? 'bg-[#be8a83]/10 text-[#be8a83]'
                           : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-[#be8a83]/5'
                       }`
                     }
@@ -81,15 +81,17 @@ export const DefaultLayout = () => {
                   </NavLink>
                   <div className="flex items-center gap-3 border-l border-r border-[#eae1e1] px-4 py-1">
                     <div className="text-right">
-                      <div className="text-sm font-semibold text-[#2a2528] capitalize">{userName}</div>
+                      <div className="text-sm font-semibold text-[#2a2528] capitalize">
+                        {userName}
+                      </div>
                       <div className="text-xs text-[#7a7074]">{user?.email}</div>
                     </div>
                     <div className="h-9 w-9 rounded-full bg-gradient-to-tr from-[#be8a83] to-[#e5a49c] flex items-center justify-center text-white font-bold shadow-xs uppercase">
                       {userName.charAt(0)}
                     </div>
                   </div>
-                  <button 
-                    onClick={logout} 
+                  <button
+                    onClick={logout}
                     className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 transition-all duration-200"
                   >
                     Sair
@@ -97,14 +99,14 @@ export const DefaultLayout = () => {
                 </div>
               ) : (
                 <>
-                  <Link 
-                    to="/login" 
+                  <Link
+                    to="/login"
                     className="text-sm font-semibold text-[#3b3036]/70 hover:text-[#3b3036] transition-colors pr-2"
                   >
                     Entrar
                   </Link>
-                  <Link 
-                    to="/register" 
+                  <Link
+                    to="/register"
                     className="px-5 py-2.5 bg-[#be8a83] text-white rounded-full text-sm font-semibold hover:bg-[#a6726b] transition-all duration-200"
                   >
                     Criar Conta
@@ -136,33 +138,35 @@ export const DefaultLayout = () => {
                   {userName.charAt(0)}
                 </div>
                 <div className="min-w-0">
-                  <div className="text-sm font-semibold text-[#2a2528] capitalize truncate">{userName}</div>
+                  <div className="text-sm font-semibold text-[#2a2528] capitalize truncate">
+                    {userName}
+                  </div>
                   <div className="text-xs text-[#7a7074] truncate">{user?.email}</div>
                 </div>
               </div>
             )}
 
             <div className="space-y-1">
-              <NavLink 
-                to="/services" 
+              <NavLink
+                to="/services"
                 onClick={closeMobileMenu}
-                className={({ isActive }) => 
+                className={({ isActive }) =>
                   `block px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-gray-50'
                   }`
                 }
               >
                 Nossos Serviços
               </NavLink>
-              <NavLink 
-                to="/appointment" 
+              <NavLink
+                to="/appointment"
                 onClick={closeMobileMenu}
-                className={({ isActive }) => 
+                className={({ isActive }) =>
                   `block px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-gray-50'
                   }`
                 }
@@ -186,15 +190,18 @@ export const DefaultLayout = () => {
               </div>
               {isAuthenticated ? (
                 <>
-                  <Link 
-                    to="/my-appointments" 
+                  <Link
+                    to="/my-appointments"
                     onClick={closeMobileMenu}
                     className="block px-4 py-2.5 text-sm font-semibold text-[#3b3036]/70 hover:text-[#3b3036] transition-colors"
                   >
                     Meus Horários
                   </Link>
-                  <button 
-                    onClick={() => { logout(); closeMobileMenu(); }} 
+                  <button
+                    onClick={() => {
+                      logout();
+                      closeMobileMenu();
+                    }}
                     className="w-full text-left px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 transition-all duration-200"
                   >
                     Sair
@@ -202,15 +209,15 @@ export const DefaultLayout = () => {
                 </>
               ) : (
                 <>
-                  <Link 
-                    to="/login" 
+                  <Link
+                    to="/login"
                     onClick={closeMobileMenu}
                     className="block px-4 py-2.5 text-sm font-semibold text-[#3b3036]/70 hover:text-[#3b3036] transition-colors"
                   >
                     Entrar
                   </Link>
-                  <Link 
-                    to="/register" 
+                  <Link
+                    to="/register"
                     onClick={closeMobileMenu}
                     className="block text-center px-4 py-2.5 bg-[#be8a83] text-white rounded-xl text-sm font-semibold hover:bg-[#a6726b] transition-all duration-200"
                   >

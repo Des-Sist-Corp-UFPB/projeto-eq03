@@ -37,7 +37,7 @@ interface AppointmentCreatePayload {
 function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreatePayload {
   const body: AppointmentCreatePayload = {
     employeeId: request.employeeId,
-    serviceId: request.serviceId
+    serviceId: request.serviceId,
   };
   if (request.scheduledAt != null && String(request.scheduledAt).trim() !== '') {
     body.scheduledAt = request.scheduledAt;
@@ -56,13 +56,16 @@ function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreateP
 
 export const appointmentsApi = {
   create: async (request: AppointmentRequestBody) => {
-    const { data } = await api.post<AppointmentResponse>('/appointments', buildCreatePayload(request));
+    const { data } = await api.post<AppointmentResponse>(
+      '/appointments',
+      buildCreatePayload(request)
+    );
     return data;
   },
 
   confirm: async (id: number, scheduledAtIso: string) => {
     const { data } = await api.patch<AppointmentResponse>(`/appointments/${id}/confirm`, {
-      scheduledAt: scheduledAtIso
+      scheduledAt: scheduledAtIso,
     });
     return data;
   },
@@ -89,8 +92,8 @@ export const appointmentsApi = {
 
   updateStatus: async (id: number, status: string) => {
     const { data } = await api.patch<AppointmentResponse>(`/appointments/${id}/status`, null, {
-      params: { status }
+      params: { status },
     });
     return data;
-  }
+  },
 };

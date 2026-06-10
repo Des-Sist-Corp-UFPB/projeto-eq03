@@ -28,7 +28,7 @@ export function Table<T>({
   currentPage = 1,
   totalPages = 1,
   onPageChange,
-  emptyMessage = 'Nenhum registro encontrado.'
+  emptyMessage = 'Nenhum registro encontrado.',
 }: TableProps<T>) {
   return (
     <div className="w-full bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-[#eae1e1]/80 shadow-sm mb-8 animate-fade-in-up">
@@ -63,7 +63,10 @@ export function Table<T>({
           <tbody className="text-sm text-[#2a2528]">
             {data.length === 0 ? (
               <tr>
-                <td colSpan={columns.length} className="px-4 py-8 text-center text-[#7a7074]/80 bg-white/50 border border-[#eae1e1] rounded-xl">
+                <td
+                  colSpan={columns.length}
+                  className="px-4 py-8 text-center text-[#7a7074]/80 bg-white/50 border border-[#eae1e1] rounded-xl"
+                >
                   {emptyMessage}
                 </td>
               </tr>
@@ -100,7 +103,7 @@ export function Table<T>({
           >
             Anterior
           </button>
-          
+
           <div className="flex items-center gap-1">
             {Array.from({ length: totalPages }).map((_, i) => {
               const pageNum = i + 1;

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { featureFlagsService, type FeatureFlag } from '../../services/featureFlags';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { useAlert } from '../../hooks/useAlert';
@@ -11,7 +11,7 @@ export const FeatureFlags = () => {
 
   const { error: showError, success: showSuccess } = useAlert();
 
-  const loadFlags = async () => {
+  const loadFlags = useCallback(async () => {
     setIsLoading(true);
     try {
       const data = await featureFlagsService.getAllFlags();
@@ -22,22 +22,22 @@ export const FeatureFlags = () => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [showError]);
 
   useEffect(() => {
     loadFlags();
-  }, []);
+  }, [loadFlags]);
 
   const handleToggle = async (name: string, currentStatus: boolean) => {
     setTogglingName(name);
     try {
       await featureFlagsService.toggleFlag(name);
-      setFlags(prev =>
-        prev.map(flag =>
-          flag.name === name ? { ...flag, enabled: !currentStatus } : flag
-        )
+      setFlags((prev) =>
+        prev.map((flag) => (flag.name === name ? { ...flag, enabled: !currentStatus } : flag))
       );
-      showSuccess(`A feature flag ${name} foi ${!currentStatus ? 'ativada' : 'desativada'} com sucesso.`);
+      showSuccess(
+        `A feature flag ${name} foi ${!currentStatus ? 'ativada' : 'desativada'} com sucesso.`
+      );
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Erro ao alternar o estado da feature flag.');
       showError(msg);
@@ -56,7 +56,8 @@ export const FeatureFlags = () => {
             Gerenciar Feature Flags
           </h2>
           <p className="text-sm text-[#3b3036]/60 mt-1">
-            Controle as funcionalidades do sistema em tempo real. Habilitar ou desabilitar flags afeta instantaneamente a experiência do usuário e os fluxos do backend.
+            Controle as funcionalidades do sistema em tempo real. Habilitar ou desabilitar flags
+            afeta instantaneamente a experiência do usuário e os fluxos do backend.
           </p>
         </div>
       </div>
@@ -64,13 +65,15 @@ export const FeatureFlags = () => {
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be8a83]"></div>
-          <span className="text-sm text-[#3b3036]/60 font-medium font-sans">Buscando feature flags...</span>
+          <span className="text-sm text-[#3b3036]/60 font-medium font-sans">
+            Buscando feature flags...
+          </span>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {flags.map(flag => (
-            <div 
-              key={flag.name} 
+          {flags.map((flag) => (
+            <div
+              key={flag.name}
               className="bg-white rounded-2xl border border-[#eae1e1]/80 p-6 flex flex-col justify-between shadow-sm transition-all duration-300 relative overflow-hidden group"
             >
               <div>
@@ -80,8 +83,8 @@ export const FeatureFlags = () => {
                   </span>
                   <span
                     className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold shrink-0 ${
-                      flag.enabled 
-                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' 
+                      flag.enabled
+                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
                         : 'bg-gray-100 text-gray-600 border border-gray-200'
                     }`}
                   >
@@ -94,7 +97,9 @@ export const FeatureFlags = () => {
               </div>
 
               <div className="flex justify-between items-center pt-4 border-t border-[#eae1e1]/80">
-                <span className="text-xs font-semibold text-[#3b3036]/60 uppercase tracking-wider">Alternar Status</span>
+                <span className="text-xs font-semibold text-[#3b3036]/60 uppercase tracking-wider">
+                  Alternar Status
+                </span>
                 {togglingName === flag.name ? (
                   <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
                 ) : (
@@ -115,8 +120,12 @@ export const FeatureFlags = () => {
           {flags.length === 0 && (
             <div className="col-span-full flex flex-col items-center justify-center py-20 gap-2">
               <AlertCircle size={40} className="text-gray-300" />
-              <span className="text-sm font-semibold text-[#3b3036]/80">Nenhuma feature flag cadastrada</span>
-              <span className="text-xs text-[#3b3036]/50">Entre em contato com o administrador do sistema.</span>
+              <span className="text-sm font-semibold text-[#3b3036]/80">
+                Nenhuma feature flag cadastrada
+              </span>
+              <span className="text-xs text-[#3b3036]/50">
+                Entre em contato com o administrador do sistema.
+              </span>
             </div>
           )}
         </div>

@@ -20,18 +20,18 @@ export const ModalForm = ({
   onSubmit,
   isSubmitting = false,
   submitLabel = 'Salvar',
-  cancelLabel = 'Cancelar'
+  cancelLabel = 'Cancelar',
 }: ModalFormProps) => {
   if (!show) return null;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-[#261f23]/40 backdrop-blur-md transition-opacity duration-300" 
+      <div
+        className="fixed inset-0 bg-[#261f23]/40 backdrop-blur-md transition-opacity duration-300"
         onClick={onHide}
       />
-      
+
       {/* Modal Dialog */}
       <div className="relative w-full max-w-lg mx-auto my-6 z-50 px-4">
         <div className="relative flex flex-col w-full bg-white border border-[#eae1e1] rounded-2xl shadow-xl outline-none focus:outline-none animate-scale-up">
@@ -46,14 +46,12 @@ export const ModalForm = ({
               <X size={20} />
             </button>
           </div>
-          
+
           {/* Form wrapper */}
           <form onSubmit={onSubmit}>
             {/* Body */}
-            <div className="relative p-6 flex-auto max-h-[70vh] overflow-y-auto">
-              {children}
-            </div>
-            
+            <div className="relative p-6 flex-auto max-h-[70vh] overflow-y-auto">{children}</div>
+
             {/* Footer */}
             <div className="flex items-center justify-end gap-3 p-5 border-t border-solid border-[#eae1e1] rounded-b-2xl bg-[#fcf9f9]">
               <button

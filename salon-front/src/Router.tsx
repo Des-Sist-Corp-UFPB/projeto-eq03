@@ -42,7 +42,8 @@ const MaintenancePage = () => {
             Portal em Configuração
           </h1>
           <p className="text-sm text-[#7a7074] dark:text-[#9ca3af] leading-relaxed">
-            Estamos preparando novidades incríveis para você. No momento, a área pública de clientes está temporariamente desativada para ajustes no salão.
+            Estamos preparando novidades incríveis para você. No momento, a área pública de clientes
+            está temporariamente desativada para ajustes no salão.
           </p>
         </div>
       </div>
@@ -60,11 +61,11 @@ export const Router = () => {
     const checkFlags = async () => {
       try {
         const flags = await featureFlagsService.getPublicFlags();
-        const portalFlag = flags.find(f => f.name === 'ENABLE_CUSTOMER_PORTAL');
+        const portalFlag = flags.find((f) => f.name === 'ENABLE_CUSTOMER_PORTAL');
         // Por segurança, se a flag não existir ainda, assumimos desativada (conforme valor padrão da migration)
         setIsPortalEnabled(portalFlag ? portalFlag.enabled : false);
       } catch (error) {
-        console.error("Erro ao carregar feature flags:", error);
+        console.error('Erro ao carregar feature flags:', error);
         // Em caso de falha de conexão com a API, assume-se ativa para não bloquear se houver falha de rede temporária
         setIsPortalEnabled(true);
       }
@@ -128,10 +129,7 @@ export const Router = () => {
       <Route path="/register" element={<Register />} />
 
       <Route element={<AdminLayout />}>
-        <Route
-          path="/admin/dashboard"
-          element={<Navigate to="/admin/reports" replace />}
-        />
+        <Route path="/admin/dashboard" element={<Navigate to="/admin/reports" replace />} />
         <Route
           path="/admin/users"
           element={

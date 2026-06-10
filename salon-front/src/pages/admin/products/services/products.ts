@@ -32,5 +32,5 @@ export const productsApi = {
 
   delete: async (id: number) => {
     await api.delete(`/products/${id}`);
-  }
+  },
 };

@@ -16,14 +16,16 @@ const labelCls = 'label-premium';
 export const Users = () => {
   const [users, setUsers] = useState<UserData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingUser, setEditingUser] = useState<UserData | null>(null);
-  
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [userToDelete, setUserToDelete] = useState<number | null>(null);
-  
-  const { register, handleSubmit, reset, setValue } = useForm<UserCreateRequest & UserUpdateRequest>();
+
+  const { register, handleSubmit, reset, setValue } = useForm<
+    UserCreateRequest & UserUpdateRequest
+  >();
   const { error: showError } = useAlert();
 
   const loadUsers = async () => {
@@ -39,7 +41,9 @@ export const Users = () => {
     }
   };
 
-  useEffect(() => { loadUsers(); }, []);
+  useEffect(() => {
+    loadUsers();
+  }, []);
 
   const handleOpenForm = (user?: UserData) => {
     reset();
@@ -60,11 +64,16 @@ export const Users = () => {
 
   const getRoleIdByName = (roleName: string) => {
     switch (roleName) {
-      case 'ADMIN': return 1;
-      case 'GERENTE_DE_ATENDIMENTO': return 2;
-      case 'FUNCIONARIA': return 3;
-      case 'CLIENTE': return 4;
-      default: return 4;
+      case 'ADMIN':
+        return 1;
+      case 'GERENTE_DE_ATENDIMENTO':
+        return 2;
+      case 'FUNCIONARIA':
+        return 3;
+      case 'CLIENTE':
+        return 4;
+      default:
+        return 4;
     }
   };
 
@@ -78,7 +87,10 @@ export const Users = () => {
       setShowForm(false);
       loadUsers();
     } catch (error) {
-      const msg = getApiErrorMessage(error, 'Erro ao salvar. Verifique os dados e tente novamente.');
+      const msg = getApiErrorMessage(
+        error,
+        'Erro ao salvar. Verifique os dados e tente novamente.'
+      );
       await showError(msg);
     }
   };
@@ -99,7 +111,11 @@ export const Users = () => {
     { key: 'name', label: 'Nome' },
     { key: 'email', label: 'Email' },
     { key: 'role', label: 'Papel' },
-    { key: 'active', label: 'Status', render: (item: UserData) => item.active ? 'Ativo' : 'Inativo' },
+    {
+      key: 'active',
+      label: 'Status',
+      render: (item: UserData) => (item.active ? 'Ativo' : 'Inativo'),
+    },
     {
       key: 'actions',
       label: 'Ações',
@@ -115,15 +131,18 @@ export const Users = () => {
           </PermissionGate>
           <PermissionGate method="DELETE" endpoint={`/v1/users/${item.id}`}>
             <button
-              onClick={() => { setUserToDelete(item.id); setShowConfirm(true); }}
+              onClick={() => {
+                setUserToDelete(item.id);
+                setShowConfirm(true);
+              }}
               className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
             >
               <Trash2 size={15} />
             </button>
           </PermissionGate>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
@@ -131,10 +150,7 @@ export const Users = () => {
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Gerenciar Clientes</h2>
         <PermissionGate method="POST" endpoint="/v1/users">
-          <button
-            onClick={() => handleOpenForm()}
-            className="btn-premium"
-          >
+          <button onClick={() => handleOpenForm()} className="btn-premium">
             <Plus size={18} /> Novo Cliente/Funcionário
           </button>
         </PermissionGate>
@@ -149,7 +165,12 @@ export const Users = () => {
         <Table columns={columns} data={users} keyExtractor={(item) => item.id} />
       )}
 
-      <ModalForm show={showForm} onHide={() => setShowForm(false)} title={editingUser ? 'Editar Conta' : 'Nova Conta'} onSubmit={handleSubmit(onSubmit)}>
+      <ModalForm
+        show={showForm}
+        onHide={() => setShowForm(false)}
+        title={editingUser ? 'Editar Conta' : 'Nova Conta'}
+        onSubmit={handleSubmit(onSubmit)}
+      >
         <div className="space-y-4">
           <div>
             <label className={labelCls}>Nome</label>
@@ -174,7 +195,11 @@ export const Users = () => {
           </div>
           <div>
             <label className={labelCls}>{editingUser ? 'Nova Senha (opcional)' : 'Senha *'}</label>
-            <input type="password" className={inputCls} {...register('password', { required: !editingUser })} />
+            <input
+              type="password"
+              className={inputCls}
+              {...register('password', { required: !editingUser })}
+            />
           </div>
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">

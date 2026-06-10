@@ -8,7 +8,12 @@ interface PermissionGateProps {
   fallback?: ReactNode;
 }
 
-export const PermissionGate = ({ method, endpoint, children, fallback = null }: PermissionGateProps) => {
+export const PermissionGate = ({
+  method,
+  endpoint,
+  children,
+  fallback = null,
+}: PermissionGateProps) => {
   const hasPermission = usePermission(method, endpoint);
 
   if (!hasPermission) {

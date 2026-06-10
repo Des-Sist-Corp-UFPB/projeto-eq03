@@ -7,7 +7,7 @@ type ErrorBody = {
 };
 
 export function getApiErrorMessage(error: unknown, fallback: string): string {
-  if (error && typeof error === 'object' && 'response' in (error as any)) {
+  if (error && typeof error === 'object' && 'response' in (error as Record<string, unknown>)) {
     const ax = error as AxiosError<ErrorBody | string>;
     const status = ax.response?.status;
     const data = ax.response?.data;
