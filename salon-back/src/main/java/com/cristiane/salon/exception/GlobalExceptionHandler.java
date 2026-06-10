@@ -77,11 +77,15 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErrorResponse> handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
+        String message = ex.getMessage();
+        if (message == null || "Access is denied".equalsIgnoreCase(message) || "Access denied".equalsIgnoreCase(message)) {
+            message = "Você não possui permissão para acessar este recurso.";
+        }
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.FORBIDDEN.value(),
                 "Acesso Negado",
-                "Você não possui permissão para acessar este recurso.",
+                message,
                 request.getRequestURI()
         );
         return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);
