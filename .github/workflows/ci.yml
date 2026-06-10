@@ -56,12 +56,13 @@ jobs:
         with:
           java-version: "21"
           distribution: "temurin"
-          cache: "maven" # Habilita o cache automático de dependências do Maven (~/.m2)
+          cache: "maven"
 
+      # Adicionamos -Dspring.profiles.active=test para usar o arquivo que criamos
       - name: Build & Run Unit Tests
         run: |
           cd salon-back
-          mvn clean test
+          ./mvnw clean test -Dspring.profiles.active=test
 
   # Job 3: Lint e Build de Validação do Frontend (React/Node)
   ci-frontend:

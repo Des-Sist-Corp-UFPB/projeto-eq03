@@ -1,0 +1,21 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:salon_test;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+
+# Desabilita o log em arquivo para não dar erro de permissão
+logging:
+  file:
+    name:
+  level:
+    root: WARN
+    com.cristiane.salon: INFO
