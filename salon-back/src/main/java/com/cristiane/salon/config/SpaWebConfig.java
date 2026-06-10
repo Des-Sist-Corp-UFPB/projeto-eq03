@@ -21,8 +21,22 @@ public class SpaWebConfig implements WebMvcConfigurer {
                     @Override
                     protected Resource getResource(String resourcePath, Resource location) throws IOException {
                         Resource requestedResource = location.createRelative(resourcePath);
-                        return requestedResource.exists() && requestedResource.isReadable() ? requestedResource
-                                : new ClassPathResource("/static/index.html");
+                        if (requestedResource.exists() && requestedResource.isReadable()) {
+                            return requestedResource;
+                        }
+                        
+                        // Se for uma rota de API, não deve retornar o index.html (retorna null para resultar em 404)
+                        if (resourcePath != null && (resourcePath.startsWith("v1/") || resourcePath.startsWith("/v1/") || resourcePath.equals("v1") || resourcePath.equals("/v1"))) {
+                            return null;
+                        }
+                        
+                        // Retorna o index.html se ele existir, caso contrário retorna null (evita 500)
+                        Resource indexHtml = new ClassPathResource("/static/index.html");
+                        if (indexHtml.exists() && indexHtml.isReadable()) {
+                            return indexHtml;
+                        }
+                        
+                        return null;
                     }
                 });
     }

@@ -19,6 +19,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -85,9 +86,9 @@ class ErrorScenariosTest {
     }
 
     @Test
-    @Disabled("Ignorado temporariamente devido a conflitos de infraestrutura no Spring Test")
+    @WithMockUser
     void whenUnknownEndpoint_thenReturns404() throws Exception {
-        mvc.perform(post("/v1/this-path-does-not-exist")
+        mvc.perform(get("/v1/this-path-does-not-exist")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isNotFound());
     }
