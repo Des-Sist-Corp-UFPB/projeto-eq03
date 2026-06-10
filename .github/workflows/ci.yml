@@ -1,8 +1,5 @@
 name: Continuous Integration
 
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
-
 on:
   push:
     branches-ignore:
@@ -19,6 +16,7 @@ concurrency:
 permissions:
   actions: read
   contents: read
+  pull-requests: read
   security-events: write
 
 jobs:
