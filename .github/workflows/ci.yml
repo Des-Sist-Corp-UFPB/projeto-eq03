@@ -126,9 +126,11 @@ jobs:
           languages: javascript-typescript, java
           queries: security-extended,security-and-quality
 
-      # O Autobuild do CodeQL detecta pom.xml do Maven e compila automaticamente o Java
-      - name: Autobuild CodeQL
-        uses: github/codeql-action/autobuild@v3
+      - name: Compilação Manual para o CodeQL (Forçando Java 21)
+        if: ${{ needs.changes.outputs.backend == 'true' }}
+        run: |
+          cd salon-back
+          ./mvnw clean compile -DskipTests
 
       - name: Perform CodeQL Analysis
         uses: github/codeql-action/analyze@v3
