@@ -1,12 +1,14 @@
 package com.cristiane.salon.controllers;
 
 import com.cristiane.salon.controller.AuthController;
+import com.cristiane.salon.models.audit.AuditLogService;
 import com.cristiane.salon.models.user.service.AuthService;
-import com.cristiane.salon.security.JwtAuthenticationFilter;
+import com.cristiane.salon.security.JwtService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
@@ -25,7 +27,13 @@ class AuthControllerTest {
     private AuthService authService;
 
     @MockitoBean
-    private JwtAuthenticationFilter jwtAuthenticationFilter;
+    private JwtService jwtService;
+
+    @MockitoBean
+    private AuditLogService auditLogService;
+
+    @MockitoBean
+    private UserDetailsService userDetailsService;
 
     @Test
     void loginReturns200_whenValid() throws Exception {
