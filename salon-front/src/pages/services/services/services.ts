@@ -13,7 +13,9 @@ export interface SalonServiceData {
   active: boolean;
 }
 
-export function displayServiceDuration(s: Pick<SalonServiceData, 'durationEstimate' | 'durationMin'>): string {
+export function displayServiceDuration(
+  s: Pick<SalonServiceData, 'durationEstimate' | 'durationMin'>
+): string {
   const text = s.durationEstimate?.trim();
   if (text) return text;
   if (s.durationMin != null && s.durationMin > 0) return `Em média ${s.durationMin} min`;
@@ -44,5 +46,5 @@ export const salonServicesApi = {
 
   delete: async (id: number) => {
     await api.delete(`/services/${id}`);
-  }
+  },
 };

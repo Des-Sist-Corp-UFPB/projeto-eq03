@@ -14,7 +14,11 @@ interface RegisterFormData {
 }
 
 export const Register = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm<RegisterFormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<RegisterFormData>();
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -24,7 +28,7 @@ export const Register = () => {
     '/images/salon1.png',
     '/images/salon2.png',
     '/images/salon3.png',
-    '/images/salon4.jpg'
+    '/images/salon4.jpg',
   ];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -67,10 +71,13 @@ export const Register = () => {
 
         {/* Deep obsidian gradient backdrop with high-contrast text overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f17]/95 via-[#0b0f17]/60 to-[#0b0f17]/40 backdrop-blur-[2px] z-10" />
-        
+
         {/* Logo/Brand Title */}
         <div className="z-20 drop-shadow-lg">
-          <Link to="/" className="font-heading text-3xl font-bold tracking-wider text-white hover:text-[#e5a49c] transition-colors">
+          <Link
+            to="/"
+            className="font-heading text-3xl font-bold tracking-wider text-white hover:text-[#e5a49c] transition-colors"
+          >
             ESPAÇO CRISTIANE MOURA
           </Link>
         </div>
@@ -81,7 +88,8 @@ export const Register = () => {
             Seja bem-vinda ao seu momento de autocuidado.
           </h1>
           <p className="text-[#fcf9f9]/90 text-sm max-w-md font-sans tracking-wide drop-shadow-lg">
-            Crie sua conta para ter acesso rápido a agendamentos, histórico de serviços e promoções exclusivas.
+            Crie sua conta para ter acesso rápido a agendamentos, histórico de serviços e promoções
+            exclusivas.
           </p>
         </div>
 
@@ -94,11 +102,14 @@ export const Register = () => {
       {/* Right Side (in code) / Left Side (visual due to flex-row-reverse): Form */}
       <div className="w-full md:w-1/2 min-h-screen bg-white flex flex-col justify-center px-6 py-12 sm:px-16 lg:px-24 relative overflow-y-auto md:animate-slide-form-to-left">
         {/* Back Button */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="absolute top-6 left-6 sm:left-12 flex items-center gap-2 text-sm text-[#7a7074] hover:text-[#3b3036] font-semibold transition-colors group"
         >
-          <ArrowLeft size={16} className="transform group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft
+            size={16}
+            className="transform group-hover:-translate-x-1 transition-transform"
+          />
           Voltar para o início
         </Link>
 
@@ -118,16 +129,17 @@ export const Register = () => {
               <span>{errorMsg}</span>
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="label-premium">
-                Nome Completo
-              </label>
+              <label className="label-premium">Nome Completo</label>
               <input
                 type="text"
                 placeholder="Seu nome completo"
-                {...register('name', { required: 'Nome é obrigatório', minLength: { value: 3, message: 'Mínimo 3 caracteres'} })}
+                {...register('name', {
+                  required: 'Nome é obrigatório',
+                  minLength: { value: 3, message: 'Mínimo 3 caracteres' },
+                })}
                 className={`input-premium ${
                   errors.name ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
@@ -138,9 +150,7 @@ export const Register = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="label-premium">
-                E-mail
-              </label>
+              <label className="label-premium">E-mail</label>
               <input
                 type="email"
                 placeholder="seuemail@exemplo.com"
@@ -155,9 +165,7 @@ export const Register = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="label-premium">
-                Telefone (Opcional)
-              </label>
+              <label className="label-premium">Telefone (Opcional)</label>
               <input
                 type="text"
                 placeholder="(83) 99999-9999"
@@ -167,19 +175,22 @@ export const Register = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="label-premium">
-                Senha
-              </label>
+              <label className="label-premium">Senha</label>
               <input
                 type="password"
                 placeholder="Sua senha (mín. 6 caracteres)"
-                {...register('password', { required: 'Senha é obrigatória', minLength: { value: 6, message: 'Mínimo 6 caracteres'} })}
+                {...register('password', {
+                  required: 'Senha é obrigatória',
+                  minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+                })}
                 className={`input-premium ${
                   errors.password ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
               />
               {errors.password && (
-                <span className="text-xs text-rose-500 font-semibold">{errors.password.message}</span>
+                <span className="text-xs text-rose-500 font-semibold">
+                  {errors.password.message}
+                </span>
               )}
             </div>
 
@@ -190,7 +201,7 @@ export const Register = () => {
             >
               {isLoading ? 'Cadastrando...' : 'Criar minha conta'}
             </button>
-            
+
             <div className="text-center pt-4 text-sm">
               <span className="text-[#7a7074]">Já tem uma conta? </span>
               <Link to="/login" className="text-[#be8a83] font-semibold hover:underline">

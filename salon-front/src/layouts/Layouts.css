@@ -95,7 +95,8 @@
   font-family: var(--font-heading);
   color: var(--primary-color);
   font-size: 1.2rem;
-}.auth-btn {
+}
+.auth-btn {
   background-color: var(--primary-color) !important;
   color: white !important;
   padding: 0.5rem 1.5rem !important;

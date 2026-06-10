@@ -1,9 +1,24 @@
 import { useState, useEffect } from 'react';
 import { reportsApi } from './services/reports';
-import type { FinancialReportResponse, AppointmentReportResponse, PayrollReportResponse } from './services/reports';
+import type {
+  FinancialReportResponse,
+  AppointmentReportResponse,
+  PayrollReportResponse,
+} from './services/reports';
 import { cashFlowApi } from '../cashflow/services/cashflow';
 import type { CashFlowData } from '../cashflow/services/cashflow';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
+  Line,
+  Legend,
+} from 'recharts';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { Download, Loader2 } from 'lucide-react';
@@ -36,7 +51,7 @@ export const Reports = () => {
         reportsApi.getFinancialReport(dateFrom || undefined, dateTo || undefined),
         reportsApi.getAppointmentReport(dateFrom || undefined, dateTo || undefined),
         cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined),
-        reportsApi.getPayrollReport(dateFrom || undefined, dateTo || undefined)
+        reportsApi.getPayrollReport(dateFrom || undefined, dateTo || undefined),
       ]);
       setFinancial(finData);
       setAppointments(aptData);
@@ -50,7 +65,9 @@ export const Reports = () => {
     }
   };
 
-  useEffect(() => { loadReports(); }, [dateFrom, dateTo]);
+  useEffect(() => {
+    loadReports();
+  }, [dateFrom, dateTo]);
 
   const generatePDF = async () => {
     setIsGeneratingPDF(true);
@@ -58,78 +75,82 @@ export const Reports = () => {
       // Fetch fresh cash flow and payroll data before drawing the PDF (user requirement)
       const [cfData, payData] = await Promise.all([
         cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined),
-        reportsApi.getPayrollReport(dateFrom || undefined, dateTo || undefined)
+        reportsApi.getPayrollReport(dateFrom || undefined, dateTo || undefined),
       ]);
 
       const doc = new jsPDF();
       const margin = 15;
       const docWidth = 210;
-      
+
       // 1. Draw modern, elegant header banner matching the brand colors (Dusty Rose #be8a83)
       doc.setFillColor(190, 138, 131);
       doc.rect(0, 0, docWidth, 40, 'F');
-      
+
       doc.setTextColor(255, 255, 255);
-      doc.setFont("helvetica", "bold");
+      doc.setFont('helvetica', 'bold');
       doc.setFontSize(20);
-      doc.text("ESPAÇO CRISTIANE MOURA", margin, 18);
-      
-      doc.setFont("helvetica", "normal");
+      doc.text('ESPAÇO CRISTIANE MOURA', margin, 18);
+
+      doc.setFont('helvetica', 'normal');
       doc.setFontSize(10);
-      doc.text("Relatório Executivo de Finanças e Agendamentos", margin, 26);
-      
+      doc.text('Relatório Executivo de Finanças e Agendamentos', margin, 26);
+
       const authorText = user?.email ? `  |  Gerado por: ${user.email}` : '';
       doc.text(`Período: ${financial?.period || 'Geral'}${authorText}`, margin, 32);
-      
+
       let currentY = 48;
-      
+
       // Helper function to draw consistent section headers
       const drawSectionHeader = (title: string, y: number) => {
-        doc.setFont("helvetica", "bold");
+        doc.setFont('helvetica', 'bold');
         doc.setFontSize(13);
         doc.setTextColor(59, 48, 54); // Charcoal #3b3036
         doc.text(title, margin, y);
-        
+
         // Subtle divider line
         doc.setDrawColor(234, 225, 225); // #eae1e1
         doc.setLineWidth(0.5);
         doc.line(margin, y + 2, docWidth - margin, y + 2);
         return y + 8;
       };
-      
+
       // 2. Financial Summary Table
-      currentY = drawSectionHeader("1. Resumo Financeiro", currentY);
+      currentY = drawSectionHeader('1. Resumo Financeiro', currentY);
       autoTable(doc, {
         startY: currentY,
-        head: [['Receitas', 'Despesas Gerais', 'Gastos Salários', 'Gastos Comissões', 'Lucro Líquido']],
-        body: [[
-          `R$ ${(financial?.totalIncome ?? 0).toFixed(2)}`,
-          `R$ ${(financial?.totalExpense ?? 0).toFixed(2)}`,
-          `R$ ${(financial?.totalSalaryPaid ?? 0).toFixed(2)}`,
-          `R$ ${(financial?.totalCommissionPaid ?? 0).toFixed(2)}`,
-          `R$ ${(financial?.netProfit ?? 0).toFixed(2)}`
-        ]],
+        head: [
+          ['Receitas', 'Despesas Gerais', 'Gastos Salários', 'Gastos Comissões', 'Lucro Líquido'],
+        ],
+        body: [
+          [
+            `R$ ${(financial?.totalIncome ?? 0).toFixed(2)}`,
+            `R$ ${(financial?.totalExpense ?? 0).toFixed(2)}`,
+            `R$ ${(financial?.totalSalaryPaid ?? 0).toFixed(2)}`,
+            `R$ ${(financial?.totalCommissionPaid ?? 0).toFixed(2)}`,
+            `R$ ${(financial?.netProfit ?? 0).toFixed(2)}`,
+          ],
+        ],
         theme: 'striped',
         headStyles: { fillColor: [190, 138, 131], textColor: [255, 255, 255], fontStyle: 'bold' },
         bodyStyles: { textColor: [59, 48, 54] },
         alternateRowStyles: { fillColor: [252, 249, 249] },
         margin: { left: margin, right: margin },
       });
-      
+
       currentY = (doc as any).lastAutoTable.finalY + 12;
-      
+
       // 3. Employee Remunerations Table
       if (financial?.employeeFinanceDetails && financial.employeeFinanceDetails.length > 0) {
         if (currentY > 230) {
           doc.addPage();
           currentY = 20;
         }
-        currentY = drawSectionHeader("2. Detalhamento de Remunerações por Funcionária", currentY);
-        
-        const employeeRows = financial.employeeFinanceDetails.map(emp => {
+        currentY = drawSectionHeader('2. Detalhamento de Remunerações por Funcionária', currentY);
+
+        const employeeRows = financial.employeeFinanceDetails.map((emp) => {
           let typeStr = 'Não definido';
           let baseStr = 'R$ 0,00';
-          
+
           if (emp.remunerationType === 'SALARIO_FIXO') {
             typeStr = 'Salário Fixo';
             baseStr = `R$ ${(emp.remunerationValue ?? 0).toFixed(2)}`;
@@ -142,17 +163,17 @@ export const Reports = () => {
             const scopeStr = emp.commissionScope === 'GLOBAL' ? 'Global' : 'Individual';
             baseStr = `R$ ${(emp.remunerationValue ?? 0).toFixed(2)} + ${(emp.commissionValue ?? 0).toFixed(0)}% (${scopeStr})`;
           }
-          
+
           return [
             emp.employeeName,
             typeStr,
             baseStr,
             emp.doneAppointmentsCount.toString(),
             `R$ ${(emp.doneAppointmentsValue ?? 0).toFixed(2)}`,
-            `R$ ${(emp.calculatedPayout ?? 0).toFixed(2)}`
+            `R$ ${(emp.calculatedPayout ?? 0).toFixed(2)}`,
           ];
         });
-        
+
         autoTable(doc, {
           startY: currentY,
           head: [['Nome', 'Tipo', 'Base', 'Atendimentos', 'Valor Atendimentos', 'Valor A Pagar']],
@@ -163,32 +184,34 @@ export const Reports = () => {
           alternateRowStyles: { fillColor: [252, 249, 249] },
           margin: { left: margin, right: margin },
         });
-        
+
         currentY = (doc as any).lastAutoTable.finalY + 12;
       }
-      
+
       // 4. Appointment Summary Table
       if (currentY > 230) {
         doc.addPage();
         currentY = 20;
       }
-      currentY = drawSectionHeader("3. Resumo de Agendamentos", currentY);
+      currentY = drawSectionHeader('3. Resumo de Agendamentos', currentY);
       autoTable(doc, {
         startY: currentY,
         head: [['Total', 'Concluídos', 'Pendentes', 'Cancelados']],
-        body: [[
-          appointments?.totalAppointments || 0,
-          appointments?.done || 0,
-          appointments?.pending || 0,
-          appointments?.cancelled || 0
-        ]],
+        body: [
+          [
+            appointments?.totalAppointments || 0,
+            appointments?.done || 0,
+            appointments?.pending || 0,
+            appointments?.cancelled || 0,
+          ],
+        ],
         theme: 'striped',
         headStyles: { fillColor: [190, 138, 131], textColor: [255, 255, 255], fontStyle: 'bold' },
         bodyStyles: { textColor: [59, 48, 54] },
         alternateRowStyles: { fillColor: [252, 249, 249] },
         margin: { left: margin, right: margin },
       });
-      
+
       currentY = (doc as any).lastAutoTable.finalY + 12;
 
       // 5. Payroll Table inside PDF (aligned to scope requirements)
@@ -197,22 +220,22 @@ export const Reports = () => {
           doc.addPage();
           currentY = 20;
         }
-        currentY = drawSectionHeader("4. Folha de Pagamento", currentY);
-        
-        const payrollRows = payData.items.map(item => {
+        currentY = drawSectionHeader('4. Folha de Pagamento', currentY);
+
+        const payrollRows = payData.items.map((item) => {
           let typeStr = 'Não definido';
           if (item.remunerationType === 'SALARIO_FIXO') typeStr = 'Salário Fixo';
           else if (item.remunerationType === 'COMISSIONADO') typeStr = 'Comissionado';
           else if (item.remunerationType === 'FIXO_E_COMISSIONADO') typeStr = 'Misto';
-          
+
           return [
             item.employeeName,
             typeStr,
             `R$ ${item.baseAmount.toFixed(2)}`,
-            `R$ ${item.calculatedPay.toFixed(2)}`
+            `R$ ${item.calculatedPay.toFixed(2)}`,
           ];
         });
-        
+
         autoTable(doc, {
           startY: currentY,
           head: [['Nome', 'Tipo de Remuneração', 'Base de Cálculo', 'Total a Pagar']],
@@ -223,29 +246,29 @@ export const Reports = () => {
           alternateRowStyles: { fillColor: [252, 249, 249] },
           margin: { left: margin, right: margin },
         });
-        
+
         currentY = (doc as any).lastAutoTable.finalY + 12;
       }
-      
+
       // 6. Cash Flow Transactions Detail
       if (cfData && cfData.length > 0) {
         if (currentY > 200) {
           doc.addPage();
           currentY = 20;
         }
-        currentY = drawSectionHeader("5. Detalhamento de Transações (Fluxo de Caixa)", currentY);
-        
-        const cfRows = cfData.map(cf => {
+        currentY = drawSectionHeader('5. Detalhamento de Transações (Fluxo de Caixa)', currentY);
+
+        const cfRows = cfData.map((cf) => {
           const typeStr = cf.type === 'INCOME' ? 'Entrada' : 'Saída';
           const formattedDate = new Date(cf.date).toLocaleDateString('pt-BR');
           return [
             formattedDate,
             cf.description || 'Sem descrição',
             typeStr,
-            `R$ ${cf.amount.toFixed(2)}`
+            `R$ ${cf.amount.toFixed(2)}`,
           ];
         });
-        
+
         autoTable(doc, {
           startY: currentY,
           head: [['Data', 'Descrição', 'Tipo', 'Valor']],
@@ -257,25 +280,25 @@ export const Reports = () => {
           margin: { left: margin, right: margin },
         });
       }
-      
+
       // 7. Draw page numbers and footers across all pages
       const totalPages = doc.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {
         doc.setPage(i);
-        
+
         // Subtle footer divider line
         doc.setDrawColor(234, 225, 225); // #eae1e1
         doc.setLineWidth(0.5);
         doc.line(margin, 280, docWidth - margin, 280);
-        
+
         // Footer texts
-        doc.setFont("helvetica", "normal");
+        doc.setFont('helvetica', 'normal');
         doc.setFontSize(8);
         doc.setTextColor(122, 112, 116);
-        doc.text("Espaço Cristiane Moura  |  Relatório de Desempenho", margin, 285);
+        doc.text('Espaço Cristiane Moura  |  Relatório de Desempenho', margin, 285);
         doc.text(`Página ${i} de ${totalPages}`, docWidth - margin, 285, { align: 'right' });
       }
-      
+
       const fileDate = new Date().toISOString().substring(0, 10);
       doc.save(`relatorio-espaco-cristiane-moura-${fileDate}.pdf`);
     } catch (err) {
@@ -286,11 +309,17 @@ export const Reports = () => {
     }
   };
 
-  const chartDataEmployee = Object.entries(appointments?.byEmployee || {}).map(([name, count]) => ({ name, Agendamentos: count }));
-  const chartDataService = Object.entries(appointments?.byService || {}).map(([name, count]) => ({ name, Agendamentos: count }));
+  const chartDataEmployee = Object.entries(appointments?.byEmployee || {}).map(([name, count]) => ({
+    name,
+    Agendamentos: count,
+  }));
+  const chartDataService = Object.entries(appointments?.byService || {}).map(([name, count]) => ({
+    name,
+    Agendamentos: count,
+  }));
 
   const revenueByDate: Record<string, number> = {};
-  cashFlows.forEach(cf => {
+  cashFlows.forEach((cf) => {
     if (cf.type === 'INCOME') {
       const d = cf.date.substring(0, 10);
       revenueByDate[d] = (revenueByDate[d] || 0) + cf.amount;
@@ -300,7 +329,7 @@ export const Reports = () => {
     .sort(([a], [b]) => a.localeCompare(b))
     .map(([date, amount]) => ({
       Data: new Date(date).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }),
-      Receita: amount
+      Receita: amount,
     }));
 
   const formatBRL = (value: number) => {
@@ -334,14 +363,27 @@ export const Reports = () => {
       <div className="flex flex-wrap gap-4 items-end bg-white/80 backdrop-blur-md rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm">
         <div className="space-y-1">
           <label className={labelCls}>De</label>
-          <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={inputCls} />
+          <input
+            type="date"
+            value={dateFrom}
+            onChange={(e) => setDateFrom(e.target.value)}
+            className={inputCls}
+          />
         </div>
         <div className="space-y-1">
           <label className={labelCls}>Até</label>
-          <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputCls} />
+          <input
+            type="date"
+            value={dateTo}
+            onChange={(e) => setDateTo(e.target.value)}
+            className={inputCls}
+          />
         </div>
         <button
-          onClick={() => { setDateFrom(''); setDateTo(''); }}
+          onClick={() => {
+            setDateFrom('');
+            setDateTo('');
+          }}
           className="px-5 py-2.5 border border-[#eae1e1] text-sm font-semibold text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] bg-white rounded-xl transition-all duration-200 cursor-pointer"
         >
           Mês Atual (Padrão)
@@ -353,8 +395,8 @@ export const Reports = () => {
         {[
           { id: 'financial', label: 'Finanças & Receitas' },
           { id: 'payroll', label: 'Folha de Pagamento' },
-          { id: 'appointments', label: 'Agendamentos' }
-        ].map(tab => (
+          { id: 'appointments', label: 'Agendamentos' },
+        ].map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
@@ -382,33 +424,54 @@ export const Reports = () => {
               {/* Financial Summary Cards */}
               <div className="space-y-6">
                 <h4 className="font-heading font-bold text-lg text-[#3b3036]">
-                  Resumo Financeiro <span className="text-sm font-normal text-[#7a7074]">({financial?.period})</span>
+                  Resumo Financeiro{' '}
+                  <span className="text-sm font-normal text-[#7a7074]">({financial?.period})</span>
                 </h4>
                 <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-400 to-emerald-500" />
-                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Total Receitas</p>
-                    <p className="text-xl font-extrabold text-emerald-600">{formatBRL(financial?.totalIncome ?? 0)}</p>
+                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">
+                      Total Receitas
+                    </p>
+                    <p className="text-xl font-extrabold text-emerald-600">
+                      {formatBRL(financial?.totalIncome ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-rose-400 to-rose-500" />
-                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Despesas Gerais</p>
-                    <p className="text-xl font-extrabold text-rose-600">{formatBRL(financial?.totalExpense ?? 0)}</p>
+                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">
+                      Despesas Gerais
+                    </p>
+                    <p className="text-xl font-extrabold text-rose-600">
+                      {formatBRL(financial?.totalExpense ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-indigo-400 to-indigo-500" />
-                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Salários Fixos</p>
-                    <p className="text-xl font-extrabold text-indigo-600">{formatBRL(financial?.totalSalaryPaid ?? 0)}</p>
+                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">
+                      Salários Fixos
+                    </p>
+                    <p className="text-xl font-extrabold text-indigo-600">
+                      {formatBRL(financial?.totalSalaryPaid ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-amber-500" />
-                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Comissões</p>
-                    <p className="text-xl font-extrabold text-amber-600">{formatBRL(financial?.totalCommissionPaid ?? 0)}</p>
+                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">
+                      Comissões
+                    </p>
+                    <p className="text-xl font-extrabold text-amber-600">
+                      {formatBRL(financial?.totalCommissionPaid ?? 0)}
+                    </p>
                   </div>
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm transition-all duration-300 relative overflow-hidden group">
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#be8a83] to-[#e5a49c]" />
-                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">Lucro Líquido</p>
-                    <p className={`text-xl font-extrabold ${(financial?.netProfit ?? 0) >= 0 ? 'text-[#be8a83]' : 'text-rose-600'}`}>
+                    <p className="text-[10px] font-bold text-[#7a7074] uppercase tracking-wider mb-1">
+                      Lucro Líquido
+                    </p>
+                    <p
+                      className={`text-xl font-extrabold ${(financial?.netProfit ?? 0) >= 0 ? 'text-[#be8a83]' : 'text-rose-600'}`}
+                    >
                       {formatBRL(financial?.netProfit ?? 0)}
                     </p>
                   </div>
@@ -426,40 +489,65 @@ export const Reports = () => {
                       <table className="w-full text-left border-collapse min-w-[600px]">
                         <thead>
                           <tr className="bg-[#fcf9f9]/50 border-b border-[#eae1e1]">
-                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">Nome</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">Modelo</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">Base</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-center">Atendimentos</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">Valor Atendimentos</th>
-                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">Valor A Pagar</th>
+                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">
+                              Nome
+                            </th>
+                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">
+                              Modelo
+                            </th>
+                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">
+                              Base
+                            </th>
+                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-center">
+                              Atendimentos
+                            </th>
+                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">
+                              Valor Atendimentos
+                            </th>
+                            <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">
+                              Valor A Pagar
+                            </th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-[#eae1e1]/40">
                           {financial.employeeFinanceDetails.map((emp) => {
                             let typeStr = 'Não definido';
                             let baseStr = 'R$ 0,00';
-                            
+
                             if (emp.remunerationType === 'SALARIO_FIXO') {
                               typeStr = 'Salário Fixo';
                               baseStr = formatBRL(emp.remunerationValue ?? 0);
                             } else if (emp.remunerationType === 'COMISSIONADO') {
                               typeStr = 'Comissionado';
-                              const scopeStr = emp.commissionScope === 'GLOBAL' ? 'Global' : 'Individual';
+                              const scopeStr =
+                                emp.commissionScope === 'GLOBAL' ? 'Global' : 'Individual';
                               baseStr = `${emp.remunerationValue ?? 0}% (${scopeStr})`;
                             } else if (emp.remunerationType === 'FIXO_E_COMISSIONADO') {
                               typeStr = 'Fixo + Comissionado';
-                              const scopeStr = emp.commissionScope === 'GLOBAL' ? 'Global' : 'Individual';
+                              const scopeStr =
+                                emp.commissionScope === 'GLOBAL' ? 'Global' : 'Individual';
                               baseStr = `${formatBRL(emp.remunerationValue ?? 0)} + ${(emp.commissionValue ?? 0).toFixed(0)}% (${scopeStr})`;
                             }
 
                             return (
-                              <tr key={emp.employeeId} className="hover:bg-[#fcf9f9]/20 transition-colors">
-                                <td className="px-6 py-4 text-sm font-semibold text-[#3b3036]">{emp.employeeName}</td>
+                              <tr
+                                key={emp.employeeId}
+                                className="hover:bg-[#fcf9f9]/20 transition-colors"
+                              >
+                                <td className="px-6 py-4 text-sm font-semibold text-[#3b3036]">
+                                  {emp.employeeName}
+                                </td>
                                 <td className="px-6 py-4 text-sm text-[#7a7074]">{typeStr}</td>
                                 <td className="px-6 py-4 text-sm text-[#7a7074]">{baseStr}</td>
-                                <td className="px-6 py-4 text-sm text-[#7a7074] text-center">{emp.doneAppointmentsCount}</td>
-                                <td className="px-6 py-4 text-sm text-[#7a7074] text-right">{formatBRL(emp.doneAppointmentsValue ?? 0)}</td>
-                                <td className="px-6 py-4 text-sm font-bold text-[#be8a83] text-right">{formatBRL(emp.calculatedPayout ?? 0)}</td>
+                                <td className="px-6 py-4 text-sm text-[#7a7074] text-center">
+                                  {emp.doneAppointmentsCount}
+                                </td>
+                                <td className="px-6 py-4 text-sm text-[#7a7074] text-right">
+                                  {formatBRL(emp.doneAppointmentsValue ?? 0)}
+                                </td>
+                                <td className="px-6 py-4 text-sm font-bold text-[#be8a83] text-right">
+                                  {formatBRL(emp.calculatedPayout ?? 0)}
+                                </td>
                               </tr>
                             );
                           })}
@@ -472,7 +560,9 @@ export const Reports = () => {
 
               {/* Revenue Chart */}
               <div>
-                <h4 className="font-heading font-bold text-lg text-[#3b3036] mb-4">Evolução de Receitas</h4>
+                <h4 className="font-heading font-bold text-lg text-[#3b3036] mb-4">
+                  Evolução de Receitas
+                </h4>
                 <div className="bg-white rounded-2xl border border-[#eae1e1]/80 p-6 shadow-sm">
                   <div style={{ height: 300, width: '100%' }}>
                     {chartDataRevenue.length > 0 ? (
@@ -483,7 +573,13 @@ export const Reports = () => {
                           <YAxis tick={{ fontSize: 12 }} />
                           <Tooltip formatter={(val: any) => formatBRL(Number(val ?? 0))} />
                           <Legend />
-                          <Line type="monotone" dataKey="Receita" stroke="#be8a83" strokeWidth={2} activeDot={{ r: 8 }} />
+                          <Line
+                            type="monotone"
+                            dataKey="Receita"
+                            stroke="#be8a83"
+                            strokeWidth={2}
+                            activeDot={{ r: 8 }}
+                          />
                         </LineChart>
                       </ResponsiveContainer>
                     ) : (
@@ -505,7 +601,8 @@ export const Reports = () => {
                   Demonstrativo de Folha de Pagamento
                 </h4>
                 <p className="text-xs text-[#7a7074]">
-                  Cálculo dos valores finais a pagar baseados no regime de contratação e faturamento por profissional.
+                  Cálculo dos valores finais a pagar baseados no regime de contratação e faturamento
+                  por profissional.
                 </p>
               </div>
 
@@ -514,20 +611,35 @@ export const Reports = () => {
                   <table className="w-full text-left border-collapse min-w-[700px]">
                     <thead>
                       <tr className="bg-[#fcf9f9]/50 border-b border-[#eae1e1]">
-                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">Profissional</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">Regime Contratual</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">Escopo de Comissão</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">Base de Cálculo</th>
-                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">Total a Pagar</th>
+                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">
+                          Profissional
+                        </th>
+                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">
+                          Regime Contratual
+                        </th>
+                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider">
+                          Escopo de Comissão
+                        </th>
+                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">
+                          Base de Cálculo
+                        </th>
+                        <th className="px-6 py-4 text-xs font-semibold text-[#3b3036] font-heading uppercase tracking-wider text-right">
+                          Total a Pagar
+                        </th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-[#eae1e1]/40">
                       {payroll && payroll.items && payroll.items.length > 0 ? (
                         payroll.items.map((item) => {
                           return (
-                            <tr key={item.employeeId} className="hover:bg-[#fcf9f9]/20 transition-colors">
-                              <td className="px-6 py-4 text-sm font-semibold text-[#3b3036]">{item.employeeName}</td>
-                              
+                            <tr
+                              key={item.employeeId}
+                              className="hover:bg-[#fcf9f9]/20 transition-colors"
+                            >
+                              <td className="px-6 py-4 text-sm font-semibold text-[#3b3036]">
+                                {item.employeeName}
+                              </td>
+
                               {/* Remuneration Type Badge */}
                               <td className="px-6 py-4 text-sm">
                                 {item.remunerationType === 'SALARIO_FIXO' && (
@@ -560,7 +672,9 @@ export const Reports = () => {
                                     Global
                                   </span>
                                 )}
-                                {!item.commissionScope && <span className="text-gray-400 font-medium">-</span>}
+                                {!item.commissionScope && (
+                                  <span className="text-gray-400 font-medium">-</span>
+                                )}
                               </td>
 
                               {/* Base Amount */}
@@ -595,19 +709,49 @@ export const Reports = () => {
               {/* Appointment Stats Summary */}
               <div>
                 <h4 className="font-heading font-bold text-lg text-[#3b3036] mb-4">
-                  Desempenho de Agendamentos <span className="text-sm font-normal text-gray-400">({appointments?.period})</span>
+                  Desempenho de Agendamentos{' '}
+                  <span className="text-sm font-normal text-gray-400">
+                    ({appointments?.period})
+                  </span>
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-8">
                   {[
-                    { label: 'Total', value: appointments?.totalAppointments, color: 'text-indigo-600', stripe: 'from-indigo-400 to-indigo-500' },
-                    { label: 'Concluídos', value: appointments?.done, color: 'text-emerald-600', stripe: 'from-emerald-400 to-emerald-500' },
-                    { label: 'Pendentes', value: appointments?.pending, color: 'text-amber-600', stripe: 'from-amber-400 to-amber-500' },
-                    { label: 'Cancelados', value: appointments?.cancelled, color: 'text-rose-600', stripe: 'from-rose-400 to-rose-500' },
+                    {
+                      label: 'Total',
+                      value: appointments?.totalAppointments,
+                      color: 'text-indigo-600',
+                      stripe: 'from-indigo-400 to-indigo-500',
+                    },
+                    {
+                      label: 'Concluídos',
+                      value: appointments?.done,
+                      color: 'text-emerald-600',
+                      stripe: 'from-emerald-400 to-emerald-500',
+                    },
+                    {
+                      label: 'Pendentes',
+                      value: appointments?.pending,
+                      color: 'text-amber-600',
+                      stripe: 'from-amber-400 to-amber-500',
+                    },
+                    {
+                      label: 'Cancelados',
+                      value: appointments?.cancelled,
+                      color: 'text-rose-600',
+                      stripe: 'from-rose-400 to-rose-500',
+                    },
                   ].map((stat, i) => (
-                    <div key={i} className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 text-center shadow-sm relative overflow-hidden group transition-all duration-300">
-                      <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.stripe}`} />
+                    <div
+                      key={i}
+                      className="bg-white rounded-2xl border border-[#eae1e1]/80 p-5 text-center shadow-sm relative overflow-hidden group transition-all duration-300"
+                    >
+                      <div
+                        className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${stat.stripe}`}
+                      />
                       <p className={`text-4xl font-extrabold ${stat.color}`}>{stat.value}</p>
-                      <p className="text-xs font-semibold text-[#7a7074] uppercase tracking-wider mt-1">{stat.label}</p>
+                      <p className="text-xs font-semibold text-[#7a7074] uppercase tracking-wider mt-1">
+                        {stat.label}
+                      </p>
                     </div>
                   ))}
                 </div>
@@ -615,7 +759,9 @@ export const Reports = () => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-[#eae1e1] bg-[#fcf9f9]/50">
-                      <span className="font-semibold text-xs text-[#3b3036] font-heading uppercase tracking-wider">Por Profissional</span>
+                      <span className="font-semibold text-xs text-[#3b3036] font-heading uppercase tracking-wider">
+                        Por Profissional
+                      </span>
                     </div>
                     <div className="p-4" style={{ height: 300 }}>
                       {chartDataEmployee.length > 0 ? (
@@ -629,13 +775,17 @@ export const Reports = () => {
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-gray-400">Nenhum dado</div>
+                        <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                          Nenhum dado
+                        </div>
                       )}
                     </div>
                   </div>
                   <div className="bg-white rounded-2xl border border-[#eae1e1]/80 shadow-sm overflow-hidden">
                     <div className="px-5 py-4 border-b border-[#eae1e1] bg-[#fcf9f9]/50">
-                      <span className="font-semibold text-xs text-[#3b3036] font-heading uppercase tracking-wider">Por Serviço</span>
+                      <span className="font-semibold text-xs text-[#3b3036] font-heading uppercase tracking-wider">
+                        Por Serviço
+                      </span>
                     </div>
                     <div className="p-4" style={{ height: 300 }}>
                       {chartDataService.length > 0 ? (
@@ -643,13 +793,20 @@ export const Reports = () => {
                           <BarChart data={chartDataService} layout="vertical">
                             <CartesianGrid strokeDasharray="3 3" stroke="#f3f4f6" />
                             <XAxis type="number" tick={{ fontSize: 11 }} />
-                            <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 11 }} />
+                            <YAxis
+                              dataKey="name"
+                              type="category"
+                              width={100}
+                              tick={{ fontSize: 11 }}
+                            />
                             <Tooltip />
                             <Bar dataKey="Agendamentos" fill="#3b3036" radius={[0, 4, 4, 0]} />
                           </BarChart>
                         </ResponsiveContainer>
                       ) : (
-                        <div className="flex items-center justify-center h-full text-sm text-gray-400">Nenhum dado</div>
+                        <div className="flex items-center justify-center h-full text-sm text-gray-400">
+                          Nenhum dado
+                        </div>
                       )}
                     </div>
                   </div>

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
   --color-primary: var(--primary-color);
@@ -11,7 +11,7 @@
   --color-text-light: var(--text-light);
   --color-border-custom: var(--border-color);
   --color-accent: var(--accent-color);
-  
+
   /* Map standard colors for seamless dark mode */
   --color-white: var(--surface-color);
   --color-gray-50: var(--bg-color);
@@ -26,7 +26,7 @@
 
   --animate-scale-up: scaleUp 0.35s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
   --animate-fade-in-up: fadeInUp 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-  
+
   --animate-slide-image-to-right: slideImageToRight 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-slide-form-to-left: slideFormToLeft 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   --animate-slide-image-to-left: slideImageToLeft 0.65s cubic-bezier(0.16, 1, 0.3, 1) forwards;
@@ -53,20 +53,36 @@
     }
   }
   @keyframes slideImageToRight {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(0); }
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
   @keyframes slideFormToLeft {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
   @keyframes slideImageToLeft {
-    from { transform: translateX(100%); }
-    to { transform: translateX(0); }
+    from {
+      transform: translateX(100%);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
   @keyframes slideFormToRight {
-    from { transform: translateX(-100%); }
-    to { transform: translateX(0); }
+    from {
+      transform: translateX(-100%);
+    }
+    to {
+      transform: translateX(0);
+    }
   }
 }
 
@@ -108,7 +124,9 @@
   --accent-color: #be8a83;
 }
 
-html, body, #root {
+html,
+body,
+#root {
   height: 100%;
   margin: 0;
 }
@@ -120,11 +138,18 @@ body {
   color: var(--text-dark);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  transition: background-color 0.3s ease, color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease;
 }
 
 /* Tipografia */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-family: var(--font-heading);
   font-weight: 500;
   color: var(--secondary-color);
@@ -231,44 +256,104 @@ h1, h2, h3, h4, h5, h6 {
 .dark .text-\[\#3b3036\] {
   color: var(--text-dark) !important;
 }
-.dark .text-\[\#3b3036\]\/90 { color: rgba(243, 244, 246, 0.9) !important; }
-.dark .text-\[\#3b3036\]\/80 { color: rgba(243, 244, 246, 0.8) !important; }
-.dark .text-\[\#3b3036\]\/75 { color: rgba(243, 244, 246, 0.75) !important; }
-.dark .text-\[\#3b3036\]\/70 { color: rgba(243, 244, 246, 0.7) !important; }
-.dark .text-\[\#3b3036\]\/60 { color: rgba(243, 244, 246, 0.6) !important; }
-.dark .text-\[\#3b3036\]\/50 { color: rgba(243, 244, 246, 0.5) !important; }
-.dark .text-\[\#3b3036\]\/40 { color: rgba(243, 244, 246, 0.4) !important; }
-.dark .text-\[\#3b3036\]\/30 { color: rgba(243, 244, 246, 0.3) !important; }
-.dark .text-\[\#3b3036\]\/20 { color: rgba(243, 244, 246, 0.2) !important; }
-.dark .text-\[\#3b3036\]\/10 { color: rgba(243, 244, 246, 0.1) !important; }
+.dark .text-\[\#3b3036\]\/90 {
+  color: rgba(243, 244, 246, 0.9) !important;
+}
+.dark .text-\[\#3b3036\]\/80 {
+  color: rgba(243, 244, 246, 0.8) !important;
+}
+.dark .text-\[\#3b3036\]\/75 {
+  color: rgba(243, 244, 246, 0.75) !important;
+}
+.dark .text-\[\#3b3036\]\/70 {
+  color: rgba(243, 244, 246, 0.7) !important;
+}
+.dark .text-\[\#3b3036\]\/60 {
+  color: rgba(243, 244, 246, 0.6) !important;
+}
+.dark .text-\[\#3b3036\]\/50 {
+  color: rgba(243, 244, 246, 0.5) !important;
+}
+.dark .text-\[\#3b3036\]\/40 {
+  color: rgba(243, 244, 246, 0.4) !important;
+}
+.dark .text-\[\#3b3036\]\/30 {
+  color: rgba(243, 244, 246, 0.3) !important;
+}
+.dark .text-\[\#3b3036\]\/20 {
+  color: rgba(243, 244, 246, 0.2) !important;
+}
+.dark .text-\[\#3b3036\]\/10 {
+  color: rgba(243, 244, 246, 0.1) !important;
+}
 
 .dark .text-\[\#7a7074\] {
   color: var(--text-light) !important;
 }
-.dark .text-\[\#7a7074\]\/90 { color: rgba(156, 163, 175, 0.9) !important; }
-.dark .text-\[\#7a7074\]\/80 { color: rgba(156, 163, 175, 0.8) !important; }
-.dark .text-\[\#7a7074\]\/75 { color: rgba(156, 163, 175, 0.75) !important; }
-.dark .text-\[\#7a7074\]\/70 { color: rgba(156, 163, 175, 0.7) !important; }
-.dark .text-\[\#7a7074\]\/60 { color: rgba(156, 163, 175, 0.6) !important; }
-.dark .text-\[\#7a7074\]\/50 { color: rgba(156, 163, 175, 0.5) !important; }
-.dark .text-\[\#7a7074\]\/40 { color: rgba(156, 163, 175, 0.4) !important; }
-.dark .text-\[\#7a7074\]\/30 { color: rgba(156, 163, 175, 0.3) !important; }
-.dark .text-\[\#7a7074\]\/20 { color: rgba(156, 163, 175, 0.2) !important; }
-.dark .text-\[\#7a7074\]\/10 { color: rgba(156, 163, 175, 0.1) !important; }
+.dark .text-\[\#7a7074\]\/90 {
+  color: rgba(156, 163, 175, 0.9) !important;
+}
+.dark .text-\[\#7a7074\]\/80 {
+  color: rgba(156, 163, 175, 0.8) !important;
+}
+.dark .text-\[\#7a7074\]\/75 {
+  color: rgba(156, 163, 175, 0.75) !important;
+}
+.dark .text-\[\#7a7074\]\/70 {
+  color: rgba(156, 163, 175, 0.7) !important;
+}
+.dark .text-\[\#7a7074\]\/60 {
+  color: rgba(156, 163, 175, 0.6) !important;
+}
+.dark .text-\[\#7a7074\]\/50 {
+  color: rgba(156, 163, 175, 0.5) !important;
+}
+.dark .text-\[\#7a7074\]\/40 {
+  color: rgba(156, 163, 175, 0.4) !important;
+}
+.dark .text-\[\#7a7074\]\/30 {
+  color: rgba(156, 163, 175, 0.3) !important;
+}
+.dark .text-\[\#7a7074\]\/20 {
+  color: rgba(156, 163, 175, 0.2) !important;
+}
+.dark .text-\[\#7a7074\]\/10 {
+  color: rgba(156, 163, 175, 0.1) !important;
+}
 
 .dark .text-\[\#2a2528\] {
   color: var(--text-dark) !important;
 }
-.dark .text-\[\#2a2528\]\/90 { color: rgba(243, 244, 246, 0.9) !important; }
-.dark .text-\[\#2a2528\]\/80 { color: rgba(243, 244, 246, 0.8) !important; }
-.dark .text-\[\#2a2528\]\/75 { color: rgba(243, 244, 246, 0.75) !important; }
-.dark .text-\[\#2a2528\]\/70 { color: rgba(243, 244, 246, 0.7) !important; }
-.dark .text-\[\#2a2528\]\/60 { color: rgba(243, 244, 246, 0.6) !important; }
-.dark .text-\[\#2a2528\]\/50 { color: rgba(243, 244, 246, 0.5) !important; }
-.dark .text-\[\#2a2528\]\/40 { color: rgba(243, 244, 246, 0.4) !important; }
-.dark .text-\[\#2a2528\]\/30 { color: rgba(243, 244, 246, 0.3) !important; }
-.dark .text-\[\#2a2528\]\/20 { color: rgba(243, 244, 246, 0.2) !important; }
-.dark .text-\[\#2a2528\]\/10 { color: rgba(243, 244, 246, 0.1) !important; }
+.dark .text-\[\#2a2528\]\/90 {
+  color: rgba(243, 244, 246, 0.9) !important;
+}
+.dark .text-\[\#2a2528\]\/80 {
+  color: rgba(243, 244, 246, 0.8) !important;
+}
+.dark .text-\[\#2a2528\]\/75 {
+  color: rgba(243, 244, 246, 0.75) !important;
+}
+.dark .text-\[\#2a2528\]\/70 {
+  color: rgba(243, 244, 246, 0.7) !important;
+}
+.dark .text-\[\#2a2528\]\/60 {
+  color: rgba(243, 244, 246, 0.6) !important;
+}
+.dark .text-\[\#2a2528\]\/50 {
+  color: rgba(243, 244, 246, 0.5) !important;
+}
+.dark .text-\[\#2a2528\]\/40 {
+  color: rgba(243, 244, 246, 0.4) !important;
+}
+.dark .text-\[\#2a2528\]\/30 {
+  color: rgba(243, 244, 246, 0.3) !important;
+}
+.dark .text-\[\#2a2528\]\/20 {
+  color: rgba(243, 244, 246, 0.2) !important;
+}
+.dark .text-\[\#2a2528\]\/10 {
+  color: rgba(243, 244, 246, 0.1) !important;
+}
 
 .dark .bg-\[\#3b3036\] {
   background-color: var(--surface-color) !important;

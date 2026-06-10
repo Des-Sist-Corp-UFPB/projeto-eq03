@@ -18,40 +18,34 @@ export const AlertProvider = ({ children }: { children: ReactNode }) => {
     setResolvePromise(null);
   }, []);
 
-  const showAlert = useCallback(
-    (config: AlertConfig): Promise<boolean> => {
-      return new Promise((resolve) => {
-        setAlert({
-          id: Date.now().toString(),
-          isVisible: true,
-          isConfirm: false,
-          type: 'info',
-          confirmText: 'OK',
-          ...config,
-        });
-        setResolvePromise(() => resolve);
+  const showAlert = useCallback((config: AlertConfig): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setAlert({
+        id: Date.now().toString(),
+        isVisible: true,
+        isConfirm: false,
+        type: 'info',
+        confirmText: 'OK',
+        ...config,
       });
-    },
-    []
-  );
+      setResolvePromise(() => resolve);
+    });
+  }, []);
 
-  const showConfirm = useCallback(
-    (config: AlertConfig): Promise<boolean> => {
-      return new Promise((resolve) => {
-        setAlert({
-          id: Date.now().toString(),
-          isVisible: true,
-          isConfirm: true,
-          type: 'warning',
-          confirmText: 'Confirmar',
-          cancelText: 'Cancelar',
-          ...config,
-        });
-        setResolvePromise(() => resolve);
+  const showConfirm = useCallback((config: AlertConfig): Promise<boolean> => {
+    return new Promise((resolve) => {
+      setAlert({
+        id: Date.now().toString(),
+        isVisible: true,
+        isConfirm: true,
+        type: 'warning',
+        confirmText: 'Confirmar',
+        cancelText: 'Cancelar',
+        ...config,
       });
-    },
-    []
-  );
+      setResolvePromise(() => resolve);
+    });
+  }, []);
 
   const handleConfirm = useCallback(async () => {
     try {
@@ -82,11 +76,7 @@ export const AlertProvider = ({ children }: { children: ReactNode }) => {
     >
       {children}
       {alert?.isVisible && (
-        <AlertModal
-          alert={alert}
-          onConfirm={handleConfirm}
-          onCancel={handleCancel}
-        />
+        <AlertModal alert={alert} onConfirm={handleConfirm} onCancel={handleCancel} />
       )}
     </AlertContext.Provider>
   );

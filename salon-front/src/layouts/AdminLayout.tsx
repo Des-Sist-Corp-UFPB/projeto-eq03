@@ -2,21 +2,21 @@ import { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../context/ThemeContext';
-import { 
-  Menu, 
-  X, 
-  Users, 
-  UserCheck, 
-  Scissors, 
-  Package, 
-  Calendar, 
-  DollarSign, 
-  FileBarChart, 
+import {
+  Menu,
+  X,
+  Users,
+  UserCheck,
+  Scissors,
+  Package,
+  Calendar,
+  DollarSign,
+  FileBarChart,
   LogOut,
   ChevronLeft,
   ChevronRight,
   Sun,
-  Moon
+  Moon,
 } from 'lucide-react';
 
 export const AdminLayout = () => {
@@ -28,11 +28,12 @@ export const AdminLayout = () => {
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
 
-  if (isLoading) return (
-    <div className="flex justify-center items-center h-screen bg-[#fcf9f9]">
-      <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#be8a83]"></div>
-    </div>
-  );
+  if (isLoading)
+    return (
+      <div className="flex justify-center items-center h-screen bg-[#fcf9f9]">
+        <div className="animate-spin rounded-full h-10 w-10 border-t-2 border-b-2 border-[#be8a83]"></div>
+      </div>
+    );
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -46,7 +47,7 @@ export const AdminLayout = () => {
   const closeSidebar = () => setShowSidebar(false);
 
   const toggleCollapse = () => {
-    setIsCollapsed(prev => {
+    setIsCollapsed((prev) => {
       const next = !prev;
       localStorage.setItem('salon_sidebar_collapsed', String(next));
       return next;
@@ -69,7 +70,9 @@ export const AdminLayout = () => {
     <div className="min-h-screen bg-[#fcf9f9] flex flex-col md:flex-row">
       {/* Mobile Top Navbar */}
       <div className="md:hidden bg-white/90 backdrop-blur-md text-[#3b3036] flex justify-between items-center p-4 border-b border-[#eae1e1]/50 shadow-xs z-40 sticky top-0">
-        <h5 className="m-0 font-heading font-semibold text-lg tracking-wide text-[#be8a83]">Admin Salão</h5>
+        <h5 className="m-0 font-heading font-semibold text-lg tracking-wide text-[#be8a83]">
+          Admin Salão
+        </h5>
         <div className="flex items-center gap-2">
           <button
             onClick={toggleTheme}
@@ -78,8 +81,8 @@ export const AdminLayout = () => {
           >
             {theme === 'light' ? <Moon size={20} /> : <Sun size={20} />}
           </button>
-          <button 
-            onClick={toggleSidebar} 
+          <button
+            onClick={toggleSidebar}
             className="p-1.5 text-[#3b3036] hover:text-[#be8a83] focus:outline-none transition-colors"
             aria-label="Toggle navigation"
           >
@@ -90,19 +93,21 @@ export const AdminLayout = () => {
 
       {/* Overlay when sidebar is open on mobile */}
       {showSidebar && (
-        <div 
-          className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40 md:hidden transition-opacity" 
+        <div
+          className="fixed inset-0 bg-black/30 backdrop-blur-xs z-40 md:hidden transition-opacity"
           onClick={closeSidebar}
         />
       )}
 
       {/* Sidebar */}
-      <aside 
+      <aside
         className={`bg-white/80 backdrop-blur-md border-r border-[#eae1e1]/50 text-[#3b3036] flex flex-col fixed md:sticky top-0 h-screen z-50 transition-all duration-300 md:translate-x-0 ${
           showSidebar ? 'translate-x-0' : '-translate-x-full'
         } ${isCollapsed ? 'md:w-20' : 'md:w-[260px]'}`}
       >
-        <div className={`flex items-center px-4 py-5 border-b border-[#eae1e1]/50 h-[73px] bg-white/50 gap-2 ${isCollapsed ? 'justify-center' : 'justify-between'}`}>
+        <div
+          className={`flex items-center px-4 py-5 border-b border-[#eae1e1]/50 h-[73px] bg-white/50 gap-2 ${isCollapsed ? 'justify-center' : 'justify-between'}`}
+        >
           <div className="flex items-center gap-2">
             <button
               onClick={toggleCollapse}
@@ -117,8 +122,8 @@ export const AdminLayout = () => {
               </h4>
             )}
           </div>
-          <button 
-            className="md:hidden text-[#3b3036]/60 hover:text-[#3b3036] focus:outline-none" 
+          <button
+            className="md:hidden text-[#3b3036]/60 hover:text-[#3b3036] focus:outline-none"
             onClick={closeSidebar}
             aria-label="Close sidebar"
           >
@@ -143,9 +148,16 @@ export const AdminLayout = () => {
                     : 'text-[#3b3036]/75 hover:text-[#be8a83] hover:bg-[#be8a83]/5'
                 }`}
               >
-                <Icon size={18} className={isActive ? 'text-[#be8a83]' : 'text-[#3b3036]/50 group-hover:text-[#be8a83] transition-colors'} />
+                <Icon
+                  size={18}
+                  className={
+                    isActive
+                      ? 'text-[#be8a83]'
+                      : 'text-[#3b3036]/50 group-hover:text-[#be8a83] transition-colors'
+                  }
+                />
                 {!isCollapsed && <span>{item.label}</span>}
-                
+
                 {isCollapsed && (
                   <div className="absolute left-full ml-4 px-3 py-1.5 bg-[#3b3036] text-white text-xs font-semibold rounded-lg shadow-lg border border-[#eae1e1]/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap">
                     {item.label}
@@ -156,14 +168,20 @@ export const AdminLayout = () => {
           })}
 
           <button
-            onClick={() => { logout(); closeSidebar(); }}
+            onClick={() => {
+              logout();
+              closeSidebar();
+            }}
             className={`w-[calc(100%-16px)] flex items-center rounded-full transition-all duration-200 text-sm font-bold mt-8 text-left relative ${
               isCollapsed ? 'justify-center p-3 mx-1' : 'gap-3 px-5 py-3 mx-2'
             } text-[#3b3036]/75 hover:text-white bg-[#3b3036]/5 hover:bg-[#be8a83] border border-[#3b3036]/10 hover:border-[#be8a83] shadow-xs`}
           >
-            <LogOut size={18} className="text-[#3b3036]/60 group-hover:text-white transition-colors" />
+            <LogOut
+              size={18}
+              className="text-[#3b3036]/60 group-hover:text-white transition-colors"
+            />
             {!isCollapsed && <span>Sair</span>}
-            
+
             {isCollapsed && (
               <div className="absolute left-full ml-4 px-3 py-1.5 bg-[#3b3036] text-white text-xs font-semibold rounded-lg shadow-lg border border-[#eae1e1]/20 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50 whitespace-nowrap">
                 Sair
@@ -199,7 +217,6 @@ export const AdminLayout = () => {
             </div>
           </div>
         </header>
-
 
         <main className="flex-1 p-6 md:p-8 overflow-y-auto max-w-full">
           <Outlet />

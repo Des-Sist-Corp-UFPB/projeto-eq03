@@ -51,5 +51,5 @@ export const usersApi = {
 
   delete: async (id: number) => {
     await api.delete(`/users/${id}`);
-  }
+  },
 };

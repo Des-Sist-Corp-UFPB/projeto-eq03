@@ -41,5 +41,5 @@ export const employeesApi = {
 
   delete: async (id: number) => {
     await api.delete(`/employees/${id}`);
-  }
+  },
 };

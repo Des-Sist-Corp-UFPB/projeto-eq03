@@ -36,13 +36,13 @@ export const AuditLog = () => {
       const params = new URLSearchParams();
       params.append('page', page.toString());
       params.append('size', PAGE_SIZE.toString());
-      
+
       if (filterAction) params.append('action', filterAction);
       if (filterEntity) params.append('entityType', filterEntity);
       if (filterUser) params.append('userEmail', filterUser);
-      
+
       const { data } = await api.get(`/audit?${params.toString()}`);
-      
+
       setAuditLogs(data.content);
       setTotalItems(data.totalElements);
     } catch (err) {
@@ -60,12 +60,16 @@ export const AuditLog = () => {
   const getStatusBadge = (status: string) => {
     const isSuccess = status === 'SUCCESS';
     return (
-      <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
-        isSuccess 
-          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-          : 'bg-rose-50 text-rose-700 border border-rose-200'
-      }`}>
-        <span className={`h-1.5 w-1.5 rounded-full ${isSuccess ? 'bg-emerald-500' : 'bg-rose-500'}`} />
+      <span
+        className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${
+          isSuccess
+            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+            : 'bg-rose-50 text-rose-700 border border-rose-200'
+        }`}
+      >
+        <span
+          className={`h-1.5 w-1.5 rounded-full ${isSuccess ? 'bg-emerald-500' : 'bg-rose-500'}`}
+        />
         {isSuccess ? 'Sucesso' : 'Falha'}
       </span>
     );
@@ -93,7 +97,9 @@ export const AuditLog = () => {
         break;
     }
     return (
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold tracking-wider ${colorClasses}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold tracking-wider ${colorClasses}`}
+      >
         {action}
       </span>
     );
@@ -157,9 +163,7 @@ export const AuditLog = () => {
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
           <div className="space-y-1">
-            <label className="label-premium">
-              Usuário / E-mail
-            </label>
+            <label className="label-premium">Usuário / E-mail</label>
             <input
               type="text"
               placeholder="Ex: admin@salao.com"
@@ -173,9 +177,7 @@ export const AuditLog = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="label-premium">
-              Ação
-            </label>
+            <label className="label-premium">Ação</label>
             <select
               value={filterAction}
               onChange={(e) => {
@@ -194,9 +196,7 @@ export const AuditLog = () => {
           </div>
 
           <div className="space-y-1">
-            <label className="label-premium">
-              Entidade
-            </label>
+            <label className="label-premium">Entidade</label>
             <select
               value={filterEntity}
               onChange={(e) => {
@@ -235,12 +235,16 @@ export const AuditLog = () => {
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20 gap-3">
             <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be8a83]"></div>
-            <span className="text-sm text-[#3b3036]/60 font-medium">Buscando logs de auditoria...</span>
+            <span className="text-sm text-[#3b3036]/60 font-medium">
+              Buscando logs de auditoria...
+            </span>
           </div>
         ) : auditLogs.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 gap-2">
             <AlertCircle size={40} className="text-gray-300" />
-            <span className="text-sm font-semibold text-[#3b3036]/80">Nenhum registro encontrado</span>
+            <span className="text-sm font-semibold text-[#3b3036]/80">
+              Nenhum registro encontrado
+            </span>
             <span className="text-xs text-[#3b3036]/50">Tente ajustar seus filtros de busca.</span>
           </div>
         ) : (
@@ -264,12 +268,13 @@ export const AuditLog = () => {
                     <td className="px-6 py-3.5 text-sm text-[#3b3036]/60 font-medium whitespace-nowrap">
                       {formatDate(log.createdAt)}
                     </td>
-                    <td className="px-6 py-3.5 text-sm font-semibold text-[#3b3036] max-w-[200px] truncate" title={log.userEmail}>
+                    <td
+                      className="px-6 py-3.5 text-sm font-semibold text-[#3b3036] max-w-[200px] truncate"
+                      title={log.userEmail}
+                    >
                       {formatUserEmail(log.userEmail)}
                     </td>
-                    <td className="px-6 py-3.5 whitespace-nowrap">
-                      {getActionBadge(log.action)}
-                    </td>
+                    <td className="px-6 py-3.5 whitespace-nowrap">{getActionBadge(log.action)}</td>
                     <td className="px-6 py-3.5 text-sm text-[#3b3036]/80 font-medium">
                       {log.entityType}
                     </td>
@@ -279,9 +284,7 @@ export const AuditLog = () => {
                     <td className="px-6 py-3.5 text-sm font-mono text-gray-500">
                       {log.ipAddress || '-'}
                     </td>
-                    <td className="px-6 py-3.5 whitespace-nowrap">
-                      {getStatusBadge(log.status)}
-                    </td>
+                    <td className="px-6 py-3.5 whitespace-nowrap">{getStatusBadge(log.status)}</td>
                     <td className="px-6 py-3.5 text-right whitespace-nowrap">
                       <button
                         onClick={() => setSelectedLog(log)}
@@ -355,29 +358,50 @@ export const AuditLog = () => {
               {/* Structured Metadata Fields */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Ação</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">
+                    Ação
+                  </span>
                   <span className="mt-1 block">{getActionBadge(selectedLog.action)}</span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Entidade Afetada</span>
-                  <span className="mt-1.5 block text-sm font-semibold text-[#3b3036]">{selectedLog.entityType}</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">
+                    Entidade Afetada
+                  </span>
+                  <span className="mt-1.5 block text-sm font-semibold text-[#3b3036]">
+                    {selectedLog.entityType}
+                  </span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">ID de Referência</span>
-                  <span className="mt-1.5 block text-sm font-mono text-gray-600">{selectedLog.entityId || 'N/A'}</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">
+                    ID de Referência
+                  </span>
+                  <span className="mt-1.5 block text-sm font-mono text-gray-600">
+                    {selectedLog.entityId || 'N/A'}
+                  </span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Usuário / Autor</span>
-                  <span className="mt-1.5 block text-sm font-semibold text-[#3b3036] truncate" title={selectedLog.userEmail}>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">
+                    Usuário / Autor
+                  </span>
+                  <span
+                    className="mt-1.5 block text-sm font-semibold text-[#3b3036] truncate"
+                    title={selectedLog.userEmail}
+                  >
                     {selectedLog.userEmail || 'Sistema / Visitante'}
                   </span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Endereço IP</span>
-                  <span className="mt-1.5 block text-sm font-mono text-gray-600">{selectedLog.ipAddress || 'Desconhecido'}</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">
+                    Endereço IP
+                  </span>
+                  <span className="mt-1.5 block text-sm font-mono text-gray-600">
+                    {selectedLog.ipAddress || 'Desconhecido'}
+                  </span>
                 </div>
                 <div className="bg-gray-50/60 p-3 rounded-xl border border-gray-100">
-                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">Status Execução</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/50 uppercase tracking-wider">
+                    Status Execução
+                  </span>
                   <span className="mt-1 block">{getStatusBadge(selectedLog.status)}</span>
                 </div>
               </div>
@@ -385,7 +409,9 @@ export const AuditLog = () => {
               {/* Pretty parsed details string */}
               {selectedLog.details && (
                 <div className="space-y-2">
-                  <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">Resumo do Payload / Detalhes</span>
+                  <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">
+                    Resumo do Payload / Detalhes
+                  </span>
                   <pre className="bg-[#261f23] text-[#e5a49c] p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/10 max-h-40 shadow-inner">
                     {getPrettyDetails(selectedLog.details)}
                   </pre>
@@ -395,8 +421,10 @@ export const AuditLog = () => {
               {/* Complete JSON Payload with copy tool */}
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">JSON Completo do Log</span>
-                  <button 
+                  <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">
+                    JSON Completo do Log
+                  </span>
+                  <button
                     onClick={() => copyToClipboard(getFullLogJson(selectedLog))}
                     className="flex items-center gap-1 text-xs text-[#be8a83] hover:text-[#a6726b] font-semibold bg-gray-50 hover:bg-gray-100 px-2.5 py-1 rounded-lg border border-gray-200 transition-all cursor-pointer"
                   >
