@@ -1,6 +1,5 @@
 package com.cristiane.salon.controllers;
 
-import com.cristiane.salon.controller.SalonServiceController;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -67,7 +66,7 @@ class SalonServiceControllerTest {
         public com.cristiane.salon.security.VerifyUserPermissions verifyUserPermissions() {
             return Mockito.mock(com.cristiane.salon.security.VerifyUserPermissions.class);
         }
-        
+
         @Bean
         public MockMvc mockMvc(WebApplicationContext wac) {
             return MockMvcBuilders.webAppContextSetup(wac).build();

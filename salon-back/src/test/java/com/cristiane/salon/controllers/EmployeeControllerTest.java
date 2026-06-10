@@ -1,6 +1,5 @@
 package com.cristiane.salon.controllers;
 
-import com.cristiane.salon.controller.EmployeeController;
 import com.cristiane.salon.models.employee.service.EmployeeService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +31,7 @@ class EmployeeControllerTest {
     private com.cristiane.salon.security.VerifyUserPermissions verifyUserPermissions;
 
     @Test
-    @WithMockUser(roles = {"ADMIN"})
+    @WithMockUser(roles = { "ADMIN" })
     void createReturns201_whenValid() throws Exception {
         when(verifyUserPermissions.userOwnResourceOrHasPermission(null)).thenReturn(true);
         when(employeeService.create(any())).thenReturn(null);
@@ -46,7 +45,7 @@ class EmployeeControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = {"ADMIN"})
+    @WithMockUser(roles = { "ADMIN" })
     void createReturns400_whenInvalid() throws Exception {
         String body = "{}";
 

@@ -1,6 +1,5 @@
 package com.cristiane.salon.controllers;
 
-import com.cristiane.salon.controller.UserController;
 import com.cristiane.salon.models.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

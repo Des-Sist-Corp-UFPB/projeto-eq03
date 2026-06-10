@@ -1,7 +1,5 @@
 package com.cristiane.salon.controllers;
 
-import com.cristiane.salon.controller.AppointmentController;
-import com.cristiane.salon.controller.CashFlowController;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import com.cristiane.salon.models.cashflow.service.CashFlowService;
 import com.cristiane.salon.security.VerifyUserPermissions;
@@ -48,7 +46,7 @@ class ErrorScenariosTest {
     }
 
     @Test
-    @WithMockUser(roles = {"USER"})
+    @WithMockUser(roles = { "USER" })
     void whenForbiddenOnCashFlow_thenReturns403() throws Exception {
         when(verifyUserPermissions.userOwnResourceOrHasPermission(null)).thenReturn(false);
 
@@ -68,9 +66,9 @@ class ErrorScenariosTest {
         String body = "{\"employeeId\":1,\"serviceId\":1}";
 
         mvc.perform(post("/v1/appointments")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(body))
-            .andExpect(status().isInternalServerError());
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isInternalServerError());
     }
 
     @Test
@@ -78,9 +76,10 @@ class ErrorScenariosTest {
     void whenMissingRequestParam_thenReturns400() throws Exception {
         // PATCH without 'status' request param should return 400
         when(verifyUserPermissions.userOwnResourceOrHasPermission(null)).thenReturn(true);
-        mvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/v1/appointments/1/status")
-            .contentType(MediaType.APPLICATION_JSON))
-            .andExpect(status().isBadRequest());
+        mvc.perform(
+                org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch("/v1/appointments/1/status")
+                        .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

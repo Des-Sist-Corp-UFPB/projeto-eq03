@@ -1,6 +1,5 @@
 package com.cristiane.salon.controllers;
 
-import com.cristiane.salon.controller.ProductController;
 import com.cristiane.salon.models.product.service.ProductService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

@@ -1,6 +1,5 @@
 package com.cristiane.salon.controllers;
 
-import com.cristiane.salon.controller.ReportController;
 import com.cristiane.salon.models.report.service.ReportService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +31,7 @@ class ReportControllerTest {
     private com.cristiane.salon.security.VerifyUserPermissions verifyUserPermissions;
 
     @Test
-    @WithMockUser(roles = {"ADMIN"})
+    @WithMockUser(roles = { "ADMIN" })
     void findByPeriodReturns200_whenAuthorized() throws Exception {
         when(verifyUserPermissions.userOwnResourceOrHasPermission(null)).thenReturn(true);
         when(reportService.generateFinancialReport(any(), any())).thenReturn(null);
@@ -43,7 +42,7 @@ class ReportControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = {"USER"})
+    @WithMockUser(roles = { "USER" })
     void findByPeriodReturns403_whenNotAuthorized() throws Exception {
         mvc.perform(get("/v1/reports/financial?from=2026-05-01&to=2026-05-16")
                 .contentType(MediaType.APPLICATION_JSON))
