@@ -7,7 +7,7 @@ import java.lang.annotation.*;
 @Documented
 public @interface Auditable {
     
-    String action() default "UNKNOWN";
+    String action() default "";
     
     String entityType() default "";
     

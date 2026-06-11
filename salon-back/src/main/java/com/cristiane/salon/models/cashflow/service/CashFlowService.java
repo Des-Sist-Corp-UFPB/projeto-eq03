@@ -4,6 +4,8 @@ import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.cristiane.salon.models.cashflow.dto.CashFlowRequest;
 import com.cristiane.salon.models.cashflow.dto.CashFlowResponse;
 import com.cristiane.salon.models.cashflow.dto.CashFlowItemRequest;
@@ -29,6 +31,8 @@ public class CashFlowService {
     private final CashFlowRepository cashFlowRepository;
     private final AppointmentRepository appointmentRepository;
     private final ProductRepository productRepository;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
     public List<CashFlowResponse> findByPeriod(LocalDate from, LocalDate to) {
@@ -103,7 +107,43 @@ public class CashFlowService {
             }
         }
 
-        return CashFlowResponse.fromEntity(cashFlowRepository.save(cashFlow));
+        CashFlowResponse response = CashFlowResponse.fromEntity(cashFlowRepository.save(cashFlow));
+
+        // Audit Log manual
+        try {
+            String action = (request.items() != null && !request.items().isEmpty()) 
+                ? "PRODUCT_SALE_REGISTERED" 
+                : "CASHFLOW_ENTRY_CREATED";
+                
+            Long userId = null;
+            String userEmail = "SYSTEM";
+            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();
+            if (auth != null) {
+                userEmail = auth.getName();
+                if (auth.getPrincipal() instanceof com.cristiane.salon.models.user.entity.User user) {
+                    userId = user.getId();
+                }
+            }
+            
+            String details = null;
+            try {
+                details = objectMapper.writeValueAsString(request);
+            } catch (Exception ignored) {}
+            
+            auditLogService.logAction(
+                    userId,
+                    userEmail,
+                    action,
+                    "CashFlow",
+                    response.id(),
+                    details,
+                    "SUCCESS"
+            );
+        } catch (Exception e) {
+            // Log silenciosamente
+        }
+
+        return response;
     }
 
     @Transactional

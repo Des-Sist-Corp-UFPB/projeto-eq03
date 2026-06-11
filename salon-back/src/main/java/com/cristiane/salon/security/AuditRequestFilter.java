@@ -50,6 +50,12 @@ public class AuditRequestFilter extends OncePerRequestFilter {
             try {
                 // Determine status and error message
                 int status = response.getStatus();
+                
+                // Erros de validação de payload (400 Bad Request) — não geram audit log
+                if (status == 400) {
+                    return;
+                }
+
                 String auditStatus = (status >= 400 || exception != null) ? "FAILURE" : "SUCCESS";
                 String errorMessage = exception != null ? exception.getMessage() : 
                                       (status >= 400 ? "HTTP Status " + status : null);
@@ -57,9 +63,12 @@ public class AuditRequestFilter extends OncePerRequestFilter {
                 // Get authenticated user (post-execution of filter chain)
                 Long userId = null;
                 String userEmail = "GUEST";
+                boolean isAuthenticated = false;
                 
                 Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-                if (authentication != null && authentication.isAuthenticated()) {
+                if (authentication != null && authentication.isAuthenticated() && 
+                    !"anonymousUser".equals(authentication.getPrincipal().toString())) {
+                    isAuthenticated = true;
                     Object principal = authentication.getPrincipal();
                     if (principal instanceof User user) {
                         userId = user.getId();
@@ -69,6 +78,11 @@ public class AuditRequestFilter extends OncePerRequestFilter {
                     } else if (principal instanceof String) {
                         userEmail = (String) principal;
                     }
+                }
+
+                // Tentativas de acesso a endpoints públicos sem autenticação não geram logs
+                if (!isAuthenticated && status != 401 && status != 403) {
+                    return;
                 }
 
                 // Determine entity type, entity ID, and details prefix from URI segments
@@ -139,11 +153,12 @@ public class AuditRequestFilter extends OncePerRequestFilter {
     }
 
     private boolean shouldSkipAudit(String uri, String method) {
-        if ("OPTIONS".equalsIgnoreCase(method)) {
+        if ("OPTIONS".equalsIgnoreCase(method) || "GET".equalsIgnoreCase(method)) {
             return true;
         }
         
-        return uri.contains("/swagger-ui") || 
+        return "/ping".equals(uri) ||
+               uri.contains("/swagger-ui") || 
                uri.contains("/v3/api-docs") || 
                uri.contains("/swagger-resources") || 
                uri.contains("/webjars") || 
