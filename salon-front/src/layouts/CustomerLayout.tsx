@@ -40,24 +40,24 @@ export const CustomerLayout = () => {
 
             {/* Desktop Navigation */}
             <div className="hidden md:flex items-center gap-1.5">
-              <NavLink 
-                to="/my-appointments" 
-                className={({ isActive }) => 
+              <NavLink
+                to="/my-appointments"
+                className={({ isActive }) =>
                   `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-[#be8a83]/5'
                   }`
                 }
               >
                 Meus Agendamentos
               </NavLink>
-              <NavLink 
-                to="/profile" 
-                className={({ isActive }) => 
+              <NavLink
+                to="/profile"
+                className={({ isActive }) =>
                   `px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-[#be8a83]/5'
                   }`
                 }
@@ -77,8 +77,8 @@ export const CustomerLayout = () => {
                   {userName.charAt(0)}
                 </div>
               </div>
-              <button 
-                onClick={logout} 
+              <button
+                onClick={logout}
                 className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 transition-all duration-200"
               >
                 Sair
@@ -107,32 +107,34 @@ export const CustomerLayout = () => {
                 {userName.charAt(0)}
               </div>
               <div className="min-w-0">
-                <div className="text-sm font-semibold text-[#2a2528] capitalize truncate">{userName}</div>
+                <div className="text-sm font-semibold text-[#2a2528] capitalize truncate">
+                  {userName}
+                </div>
                 <div className="text-xs text-[#7a7074] truncate">{user?.email}</div>
               </div>
             </div>
 
             <div className="space-y-1">
-              <NavLink 
-                to="/my-appointments" 
+              <NavLink
+                to="/my-appointments"
                 onClick={closeMobileMenu}
-                className={({ isActive }) => 
+                className={({ isActive }) =>
                   `block px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-gray-50'
                   }`
                 }
               >
                 Meus Agendamentos
               </NavLink>
-              <NavLink 
-                to="/profile" 
+              <NavLink
+                to="/profile"
                 onClick={closeMobileMenu}
-                className={({ isActive }) => 
+                className={({ isActive }) =>
                   `block px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                    isActive 
-                      ? 'bg-[#be8a83]/10 text-[#be8a83]' 
+                    isActive
+                      ? 'bg-[#be8a83]/10 text-[#be8a83]'
                       : 'text-[#3b3036]/70 hover:text-[#3b3036] hover:bg-gray-50'
                   }`
                 }
@@ -142,8 +144,11 @@ export const CustomerLayout = () => {
             </div>
 
             <div className="border-t border-gray-100 pt-3">
-              <button 
-                onClick={() => { logout(); closeMobileMenu(); }} 
+              <button
+                onClick={() => {
+                  logout();
+                  closeMobileMenu();
+                }}
                 className="w-full text-left px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 transition-all duration-200"
               >
                 Sair da Conta

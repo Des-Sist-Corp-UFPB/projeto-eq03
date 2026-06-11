@@ -21,7 +21,7 @@ export const ConfirmDialog = ({
   confirmLabel = 'Confirmar',
   cancelLabel = 'Cancelar',
   variant = 'danger',
-  isProcessing = false
+  isProcessing = false,
 }: ConfirmDialogProps) => {
   if (!show) return null;
 
@@ -40,8 +40,8 @@ export const ConfirmDialog = ({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
       {/* Backdrop */}
-      <div 
-        className="fixed inset-0 bg-[#261f23]/40 backdrop-blur-md transition-opacity duration-300" 
+      <div
+        className="fixed inset-0 bg-[#261f23]/40 backdrop-blur-md transition-opacity duration-300"
         onClick={onHide}
       />
 

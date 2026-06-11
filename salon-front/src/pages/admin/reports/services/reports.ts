@@ -70,5 +70,5 @@ export const reportsApi = {
     if (to) params.to = to;
     const { data } = await api.get<PayrollReportResponse>('/reports/payroll', { params });
     return data;
-  }
+  },
 };

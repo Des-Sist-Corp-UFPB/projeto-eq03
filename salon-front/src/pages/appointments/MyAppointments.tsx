@@ -78,7 +78,9 @@ export const MyAppointments = () => {
       CANCELLED: 'Cancelado',
     };
     return (
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${styles[status] || 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${styles[status] || 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+      >
         {labels[status] || status}
       </span>
     );
@@ -108,7 +110,9 @@ export const MyAppointments = () => {
     if (isNaN(date.getTime())) return { dayStr: '--', timeStr: '--', yearStr: '----' };
     return {
       dayStr: new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'short' }).format(date),
-      timeStr: new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(date),
+      timeStr: new Intl.DateTimeFormat('pt-BR', { hour: '2-digit', minute: '2-digit' }).format(
+        date
+      ),
       yearStr: new Intl.DateTimeFormat('pt-BR', { year: 'numeric' }).format(date),
     };
   };
@@ -120,7 +124,9 @@ export const MyAppointments = () => {
         <>
           <span className="font-heading text-xl font-bold text-[#3b3036]">{d.timeStr}</span>
           <div className="flex flex-col items-center mt-0.5">
-            <span className="text-xs font-bold uppercase tracking-widest text-[#be8a83]">{d.dayStr}</span>
+            <span className="text-xs font-bold uppercase tracking-widest text-[#be8a83]">
+              {d.dayStr}
+            </span>
             <span className="text-xs text-gray-400">{d.yearStr}</span>
           </div>
         </>
@@ -153,7 +159,9 @@ export const MyAppointments = () => {
       {/* Header */}
       <div className="text-center">
         <h2 className="font-heading text-3xl font-bold text-[#3b3036]">Minha Agenda</h2>
-        <p className="text-sm text-[#3b3036]/60 mt-1">Acompanhe solicitações e horários confirmados</p>
+        <p className="text-sm text-[#3b3036]/60 mt-1">
+          Acompanhe solicitações e horários confirmados
+        </p>
       </div>
 
       {isLoading ? (
@@ -165,13 +173,15 @@ export const MyAppointments = () => {
         <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-200 shadow-xs">
           <CalendarX size={48} className="mx-auto text-gray-300 mb-3" />
           <h3 className="font-semibold text-[#3b3036] text-lg">Nenhum agendamento encontrado</h3>
-          <p className="text-sm text-[#3b3036]/60 mt-1">Você ainda não marcou nenhum serviço conosco.</p>
+          <p className="text-sm text-[#3b3036]/60 mt-1">
+            Você ainda não marcou nenhum serviço conosco.
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-5">
-          {appointments.map(apt => (
-            <div 
-              key={apt.id} 
+          {appointments.map((apt) => (
+            <div
+              key={apt.id}
               className={`bg-white rounded-2xl border border-gray-100 border-l-4 ${getCardBorderColor(apt.status)} flex overflow-hidden shadow-xs transition-all duration-300`}
             >
               {/* Date Column */}
@@ -182,32 +192,42 @@ export const MyAppointments = () => {
               {/* Content */}
               <div className="flex-1 p-4 flex flex-col">
                 <div className="flex justify-between items-start gap-2 mb-2">
-                  <h4 className="font-bold text-[#3b3036] text-sm leading-tight">{apt.serviceName}</h4>
+                  <h4 className="font-bold text-[#3b3036] text-sm leading-tight">
+                    {apt.serviceName}
+                  </h4>
                   {getStatusBadge(apt.status)}
                 </div>
 
                 {apt.clientNotes && (
-                  <p className="text-xs text-[#3b3036]/60 mb-2 leading-relaxed">{apt.clientNotes}</p>
+                  <p className="text-xs text-[#3b3036]/60 mb-2 leading-relaxed">
+                    {apt.clientNotes}
+                  </p>
                 )}
 
                 <div className="mt-auto space-y-0.5">
-                  <span className="block text-xs font-bold uppercase tracking-widest text-gray-400">Profissional</span>
-                  <span className="text-sm font-semibold text-[#3b3036]">{apt.employeeName || 'Não especificado'}</span>
+                  <span className="block text-xs font-bold uppercase tracking-widest text-gray-400">
+                    Profissional
+                  </span>
+                  <span className="text-sm font-semibold text-[#3b3036]">
+                    {apt.employeeName || 'Não especificado'}
+                  </span>
                 </div>
 
-                {apt.status !== 'CANCELLED' && apt.status !== 'DONE' && apt.status !== 'DECLINED' && (
-                  <div className="mt-3 pt-3 border-t border-dashed border-gray-100">
-                    <button
-                      onClick={() => {
-                        setAppointmentToCancel(apt.id);
-                        setShowConfirm(true);
-                      }}
-                      className="w-full py-2 text-rose-600 border border-dashed border-rose-200 bg-transparent hover:bg-rose-50 hover:border-rose-400 rounded-xl text-xs font-semibold transition-all"
-                    >
-                      Cancelar Agendamento
-                    </button>
-                  </div>
-                )}
+                {apt.status !== 'CANCELLED' &&
+                  apt.status !== 'DONE' &&
+                  apt.status !== 'DECLINED' && (
+                    <div className="mt-3 pt-3 border-t border-dashed border-gray-100">
+                      <button
+                        onClick={() => {
+                          setAppointmentToCancel(apt.id);
+                          setShowConfirm(true);
+                        }}
+                        className="w-full py-2 text-rose-600 border border-dashed border-rose-200 bg-transparent hover:bg-rose-50 hover:border-rose-400 rounded-xl text-xs font-semibold transition-all"
+                      >
+                        Cancelar Agendamento
+                      </button>
+                    </div>
+                  )}
               </div>
             </div>
           ))}

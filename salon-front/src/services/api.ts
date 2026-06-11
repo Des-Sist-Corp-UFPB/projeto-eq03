@@ -21,7 +21,7 @@ type FailedPromise = {
 let failedQueue: FailedPromise[] = [];
 
 const processQueue = (error: Error | AxiosError | null, token: string | null = null) => {
-  failedQueue.forEach(prom => {
+  failedQueue.forEach((prom) => {
     if (error) {
       prom.reject(error);
     } else {
@@ -57,12 +57,12 @@ api.interceptors.response.use(
 
     if (error.response?.status === 401 && !originalRequest._retry) {
       if (isRefreshing) {
-        return new Promise(function(resolve, reject) {
+        return new Promise(function (resolve, reject) {
           failedQueue.push({ resolve, reject });
         })
           .then((token) => {
             if (originalRequest.headers) {
-               originalRequest.headers.Authorization = `Bearer ${token}`;
+              originalRequest.headers.Authorization = `Bearer ${token}`;
             }
             return api(originalRequest);
           })
@@ -84,19 +84,23 @@ api.interceptors.response.use(
       }
 
       try {
-        const { data } = await api.post('/auth/refresh', {
-          refreshToken,
-        }, { 
-          _isRefreshRequest: true 
-        } as CustomAxiosRequestConfig);
+        const { data } = await api.post(
+          '/auth/refresh',
+          {
+            refreshToken,
+          },
+          {
+            _isRefreshRequest: true,
+          } as CustomAxiosRequestConfig
+        );
 
         localStorage.setItem('@Salon:token', data.accessToken);
         localStorage.setItem('@Salon:refreshToken', data.refreshToken);
-        
+
         if (originalRequest.headers) {
-            originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
+          originalRequest.headers.Authorization = `Bearer ${data.accessToken}`;
         }
-        
+
         processQueue(null, data.accessToken);
         return api(originalRequest);
       } catch (err) {

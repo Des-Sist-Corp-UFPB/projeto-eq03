@@ -1,6 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, User as UserIcon, Calendar, CheckCircle, ArrowLeft, ArrowRight, MessageSquare, CalendarHeart, AlertCircle, Scissors } from 'lucide-react';
+import {
+  Clock,
+  User as UserIcon,
+  Calendar,
+  CheckCircle,
+  ArrowLeft,
+  ArrowRight,
+  MessageSquare,
+  CalendarHeart,
+  AlertCircle,
+  Scissors,
+} from 'lucide-react';
 import { salonServicesApi, displayServiceDuration } from '../services/services/services';
 import type { SalonServiceData } from '../services/services/services';
 import { employeesApi } from '../admin/employees/services/employees';
@@ -45,14 +56,21 @@ export const PublicAppointment = () => {
     const raw = localStorage.getItem('pending_appointment');
     if (raw) {
       try {
-        const p = JSON.parse(raw) as { serviceId?: number; employeeId?: number; preferredDate?: string; clientNotes?: string; };
+        const p = JSON.parse(raw) as {
+          serviceId?: number;
+          employeeId?: number;
+          preferredDate?: string;
+          clientNotes?: string;
+        };
         if (p.serviceId) setSelectedService(p.serviceId);
         if (p.employeeId) setSelectedEmployee(p.employeeId);
         if (p.preferredDate) setPreferredDate(p.preferredDate);
         if (p.clientNotes) setClientNotes(p.clientNotes);
         if (p.serviceId && p.employeeId) setStep(4);
         else if (p.serviceId) setStep(2);
-      } catch { /* ignore */ }
+      } catch {
+        /* ignore */
+      }
     }
   }, []);
 
@@ -62,14 +80,17 @@ export const PublicAppointment = () => {
         const [servicesData, employeesData, flagsData] = await Promise.all([
           salonServicesApi.findAll(),
           employeesApi.findAllForBooking(),
-          featureFlagsService.getPublicFlags().catch(() => [] as any[])
+          featureFlagsService.getPublicFlags().catch(() => [] as any[]),
         ]);
-        setServices(servicesData.filter(s => s.active));
+        setServices(servicesData.filter((s) => s.active));
         setEmployees(employeesData);
-        const bookingFlag = flagsData.find(f => f.name === 'CLIENT_BOOKING');
+        const bookingFlag = flagsData.find((f) => f.name === 'CLIENT_BOOKING');
         if (bookingFlag && !bookingFlag.enabled) setIsBookingEnabled(false);
       } catch (error) {
-        const msg = getApiErrorMessage(error, 'Não foi possível carregar serviços ou profissionais.');
+        const msg = getApiErrorMessage(
+          error,
+          'Não foi possível carregar serviços ou profissionais.'
+        );
         setErrorMsg(msg);
       } finally {
         setIsInitialLoading(false);
@@ -92,16 +113,22 @@ export const PublicAppointment = () => {
     window.scrollTo(0, 0);
   };
 
-  const handleBack = () => { setStep(step - 1); window.scrollTo(0, 0); };
+  const handleBack = () => {
+    setStep(step - 1);
+    window.scrollTo(0, 0);
+  };
 
   const handleSubmit = async () => {
     if (!isAuthenticated) {
-      localStorage.setItem('pending_appointment', JSON.stringify({
-        serviceId: selectedService,
-        employeeId: selectedEmployee,
-        preferredDate: preferredDate || undefined,
-        clientNotes: clientNotes || undefined
-      }));
+      localStorage.setItem(
+        'pending_appointment',
+        JSON.stringify({
+          serviceId: selectedService,
+          employeeId: selectedEmployee,
+          preferredDate: preferredDate || undefined,
+          clientNotes: clientNotes || undefined,
+        })
+      );
       navigate('/login');
       return;
     }
@@ -112,7 +139,7 @@ export const PublicAppointment = () => {
         serviceId: selectedService!,
         employeeId: selectedEmployee!,
         preferredDate: preferredDate || undefined,
-        clientNotes: clientNotes.trim() || undefined
+        clientNotes: clientNotes.trim() || undefined,
       });
       localStorage.removeItem('pending_appointment');
       navigate('/my-appointments');
@@ -137,9 +164,12 @@ export const PublicAppointment = () => {
       <div className="max-w-lg mx-auto text-center py-16 px-4">
         <div className="bg-white rounded-2xl border border-gray-100 shadow-xs p-10">
           <CalendarHeart size={56} className="mx-auto text-gray-400 mb-4" />
-          <h3 className="font-heading text-xl font-bold text-[#3b3036] mb-2">Agendamentos Online Desativados</h3>
+          <h3 className="font-heading text-xl font-bold text-[#3b3036] mb-2">
+            Agendamentos Online Desativados
+          </h3>
           <p className="text-sm text-[#3b3036]/60 mb-6 leading-relaxed">
-            Os agendamentos online para clientes estão temporariamente desativados. Por favor, entre em contato direto com o salão para agendar seu horário.
+            Os agendamentos online para clientes estão temporariamente desativados. Por favor, entre
+            em contato direto com o salão para agendar seu horário.
           </p>
           <button
             className="px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-full transition-all"
@@ -156,17 +186,19 @@ export const PublicAppointment = () => {
     { n: 1, label: 'Serviço', icon: <Clock size={16} /> },
     { n: 2, label: 'Profissional', icon: <UserIcon size={16} /> },
     { n: 3, label: 'Preferências', icon: <Calendar size={16} /> },
-    { n: 4, label: 'Enviar', icon: <CheckCircle size={16} /> }
+    { n: 4, label: 'Enviar', icon: <CheckCircle size={16} /> },
   ];
 
-  const selectedSrv = services.find(s => s.id === selectedService);
+  const selectedSrv = services.find((s) => s.id === selectedService);
   const priceLabel = priceTagLabel(selectedSrv?.price);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">
       {/* Header */}
       <div className="text-center">
-        <h2 className="font-heading text-3xl font-bold text-[#3b3036] tracking-tight">Solicitar horário</h2>
+        <h2 className="font-heading text-3xl font-bold text-[#3b3036] tracking-tight">
+          Solicitar horário
+        </h2>
         <p className="text-sm text-[#3b3036]/60 mt-1">
           Monte seu pedido abaixo. O salão confirma data e horário e avisa você por aqui.
         </p>
@@ -177,10 +209,11 @@ export const PublicAppointment = () => {
           <div className="flex items-center gap-2.5 flex-1">
             <AlertCircle size={20} className="shrink-0 text-amber-600" />
             <span>
-              <span className="font-bold">Atenção:</span> Você não está conectado. Você pode montar sua solicitação, mas precisará fazer login ou criar uma conta para finalizar.
+              <span className="font-bold">Atenção:</span> Você não está conectado. Você pode montar
+              sua solicitação, mas precisará fazer login ou criar uma conta para finalizar.
             </span>
           </div>
-          <button 
+          <button
             onClick={() => navigate('/login')}
             className="w-full sm:w-auto px-4 py-1.5 bg-amber-600 hover:bg-amber-700 text-white text-xs font-bold rounded-full transition-all shrink-0 cursor-pointer"
           >
@@ -194,16 +227,20 @@ export const PublicAppointment = () => {
         <div className="absolute top-5 left-0 right-0 h-0.5 bg-gray-200 z-0" />
         {steps.map((s) => (
           <div key={s.n} className="relative z-10 flex flex-col items-center flex-1">
-            <div className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all duration-300 ${
-              step > s.n
-                ? 'bg-[#3b3036] border-[#3b3036] text-white'
-                : step === s.n
-                  ? 'bg-[#be8a83] border-[#be8a83] text-white shadow-lg shadow-[#be8a83]/20'
-                  : 'bg-white border-gray-200 text-gray-400'
-            }`}>
+            <div
+              className={`h-10 w-10 rounded-full flex items-center justify-center font-bold text-sm border-2 transition-all duration-300 ${
+                step > s.n
+                  ? 'bg-[#3b3036] border-[#3b3036] text-white'
+                  : step === s.n
+                    ? 'bg-[#be8a83] border-[#be8a83] text-white shadow-lg shadow-[#be8a83]/20'
+                    : 'bg-white border-gray-200 text-gray-400'
+              }`}
+            >
               {step > s.n ? <CheckCircle size={18} /> : s.n}
             </div>
-            <div className={`text-xs font-semibold mt-1.5 transition-colors ${step === s.n ? 'text-[#be8a83]' : step > s.n ? 'text-[#3b3036]' : 'text-gray-400'}`}>
+            <div
+              className={`text-xs font-semibold mt-1.5 transition-colors ${step === s.n ? 'text-[#be8a83]' : step > s.n ? 'text-[#3b3036]' : 'text-gray-400'}`}
+            >
               {s.label}
             </div>
           </div>
@@ -222,18 +259,23 @@ export const PublicAppointment = () => {
         {/* Step 1: Service */}
         {step === 1 && (
           <div className="space-y-4">
-            <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">O que vamos fazer?</h4>
+            <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">
+              O que vamos fazer?
+            </h4>
             {services.length === 0 ? (
               <div className="text-center py-12 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 max-w-md mx-auto">
                 <Scissors size={36} className="mx-auto text-gray-300 mb-3" />
-                <h5 className="font-bold text-[#3b3036] text-base mb-1">Nenhum serviço disponível</h5>
+                <h5 className="font-bold text-[#3b3036] text-base mb-1">
+                  Nenhum serviço disponível
+                </h5>
                 <p className="text-xs text-[#3b3036]/60 leading-relaxed">
-                  Não existem serviços ativos cadastrados para agendamento no momento. Por favor, tente novamente mais tarde.
+                  Não existem serviços ativos cadastrados para agendamento no momento. Por favor,
+                  tente novamente mais tarde.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {services.map(srv => {
+                {services.map((srv) => {
                   const tag = priceTagLabel(srv.price);
                   return (
                     <div
@@ -271,18 +313,23 @@ export const PublicAppointment = () => {
         {/* Step 2: Employee */}
         {step === 2 && (
           <div className="space-y-4">
-            <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">Com quem você prefere?</h4>
+            <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">
+              Com quem você prefere?
+            </h4>
             {employees.length === 0 ? (
               <div className="text-center py-12 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 max-w-md mx-auto">
                 <UserIcon size={36} className="mx-auto text-gray-300 mb-3" />
-                <h5 className="font-bold text-[#3b3036] text-base mb-1">Nenhum profissional disponível</h5>
+                <h5 className="font-bold text-[#3b3036] text-base mb-1">
+                  Nenhum profissional disponível
+                </h5>
                 <p className="text-xs text-[#3b3036]/60 leading-relaxed">
-                  Não há profissionais cadastrados ou disponíveis para agendamento online neste momento. Por favor, tente novamente mais tarde.
+                  Não há profissionais cadastrados ou disponíveis para agendamento online neste
+                  momento. Por favor, tente novamente mais tarde.
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {employees.map(emp => (
+                {employees.map((emp) => (
                   <div
                     key={emp.id}
                     onClick={() => setSelectedEmployee(emp.id!)}
@@ -297,7 +344,9 @@ export const PublicAppointment = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <h5 className="font-bold text-[#3b3036] mb-0.5">{emp.name}</h5>
-                      <p className="text-xs text-[#3b3036]/60 leading-snug">{emp.bio || 'Profissional especialista'}</p>
+                      <p className="text-xs text-[#3b3036]/60 leading-snug">
+                        {emp.bio || 'Profissional especialista'}
+                      </p>
                     </div>
                     {selectedEmployee === emp.id && (
                       <CheckCircle size={20} className="shrink-0 text-[#be8a83]" />
@@ -313,9 +362,12 @@ export const PublicAppointment = () => {
         {step === 3 && (
           <div className="max-w-lg mx-auto space-y-6">
             <div className="text-center">
-              <h4 className="font-heading text-lg font-bold text-[#3b3036]">Preferência de dia e observações</h4>
+              <h4 className="font-heading text-lg font-bold text-[#3b3036]">
+                Preferência de dia e observações
+              </h4>
               <p className="text-xs text-[#3b3036]/60 mt-1">
-                O horário exato será combinado pela equipe. Indique um dia de preferência, se quiser.
+                O horário exato será combinado pela equipe. Indique um dia de preferência, se
+                quiser.
               </p>
             </div>
             <div className="space-y-1.5">
@@ -348,7 +400,9 @@ export const PublicAppointment = () => {
         {/* Step 4: Summary */}
         {step === 4 && (
           <div className="max-w-lg mx-auto space-y-4">
-            <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">Revisar pedido</h4>
+            <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">
+              Revisar pedido
+            </h4>
             <div className="rounded-2xl overflow-hidden border border-gray-100 shadow-xs">
               <div className="bg-gradient-to-r from-[#3b3036] to-[#261f23] text-white px-6 py-5 text-center">
                 <CheckCircle size={40} className="mx-auto mb-2 text-[#e5a49c]" />
@@ -357,14 +411,30 @@ export const PublicAppointment = () => {
               <div className="divide-y divide-gray-50 px-6">
                 {[
                   { label: 'Serviço', value: selectedSrv?.name },
-                  { label: 'Profissional', value: employees.find(e => e.id === selectedEmployee)?.name },
-                  ...(preferredDate ? [{ label: 'Dia preferido', value: new Date(preferredDate + 'T12:00:00').toLocaleDateString('pt-BR') }] : []),
-                  ...(clientNotes.trim() ? [{ label: 'Observações', value: clientNotes.trim() }] : []),
+                  {
+                    label: 'Profissional',
+                    value: employees.find((e) => e.id === selectedEmployee)?.name,
+                  },
+                  ...(preferredDate
+                    ? [
+                        {
+                          label: 'Dia preferido',
+                          value: new Date(preferredDate + 'T12:00:00').toLocaleDateString('pt-BR'),
+                        },
+                      ]
+                    : []),
+                  ...(clientNotes.trim()
+                    ? [{ label: 'Observações', value: clientNotes.trim() }]
+                    : []),
                   { label: 'Referência de valor', value: priceLabel || 'Definido no atendimento' },
                 ].map((row, i) => (
                   <div key={i} className="py-3.5 flex flex-col gap-0.5">
-                    <span className="text-xs font-bold uppercase tracking-widest text-gray-400">{row.label}</span>
-                    <span className="text-sm font-semibold text-[#3b3036] whitespace-pre-wrap break-words">{row.value}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest text-gray-400">
+                      {row.label}
+                    </span>
+                    <span className="text-sm font-semibold text-[#3b3036] whitespace-pre-wrap break-words">
+                      {row.value}
+                    </span>
                   </div>
                 ))}
               </div>

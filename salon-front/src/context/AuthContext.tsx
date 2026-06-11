@@ -42,7 +42,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     localStorage.setItem('@Salon:refreshToken', refreshToken);
 
     const decoded = jwtDecode<JwtPayload>(accessToken);
-    
+
     const userData: UserContextData = {
       email: decoded.sub,
       role: decoded.role,

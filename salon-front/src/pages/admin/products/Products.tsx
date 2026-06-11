@@ -17,14 +17,20 @@ export const Products = () => {
   const [products, setProducts] = useState<ProductData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductData | null>(null);
-  
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [productToDelete, setProductToDelete] = useState<number | null>(null);
-  
-  const { register, handleSubmit, reset, setValue, formState: { errors } } = useForm<ProductData>();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    formState: { errors },
+  } = useForm<ProductData>();
   const { error: showError } = useAlert();
 
   const loadProducts = async () => {
@@ -40,7 +46,9 @@ export const Products = () => {
     }
   };
 
-  useEffect(() => { loadProducts(); }, [filterActive]);
+  useEffect(() => {
+    loadProducts();
+  }, [filterActive]);
 
   const handleOpenForm = (product?: ProductData) => {
     reset();
@@ -68,7 +76,10 @@ export const Products = () => {
       setShowForm(false);
       loadProducts();
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao salvar produto. Verifique os dados e tente novamente.');
+      const msg = getApiErrorMessage(
+        err,
+        'Erro ao salvar produto. Verifique os dados e tente novamente.'
+      );
       await showError(msg);
     }
   };
@@ -89,25 +100,38 @@ export const Products = () => {
     { key: 'name', label: 'Nome do Produto' },
     { key: 'price', label: 'Preço', render: (item: ProductData) => `R$ ${item.price.toFixed(2)}` },
     { key: 'stock', label: 'Estoque' },
-    { key: 'active', label: 'Status', render: (item: ProductData) => item.active !== false ? 'Ativo' : 'Inativo' },
+    {
+      key: 'active',
+      label: 'Status',
+      render: (item: ProductData) => (item.active !== false ? 'Ativo' : 'Inativo'),
+    },
     {
       key: 'actions',
       label: 'Ações',
       render: (item: ProductData) => (
         <div className="flex gap-2">
           <PermissionGate method="PUT" endpoint={`/v1/products/${item.id}`}>
-            <button onClick={() => handleOpenForm(item)} className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer">
+            <button
+              onClick={() => handleOpenForm(item)}
+              className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer"
+            >
               <Edit size={15} />
             </button>
           </PermissionGate>
           <PermissionGate method="DELETE" endpoint={`/v1/products/${item.id}`}>
-            <button onClick={() => { setProductToDelete(item.id!); setShowConfirm(true); }} className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer">
+            <button
+              onClick={() => {
+                setProductToDelete(item.id!);
+                setShowConfirm(true);
+              }}
+              className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
+            >
               <Trash2 size={15} />
             </button>
           </PermissionGate>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
@@ -144,22 +168,55 @@ export const Products = () => {
         <Table columns={columns} data={products} keyExtractor={(item) => item.id!} />
       )}
 
-      <ModalForm show={showForm} onHide={() => setShowForm(false)} title={editingProduct ? 'Editar Produto' : 'Novo Produto'} onSubmit={handleSubmit(onSubmit)}>
+      <ModalForm
+        show={showForm}
+        onHide={() => setShowForm(false)}
+        title={editingProduct ? 'Editar Produto' : 'Novo Produto'}
+        onSubmit={handleSubmit(onSubmit)}
+      >
         <div className="space-y-4">
           <div>
             <label className={labelCls}>Nome do Produto</label>
-            <input type="text" className={`${inputCls} ${errors.name ? 'border-rose-300' : ''}`} {...register('name', { required: 'Nome é obrigatório', minLength: { value: 3, message: 'Mín. 3 caracteres'} })} />
-            {errors.name && <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>}
+            <input
+              type="text"
+              className={`${inputCls} ${errors.name ? 'border-rose-300' : ''}`}
+              {...register('name', {
+                required: 'Nome é obrigatório',
+                minLength: { value: 3, message: 'Mín. 3 caracteres' },
+              })}
+            />
+            {errors.name && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>Estoque Inicial</label>
-            <input type="number" className={`${inputCls} ${errors.stock ? 'border-rose-300' : ''}`} {...register('stock', { required: 'Estoque é obrigatório', min: { value: 0, message: 'Não pode ser negativo'} })} />
-            {errors.stock && <span className="text-xs text-rose-500 font-semibold">{errors.stock.message}</span>}
+            <input
+              type="number"
+              className={`${inputCls} ${errors.stock ? 'border-rose-300' : ''}`}
+              {...register('stock', {
+                required: 'Estoque é obrigatório',
+                min: { value: 0, message: 'Não pode ser negativo' },
+              })}
+            />
+            {errors.stock && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.stock.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>Preço (R$)</label>
-            <input type="number" step="0.01" className={`${inputCls} ${errors.price ? 'border-rose-300' : ''}`} {...register('price', { required: 'Preço é obrigatório', min: { value: 0, message: 'Não pode ser negativo'} })} />
-            {errors.price && <span className="text-xs text-rose-500 font-semibold">{errors.price.message}</span>}
+            <input
+              type="number"
+              step="0.01"
+              className={`${inputCls} ${errors.price ? 'border-rose-300' : ''}`}
+              {...register('price', {
+                required: 'Preço é obrigatório',
+                min: { value: 0, message: 'Não pode ser negativo' },
+              })}
+            />
+            {errors.price && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.price.message}</span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">
@@ -171,7 +228,13 @@ export const Products = () => {
         </div>
       </ModalForm>
 
-      <ConfirmDialog show={showConfirm} onHide={() => setShowConfirm(false)} onConfirm={confirmDelete} title="Excluir Produto" message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita." />
+      <ConfirmDialog
+        show={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Produto"
+        message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
+      />
     </div>
   );
 };

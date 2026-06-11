@@ -16,17 +16,25 @@ const labelCls = 'label-premium';
 export const Employees = () => {
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeData | null>(null);
-  
+
   const [showConfirm, setShowConfirm] = useState(false);
   const [employeeToDelete, setProductToDelete] = useState<number | null>(null);
 
   const [showDetails, setShowDetails] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeData | null>(null);
-  
-  const { register, handleSubmit, reset, setValue, watch, clearErrors, formState: { errors } } = useForm<EmployeeData>();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    clearErrors,
+    formState: { errors },
+  } = useForm<EmployeeData>();
   const remunerationType = watch('remunerationType');
   const { error: showError } = useAlert();
 
@@ -54,7 +62,9 @@ export const Employees = () => {
     }
   };
 
-  useEffect(() => { loadEmployees(); }, []);
+  useEffect(() => {
+    loadEmployees();
+  }, []);
 
   const handleOpenForm = (employee?: EmployeeData) => {
     reset();
@@ -106,7 +116,10 @@ export const Employees = () => {
       setShowForm(false);
       loadEmployees();
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao salvar funcionária. Verifique se o ID de usuário está correto.');
+      const msg = getApiErrorMessage(
+        err,
+        'Erro ao salvar funcionária. Verifique se o ID de usuário está correto.'
+      );
       await showError(msg);
     }
   };
@@ -124,8 +137,8 @@ export const Employees = () => {
   };
 
   const columns = [
-    { 
-      key: 'name', 
+    {
+      key: 'name',
       label: 'Nome',
       render: (item: EmployeeData) => (
         <button
@@ -134,7 +147,7 @@ export const Employees = () => {
         >
           {item.name}
         </button>
-      )
+      ),
     },
     { key: 'userId', label: 'ID Usuário' },
     {
@@ -145,7 +158,7 @@ export const Employees = () => {
         if (item.remunerationType === 'COMISSIONADO') return 'Comissionado';
         if (item.remunerationType === 'FIXO_E_COMISSIONADO') return 'Fixo + Comissionado';
         return 'Não definido';
-      }
+      },
     },
     {
       key: 'remunerationValue',
@@ -163,7 +176,7 @@ export const Employees = () => {
           return `R$ ${(item.remunerationValue ?? 0).toFixed(2)} + ${(item.commissionValue ?? 0).toFixed(0)}% (${scope})`;
         }
         return '-';
-      }
+      },
     },
     {
       key: 'actions',
@@ -188,7 +201,10 @@ export const Employees = () => {
           </PermissionGate>
           <PermissionGate method="DELETE" endpoint={`/v1/employees/${item.id}`}>
             <button
-              onClick={() => { setProductToDelete(item.id!); setShowConfirm(true); }}
+              onClick={() => {
+                setProductToDelete(item.id!);
+                setShowConfirm(true);
+              }}
               className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
               title="Apagar"
             >
@@ -196,8 +212,8 @@ export const Employees = () => {
             </button>
           </PermissionGate>
         </div>
-      )
-    }
+      ),
+    },
   ];
 
   return (
@@ -205,10 +221,7 @@ export const Employees = () => {
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Gerenciar Funcionárias</h2>
         <PermissionGate method="POST" endpoint="/v1/employees">
-          <button
-            onClick={() => handleOpenForm()}
-            className="btn-premium"
-          >
+          <button onClick={() => handleOpenForm()} className="btn-premium">
             <Plus size={18} /> Vincular Funcionária
           </button>
         </PermissionGate>
@@ -238,8 +251,12 @@ export const Employees = () => {
               {...register('userId', { required: 'ID do usuário é obrigatório' })}
               disabled={!!editingEmployee}
             />
-            <p className="text-xs text-gray-400 mt-1">Insira o ID do usuário que será vinculado como funcionária.</p>
-            {errors.userId && <span className="text-xs text-rose-500 font-semibold">{errors.userId.message}</span>}
+            <p className="text-xs text-gray-400 mt-1">
+              Insira o ID do usuário que será vinculado como funcionária.
+            </p>
+            {errors.userId && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.userId.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>Biografia / Especialidade</label>
@@ -247,14 +264,13 @@ export const Employees = () => {
           </div>
 
           <div className="border-t border-[#eae1e1]/50 pt-4">
-            <h4 className="font-heading font-semibold text-sm text-[#3b3036] mb-3">Modelo de Remuneração</h4>
+            <h4 className="font-heading font-semibold text-sm text-[#3b3036] mb-3">
+              Modelo de Remuneração
+            </h4>
             <div className="grid grid-cols-1 gap-4">
               <div>
                 <label className={labelCls}>Tipo de Remuneração</label>
-                <select
-                  className={inputCls}
-                  {...register('remunerationType')}
-                >
+                <select className={inputCls} {...register('remunerationType')}>
                   <option value="">Não definido</option>
                   <option value="SALARIO_FIXO">Salário Fixo</option>
                   <option value="COMISSIONADO">Comissionado</option>
@@ -262,34 +278,52 @@ export const Employees = () => {
                 </select>
               </div>
 
-              {(remunerationType === 'COMISSIONADO' || remunerationType === 'FIXO_E_COMISSIONADO') && (
+              {(remunerationType === 'COMISSIONADO' ||
+                remunerationType === 'FIXO_E_COMISSIONADO') && (
                 <div>
                   <label className={labelCls}>Escopo da Comissão</label>
                   <select
                     className={`${inputCls} ${errors.commissionScope ? 'border-rose-300' : ''}`}
                     {...register('commissionScope', {
-                      required: (remunerationType === 'COMISSIONADO' || remunerationType === 'FIXO_E_COMISSIONADO') ? 'O escopo da comissão é obrigatório' : false
+                      required:
+                        remunerationType === 'COMISSIONADO' ||
+                        remunerationType === 'FIXO_E_COMISSIONADO'
+                          ? 'O escopo da comissão é obrigatório'
+                          : false,
                     })}
                   >
                     <option value="">Selecione o escopo...</option>
-                    <option value="INDIVIDUAL">Comissão Individual (sobre serviços executados)</option>
+                    <option value="INDIVIDUAL">
+                      Comissão Individual (sobre serviços executados)
+                    </option>
                     <option value="GLOBAL">Comissão Global (sobre total do salão)</option>
                   </select>
-                  {errors.commissionScope && <span className="text-xs text-rose-500 font-semibold">{errors.commissionScope.message}</span>}
+                  {errors.commissionScope && (
+                    <span className="text-xs text-rose-500 font-semibold">
+                      {errors.commissionScope.message}
+                    </span>
+                  )}
                 </div>
               )}
 
-              {(remunerationType === 'SALARIO_FIXO' || remunerationType === 'COMISSIONADO' || remunerationType === 'FIXO_E_COMISSIONADO') && (
+              {(remunerationType === 'SALARIO_FIXO' ||
+                remunerationType === 'COMISSIONADO' ||
+                remunerationType === 'FIXO_E_COMISSIONADO') && (
                 <div>
                   <label className={labelCls}>
-                    {remunerationType === 'COMISSIONADO' ? 'Porcentagem da Comissão (%)' : 'Valor do Salário Fixo (R$)'}
+                    {remunerationType === 'COMISSIONADO'
+                      ? 'Porcentagem da Comissão (%)'
+                      : 'Valor do Salário Fixo (R$)'}
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     className={`${inputCls} ${errors.remunerationValue ? 'border-rose-300' : ''}`}
                     {...register('remunerationValue', {
-                      required: remunerationType === 'COMISSIONADO' ? 'A porcentagem da comissão é obrigatória' : 'O salário fixo é obrigatório',
+                      required:
+                        remunerationType === 'COMISSIONADO'
+                          ? 'A porcentagem da comissão é obrigatória'
+                          : 'O salário fixo é obrigatório',
                       min: { value: 0, message: 'O valor não pode ser negativo' },
                       validate: {
                         commissionLimit: (value) => {
@@ -297,11 +331,15 @@ export const Employees = () => {
                             return 'A comissão não pode passar de 100%';
                           }
                           return true;
-                        }
-                      }
+                        },
+                      },
                     })}
                   />
-                  {errors.remunerationValue && <span className="text-xs text-rose-500 font-semibold">{errors.remunerationValue.message}</span>}
+                  {errors.remunerationValue && (
+                    <span className="text-xs text-rose-500 font-semibold">
+                      {errors.remunerationValue.message}
+                    </span>
+                  )}
                 </div>
               )}
 
@@ -315,10 +353,14 @@ export const Employees = () => {
                     {...register('commissionValue', {
                       required: 'A porcentagem da comissão é obrigatória',
                       min: { value: 0, message: 'O valor não pode ser negativo' },
-                      max: { value: 100, message: 'A comissão não pode passar de 100%' }
+                      max: { value: 100, message: 'A comissão não pode passar de 100%' },
                     })}
                   />
-                  {errors.commissionValue && <span className="text-xs text-rose-500 font-semibold">{errors.commissionValue.message}</span>}
+                  {errors.commissionValue && (
+                    <span className="text-xs text-rose-500 font-semibold">
+                      {errors.commissionValue.message}
+                    </span>
+                  )}
                 </div>
               )}
             </div>
@@ -336,15 +378,17 @@ export const Employees = () => {
 
       {showDetails && selectedEmployee && (
         <div className="fixed inset-0 z-50 flex items-center justify-center overflow-x-hidden overflow-y-auto outline-none focus:outline-none">
-          <div 
-            className="fixed inset-0 bg-[#261f23]/40 backdrop-blur-md transition-opacity duration-300" 
+          <div
+            className="fixed inset-0 bg-[#261f23]/40 backdrop-blur-md transition-opacity duration-300"
             onClick={() => setShowDetails(false)}
           />
           <div className="relative w-full max-w-md mx-auto my-6 z-50 px-4">
             <div className="relative flex flex-col w-full bg-white border border-[#eae1e1] rounded-2xl shadow-xl outline-none focus:outline-none animate-scale-up">
               {/* Header */}
               <div className="flex items-center justify-between p-5 border-b border-solid border-[#eae1e1] rounded-t-2xl">
-                <h3 className="text-lg font-semibold font-heading text-[#3b3036]">Detalhes da Funcionária</h3>
+                <h3 className="text-lg font-semibold font-heading text-[#3b3036]">
+                  Detalhes da Funcionária
+                </h3>
                 <button
                   onClick={() => setShowDetails(false)}
                   className="p-1 ml-auto bg-transparent border-0 text-[#7a7074] hover:text-[#be8a83] float-right text-3xl leading-none font-semibold outline-none focus:outline-none transition-colors cursor-pointer"
@@ -352,49 +396,66 @@ export const Employees = () => {
                   <span className="text-xl">×</span>
                 </button>
               </div>
-              
+
               {/* Body */}
               <div className="relative p-6 flex-auto space-y-4 text-sm text-[#3b3036]">
                 <div>
-                  <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">Nome</span>
-                  <div className="text-base font-semibold text-[#3b3036]">{selectedEmployee.name}</div>
+                  <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">
+                    Nome
+                  </span>
+                  <div className="text-base font-semibold text-[#3b3036]">
+                    {selectedEmployee.name}
+                  </div>
                 </div>
-                
+
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">ID Usuário</span>
+                    <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">
+                      ID Usuário
+                    </span>
                     <div className="text-base">{selectedEmployee.userId}</div>
                   </div>
                   <div>
-                    <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">E-mail</span>
+                    <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">
+                      E-mail
+                    </span>
                     <div className="text-base break-all">{selectedEmployee.email || '-'}</div>
                   </div>
                 </div>
 
                 <div>
-                  <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">Biografia / Especialidade</span>
+                  <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-1">
+                    Biografia / Especialidade
+                  </span>
                   <div className="bg-[#fcf9f9] border border-[#eae1e1] rounded-xl p-3 text-[#3b3036]/80 italic">
                     {selectedEmployee.bio || 'Nenhuma biografia cadastrada.'}
                   </div>
                 </div>
 
                 <div className="border-t border-[#eae1e1] pt-4">
-                  <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-2">Configuração de Pagamento</span>
+                  <span className="font-semibold block text-xs text-[#3b3036]/60 uppercase tracking-wider mb-2">
+                    Configuração de Pagamento
+                  </span>
                   <div className="bg-[#fcf9f9] border border-[#eae1e1] rounded-xl p-3 space-y-2">
                     <div>
                       <span className="font-semibold text-xs text-[#3b3036]/70">Tipo:</span>{' '}
                       <span className="text-sm font-semibold">
                         {selectedEmployee.remunerationType === 'SALARIO_FIXO' && 'Salário Fixo'}
                         {selectedEmployee.remunerationType === 'COMISSIONADO' && 'Comissionado'}
-                        {selectedEmployee.remunerationType === 'FIXO_E_COMISSIONADO' && 'Salário Fixo + Comissionado'}
+                        {selectedEmployee.remunerationType === 'FIXO_E_COMISSIONADO' &&
+                          'Salário Fixo + Comissionado'}
                         {!selectedEmployee.remunerationType && 'Não definido'}
                       </span>
                     </div>
 
                     {selectedEmployee.remunerationType === 'SALARIO_FIXO' && (
                       <div>
-                        <span className="font-semibold text-xs text-[#3b3036]/70">Salário Fixo:</span>{' '}
-                        <span className="text-sm font-semibold text-[#8b6d68]">R$ {(selectedEmployee.remunerationValue ?? 0).toFixed(2)}</span>
+                        <span className="font-semibold text-xs text-[#3b3036]/70">
+                          Salário Fixo:
+                        </span>{' '}
+                        <span className="text-sm font-semibold text-[#8b6d68]">
+                          R$ {(selectedEmployee.remunerationValue ?? 0).toFixed(2)}
+                        </span>
                       </div>
                     )}
 
@@ -402,12 +463,16 @@ export const Employees = () => {
                       <>
                         <div>
                           <span className="font-semibold text-xs text-[#3b3036]/70">Comissão:</span>{' '}
-                          <span className="text-sm font-semibold text-[#8b6d68]">{selectedEmployee.remunerationValue ?? 0}%</span>
+                          <span className="text-sm font-semibold text-[#8b6d68]">
+                            {selectedEmployee.remunerationValue ?? 0}%
+                          </span>
                         </div>
                         <div>
                           <span className="font-semibold text-xs text-[#3b3036]/70">Escopo:</span>{' '}
                           <span className="text-xs font-semibold px-2 py-0.5 bg-[#eae1e1] rounded-md uppercase">
-                            {selectedEmployee.commissionScope === 'GLOBAL' ? 'Global' : 'Individual'}
+                            {selectedEmployee.commissionScope === 'GLOBAL'
+                              ? 'Global'
+                              : 'Individual'}
                           </span>
                         </div>
                       </>
@@ -416,17 +481,25 @@ export const Employees = () => {
                     {selectedEmployee.remunerationType === 'FIXO_E_COMISSIONADO' && (
                       <>
                         <div>
-                          <span className="font-semibold text-xs text-[#3b3036]/70">Salário Fixo Base:</span>{' '}
-                          <span className="text-sm font-semibold text-[#8b6d68]">R$ {(selectedEmployee.remunerationValue ?? 0).toFixed(2)}</span>
+                          <span className="font-semibold text-xs text-[#3b3036]/70">
+                            Salário Fixo Base:
+                          </span>{' '}
+                          <span className="text-sm font-semibold text-[#8b6d68]">
+                            R$ {(selectedEmployee.remunerationValue ?? 0).toFixed(2)}
+                          </span>
                         </div>
                         <div>
                           <span className="font-semibold text-xs text-[#3b3036]/70">Comissão:</span>{' '}
-                          <span className="text-sm font-semibold text-[#8b6d68]">{selectedEmployee.commissionValue ?? 0}%</span>
+                          <span className="text-sm font-semibold text-[#8b6d68]">
+                            {selectedEmployee.commissionValue ?? 0}%
+                          </span>
                         </div>
                         <div>
                           <span className="font-semibold text-xs text-[#3b3036]/70">Escopo:</span>{' '}
                           <span className="text-xs font-semibold px-2 py-0.5 bg-[#eae1e1] rounded-md uppercase">
-                            {selectedEmployee.commissionScope === 'GLOBAL' ? 'Global' : 'Individual'}
+                            {selectedEmployee.commissionScope === 'GLOBAL'
+                              ? 'Global'
+                              : 'Individual'}
                           </span>
                         </div>
                       </>
@@ -434,7 +507,7 @@ export const Employees = () => {
                   </div>
                 </div>
               </div>
-              
+
               {/* Footer */}
               <div className="flex items-center justify-end p-5 border-t border-solid border-[#eae1e1] rounded-b-2xl bg-[#fcf9f9]">
                 <button

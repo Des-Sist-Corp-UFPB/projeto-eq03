@@ -1,5 +1,6 @@
 package com.cristiane.salon.controller;
 
+import com.cristiane.salon.annotation.Auditable;
 import com.cristiane.salon.models.cashflow.dto.CashFlowRequest;
 import com.cristiane.salon.models.cashflow.dto.CashFlowResponse;
 import com.cristiane.salon.models.cashflow.service.CashFlowService;
@@ -42,6 +43,7 @@ public class CashFlowController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Auditable(action = "CASHFLOW_ENTRY_DELETED", entityType = "CashFlow", captureArgs = true)
     @Operation(summary = "Exclui um registro do fluxo de caixa (Admin)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         cashFlowService.delete(id);

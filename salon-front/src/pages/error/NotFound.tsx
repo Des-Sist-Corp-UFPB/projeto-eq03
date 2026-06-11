@@ -11,7 +11,7 @@ export const NotFound = () => {
         A página que você está procurando pode ter sido removida, <br />
         renomeada ou está temporariamente indisponível.
       </p>
-      <button 
+      <button
         onClick={() => navigate('/')}
         className="px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-full transition-all active:scale-[0.98]"
       >

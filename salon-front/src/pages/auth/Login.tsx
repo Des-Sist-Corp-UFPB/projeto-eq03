@@ -12,7 +12,11 @@ interface LoginFormData {
 }
 
 export const Login = () => {
-  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormData>();
+  const {
+    register,
+    handleSubmit,
+    formState: { errors },
+  } = useForm<LoginFormData>();
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login } = useAuth();
@@ -22,7 +26,7 @@ export const Login = () => {
     '/images/salon1.png',
     '/images/salon2.png',
     '/images/salon3.png',
-    '/images/salon4.jpg'
+    '/images/salon4.jpg',
   ];
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
 
@@ -39,7 +43,7 @@ export const Login = () => {
     try {
       const response = await api.post('/auth/login', data);
       login(response.data.accessToken, response.data.refreshToken, true);
-      
+
       const pending = localStorage.getItem('pending_appointment');
       navigate(pending ? '/appointment' : '/');
     } catch (err) {
@@ -67,10 +71,13 @@ export const Login = () => {
 
         {/* Deep obsidian gradient backdrop with high-contrast text overlay */}
         <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f17]/95 via-[#0b0f17]/60 to-[#0b0f17]/40 backdrop-blur-[2px] z-10" />
-        
+
         {/* Logo/Brand Title */}
         <div className="z-20 drop-shadow-lg">
-          <Link to="/" className="font-heading text-3xl font-bold tracking-wider text-white hover:text-[#e5a49c] transition-colors">
+          <Link
+            to="/"
+            className="font-heading text-3xl font-bold tracking-wider text-white hover:text-[#e5a49c] transition-colors"
+          >
             ESPAÇO CRISTIANE MOURA
           </Link>
         </div>
@@ -81,7 +88,8 @@ export const Login = () => {
             Sua beleza refletida nos mínimos detalhes.
           </h1>
           <p className="text-[#fcf9f9]/90 text-sm max-w-md font-sans tracking-wide drop-shadow-lg">
-            Agende serviços de alta qualidade com nossas profissionais especializadas em um ambiente elegante e acolhedor.
+            Agende serviços de alta qualidade com nossas profissionais especializadas em um ambiente
+            elegante e acolhedor.
           </p>
         </div>
 
@@ -94,11 +102,14 @@ export const Login = () => {
       {/* Right Side: Form */}
       <div className="w-full md:w-1/2 min-h-screen bg-white flex flex-col justify-center px-6 py-12 sm:px-16 lg:px-24 relative overflow-y-auto md:animate-slide-form-to-right">
         {/* Back Button */}
-        <Link 
-          to="/" 
+        <Link
+          to="/"
           className="absolute top-6 left-6 sm:left-12 flex items-center gap-2 text-sm text-[#7a7074] hover:text-[#3b3036] font-semibold transition-colors group"
         >
-          <ArrowLeft size={16} className="transform group-hover:-translate-x-1 transition-transform" />
+          <ArrowLeft
+            size={16}
+            className="transform group-hover:-translate-x-1 transition-transform"
+          />
           Voltar para o início
         </Link>
 
@@ -118,12 +129,10 @@ export const Login = () => {
               <span>{errorMsg}</span>
             </div>
           )}
-          
+
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-1.5">
-              <label className="label-premium">
-                E-mail
-              </label>
+              <label className="label-premium">E-mail</label>
               <input
                 type="email"
                 placeholder="seuemail@exemplo.com"
@@ -138,9 +147,7 @@ export const Login = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="label-premium">
-                Senha
-              </label>
+              <label className="label-premium">Senha</label>
               <input
                 type="password"
                 placeholder="Sua senha"
@@ -150,7 +157,9 @@ export const Login = () => {
                 }`}
               />
               {errors.password && (
-                <span className="text-xs text-rose-500 font-semibold">{errors.password.message}</span>
+                <span className="text-xs text-rose-500 font-semibold">
+                  {errors.password.message}
+                </span>
               )}
             </div>
 
@@ -161,7 +170,7 @@ export const Login = () => {
             >
               {isLoading ? 'Acessando...' : 'Entrar na minha conta'}
             </button>
-            
+
             <div className="text-center pt-4 text-sm">
               <span className="text-[#7a7074]">Não tem uma conta? </span>
               <Link to="/register" className="text-[#be8a83] font-semibold hover:underline">

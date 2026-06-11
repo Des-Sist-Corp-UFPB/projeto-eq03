@@ -20,15 +20,22 @@ const labelCls = 'label-premium';
 export const CashFlow = () => {
   const [cashFlows, setCashFlows] = useState<CashFlowData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<number | null>(null);
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
-  
-  const { register, handleSubmit, reset, setValue, watch, formState: { errors } } = useForm<CashFlowData>();
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<CashFlowData>();
   const { error: showError } = useAlert();
 
   // New States for Products/Services Sales
@@ -59,7 +66,7 @@ export const CashFlow = () => {
     try {
       const [prodsData, svcsData] = await Promise.all([
         productsApi.findAll(true),
-        salonServicesApi.findAll(true)
+        salonServicesApi.findAll(true),
       ]);
       setProducts(prodsData);
       setServices(svcsData);
@@ -68,8 +75,12 @@ export const CashFlow = () => {
     }
   };
 
-  useEffect(() => { loadCashFlows(); }, [dateFrom, dateTo]);
-  useEffect(() => { loadSuggestions(); }, []);
+  useEffect(() => {
+    loadCashFlows();
+  }, [dateFrom, dateTo]);
+  useEffect(() => {
+    loadSuggestions();
+  }, []);
 
   const watchedType = watch('type');
   useEffect(() => {
@@ -138,7 +149,7 @@ export const CashFlow = () => {
     setShowSvcDropdown(false);
   };
 
-  const cartTotal = cart.reduce((sum, item) => sum + (item.product.price * item.quantity), 0);
+  const cartTotal = cart.reduce((sum, item) => sum + item.product.price * item.quantity, 0);
 
   // Sync React Hook Form values reactively when product cart updates
   useEffect(() => {
@@ -155,7 +166,7 @@ export const CashFlow = () => {
         type: data.type,
         amount: Number(data.amount),
         description: data.description,
-        date: data.date
+        date: data.date,
       };
 
       if (data.type === 'INCOME' && sourceType === 'PRODUCT') {
@@ -166,12 +177,14 @@ export const CashFlow = () => {
         payload = {
           type: 'INCOME',
           amount: cartTotal,
-          description: data.description || `Venda de Produtos: ${cart.map(i => `${i.quantity}x ${i.product.name}`).join(', ')}`,
+          description:
+            data.description ||
+            `Venda de Produtos: ${cart.map((i) => `${i.quantity}x ${i.product.name}`).join(', ')}`,
           date: data.date,
           items: cart.map((item) => ({
             productId: item.product.id!,
-            quantity: item.quantity
-          }))
+            quantity: item.quantity,
+          })),
         };
       }
 
@@ -200,7 +213,7 @@ export const CashFlow = () => {
   const filteredProducts = products.filter((p) => {
     if (!productSearch) return false;
     const matchesName = p.name.toLowerCase().includes(productSearch.toLowerCase());
-    return matchesName && p.active && (p.stock != null && p.stock > 0);
+    return matchesName && p.active && p.stock != null && p.stock > 0;
   });
 
   const filteredServices = services.filter((s) => {
@@ -210,29 +223,37 @@ export const CashFlow = () => {
   });
 
   const columns = [
-    { key: 'date', label: 'Data', render: (item: CashFlowData) => new Date(item.date).toLocaleDateString('pt-BR') },
+    {
+      key: 'date',
+      label: 'Data',
+      render: (item: CashFlowData) => new Date(item.date).toLocaleDateString('pt-BR'),
+    },
     { key: 'description', label: 'Descrição' },
     {
       key: 'type',
       label: 'Tipo',
       render: (item: CashFlowData) => (
-        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
-          item.type === 'INCOME'
-            ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-            : 'bg-rose-50 text-rose-700 border border-rose-200'
-        }`}>
+        <span
+          className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold ${
+            item.type === 'INCOME'
+              ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+              : 'bg-rose-50 text-rose-700 border border-rose-200'
+          }`}
+        >
           {item.type === 'INCOME' ? 'Entrada' : 'Saída'}
         </span>
-      )
+      ),
     },
     {
       key: 'amount',
       label: 'Valor',
       render: (item: CashFlowData) => (
-        <span className={`font-semibold ${item.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}>
+        <span
+          className={`font-semibold ${item.type === 'INCOME' ? 'text-emerald-600' : 'text-rose-600'}`}
+        >
           {item.type === 'INCOME' ? '+' : '-'} R$ {item.amount.toFixed(2)}
         </span>
-      )
+      ),
     },
     {
       key: 'actions',
@@ -240,15 +261,18 @@ export const CashFlow = () => {
       render: (item: CashFlowData) => (
         <PermissionGate method="DELETE" endpoint={`/v1/cashflow/${item.id}`}>
           <button
-            onClick={() => { setItemToDelete(item.id!); setShowConfirm(true); }}
+            onClick={() => {
+              setItemToDelete(item.id!);
+              setShowConfirm(true);
+            }}
             className="p-2 text-rose-600 hover:bg-rose-50 hover:text-rose-700 border border-[#eae1e1] hover:border-rose-200 rounded-xl transition-all cursor-pointer"
             title="Excluir Registro"
           >
             <Trash2 size={15} />
           </button>
         </PermissionGate>
-      )
-    }
+      ),
+    },
   ];
 
   return (
@@ -257,7 +281,10 @@ export const CashFlow = () => {
         <div className="flex justify-between items-center">
           <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Fluxo de Caixa</h2>
           <PermissionGate method="POST" endpoint="/v1/cashflow">
-            <button onClick={handleOpenForm} className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10">
+            <button
+              onClick={handleOpenForm}
+              className="btn-premium font-semibold shadow-md shadow-[#be8a83]/10"
+            >
               <Plus size={18} /> Novo Registro
             </button>
           </PermissionGate>
@@ -266,14 +293,27 @@ export const CashFlow = () => {
         <div className="flex flex-wrap gap-4 items-end bg-white/80 backdrop-blur-md rounded-2xl border border-[#eae1e1]/80 p-5 shadow-sm">
           <div className="space-y-1">
             <label className={labelCls}>De</label>
-            <input type="date" value={dateFrom} onChange={(e) => setDateFrom(e.target.value)} className={inputCls} />
+            <input
+              type="date"
+              value={dateFrom}
+              onChange={(e) => setDateFrom(e.target.value)}
+              className={inputCls}
+            />
           </div>
           <div className="space-y-1">
             <label className={labelCls}>Até</label>
-            <input type="date" value={dateTo} onChange={(e) => setDateTo(e.target.value)} className={inputCls} />
+            <input
+              type="date"
+              value={dateTo}
+              onChange={(e) => setDateTo(e.target.value)}
+              className={inputCls}
+            />
           </div>
           <button
-            onClick={() => { setDateFrom(''); setDateTo(''); }}
+            onClick={() => {
+              setDateFrom('');
+              setDateTo('');
+            }}
             className="px-5 py-2.5 border border-[#eae1e1] text-sm font-semibold text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] bg-white rounded-xl transition-all duration-200 cursor-pointer"
           >
             Limpar Filtros
@@ -290,7 +330,12 @@ export const CashFlow = () => {
         )}
       </div>
 
-      <ModalForm show={showForm} onHide={() => setShowForm(false)} title="Novo Registro" onSubmit={handleSubmit(onSubmit)}>
+      <ModalForm
+        show={showForm}
+        onHide={() => setShowForm(false)}
+        title="Novo Registro"
+        onSubmit={handleSubmit(onSubmit)}
+      >
         <div className="space-y-4">
           <div>
             <label className={labelCls}>Tipo</label>
@@ -305,7 +350,11 @@ export const CashFlow = () => {
               <label className={labelCls}>Origem do Lançamento</label>
               <div className="grid grid-cols-3 gap-2 mt-1">
                 {(['OTHER', 'PRODUCT', 'SERVICE'] as const).map((type) => {
-                  const labels = { OTHER: 'Geral / Outros', PRODUCT: 'Venda de Produtos', SERVICE: 'Serviço' };
+                  const labels = {
+                    OTHER: 'Geral / Outros',
+                    PRODUCT: 'Venda de Produtos',
+                    SERVICE: 'Serviço',
+                  };
                   return (
                     <button
                       key={type}
@@ -359,12 +408,15 @@ export const CashFlow = () => {
                         >
                           <span className="font-medium">{p.name}</span>
                           <span className="text-xs text-[#7a7074] group-hover:text-[#be8a83]">
-                            R$ {p.price.toFixed(2)} | Disponível: <strong className="text-emerald-600">{p.stock}</strong>
+                            R$ {p.price.toFixed(2)} | Disponível:{' '}
+                            <strong className="text-emerald-600">{p.stock}</strong>
                           </span>
                         </button>
                       ))
                     ) : (
-                      <div className="p-4 text-xs text-[#7a7074] text-center">Nenhum produto ativo com estoque encontrado</div>
+                      <div className="p-4 text-xs text-[#7a7074] text-center">
+                        Nenhum produto ativo com estoque encontrado
+                      </div>
                     )}
                   </div>
                 )}
@@ -377,11 +429,19 @@ export const CashFlow = () => {
                   <div className="border border-[#eae1e1]/80 rounded-xl overflow-hidden bg-[#fcf9f9]/50">
                     <div className="divide-y divide-[#eae1e1]/60">
                       {cart.map((item) => (
-                        <div key={item.product.id} className="p-3.5 flex justify-between items-center bg-white">
+                        <div
+                          key={item.product.id}
+                          className="p-3.5 flex justify-between items-center bg-white"
+                        >
                           <div className="min-w-0 flex-1 pr-4">
-                            <div className="font-semibold text-sm text-[#3b3036] truncate">{item.product.name}</div>
+                            <div className="font-semibold text-sm text-[#3b3036] truncate">
+                              {item.product.name}
+                            </div>
                             <div className="text-xs text-[#7a7074] mt-0.5">
-                              Preço Unit.: R$ {item.product.price.toFixed(2)} | <span className="font-semibold text-emerald-600">Disponível: {item.product.stock}</span>
+                              Preço Unit.: R$ {item.product.price.toFixed(2)} |{' '}
+                              <span className="font-semibold text-emerald-600">
+                                Disponível: {item.product.stock}
+                              </span>
                             </div>
                           </div>
 
@@ -399,7 +459,9 @@ export const CashFlow = () => {
                                 value={item.quantity}
                                 min={1}
                                 max={item.product.stock}
-                                onChange={(e) => updateCartQty(item.product.id!, parseInt(e.target.value) || 1)}
+                                onChange={(e) =>
+                                  updateCartQty(item.product.id!, parseInt(e.target.value) || 1)
+                                }
                                 className="w-10 text-center bg-transparent border-0 text-sm font-semibold focus:ring-0 p-0 text-[#3b3036]"
                               />
                               <button
@@ -430,7 +492,9 @@ export const CashFlow = () => {
 
                   <div className="flex justify-between items-center p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl">
                     <span className="text-sm font-semibold text-emerald-800">Total da Venda</span>
-                    <span className="text-base font-bold text-emerald-700">R$ {cartTotal.toFixed(2)}</span>
+                    <span className="text-base font-bold text-emerald-700">
+                      R$ {cartTotal.toFixed(2)}
+                    </span>
                   </div>
                 </div>
               ) : (
@@ -473,7 +537,9 @@ export const CashFlow = () => {
                         </button>
                       ))
                     ) : (
-                      <div className="p-4 text-xs text-[#7a7074] text-center">Nenhum serviço ativo encontrado</div>
+                      <div className="p-4 text-xs text-[#7a7074] text-center">
+                        Nenhum serviço ativo encontrado
+                      </div>
                     )}
                   </div>
                 )}
@@ -488,9 +554,16 @@ export const CashFlow = () => {
               step="0.01"
               disabled={sourceType === 'PRODUCT'}
               className={`${inputCls} ${errors.amount ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
-              {...register('amount', { required: 'Valor é obrigatório', min: { value: 0.01, message: 'Valor inválido' } })}
+              {...register('amount', {
+                required: 'Valor é obrigatório',
+                min: { value: 0.01, message: 'Valor inválido' },
+              })}
             />
-            {errors.amount && <span className="text-xs text-rose-500 font-semibold mt-1 block">{errors.amount.message}</span>}
+            {errors.amount && (
+              <span className="text-xs text-rose-500 font-semibold mt-1 block">
+                {errors.amount.message}
+              </span>
+            )}
           </div>
 
           <div>
@@ -501,7 +574,11 @@ export const CashFlow = () => {
               className={`${inputCls} ${errors.description ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
               {...register('description', { required: 'Descrição é obrigatória' })}
             />
-            {errors.description && <span className="text-xs text-rose-500 font-semibold mt-1 block">{errors.description.message}</span>}
+            {errors.description && (
+              <span className="text-xs text-rose-500 font-semibold mt-1 block">
+                {errors.description.message}
+              </span>
+            )}
           </div>
 
           <div>
@@ -511,12 +588,22 @@ export const CashFlow = () => {
               className={`${inputCls} ${errors.date ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
               {...register('date', { required: 'Data é obrigatória' })}
             />
-            {errors.date && <span className="text-xs text-rose-500 font-semibold mt-1 block">{errors.date.message}</span>}
+            {errors.date && (
+              <span className="text-xs text-rose-500 font-semibold mt-1 block">
+                {errors.date.message}
+              </span>
+            )}
           </div>
         </div>
       </ModalForm>
 
-      <ConfirmDialog show={showConfirm} onHide={() => setShowConfirm(false)} onConfirm={confirmDelete} title="Excluir Registro" message="Tem certeza que deseja excluir este registro? Esta ação afetará os relatórios." />
+      <ConfirmDialog
+        show={showConfirm}
+        onHide={() => setShowConfirm(false)}
+        onConfirm={confirmDelete}
+        title="Excluir Registro"
+        message="Tem certeza que deseja excluir este registro? Esta ação afetará os relatórios."
+      />
     </>
   );
 };

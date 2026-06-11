@@ -1,5 +1,6 @@
 package com.cristiane.salon.controller;
 
+import com.cristiane.salon.annotation.Auditable;
 import com.cristiane.salon.models.employee.dto.EmployeeBookingResponse;
 import com.cristiane.salon.models.employee.dto.EmployeeRequest;
 import com.cristiane.salon.models.employee.dto.EmployeeResponse;
@@ -46,6 +47,7 @@ public class EmployeeController {
 
     @PostMapping
     @PreAuthorize("hasAnyRole('ADMIN')")
+    @Auditable(action = "EMPLOYEE_CREATED", entityType = "Employee", captureArgs = true)
     @Operation(summary = "Cria uma nova funcionária (Admin)")
     public ResponseEntity<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
@@ -53,6 +55,7 @@ public class EmployeeController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN')")
+    @Auditable(action = "EMPLOYEE_UPDATED", entityType = "Employee", captureArgs = true)
     @Operation(summary = "Atualiza uma funcionária (Admin)")
     public ResponseEntity<EmployeeResponse> update(@PathVariable Long id, @Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.ok(employeeService.update(id, request));
@@ -60,6 +63,7 @@ public class EmployeeController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasAnyRole('ADMIN')")
+    @Auditable(action = "EMPLOYEE_DELETED", entityType = "Employee", captureArgs = true)
     @Operation(summary = "Remove uma funcionária (Admin)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         employeeService.delete(id);

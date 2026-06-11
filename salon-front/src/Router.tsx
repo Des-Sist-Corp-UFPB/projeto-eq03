@@ -42,7 +42,8 @@ const MaintenancePage = () => {
             Portal em Configuração
           </h1>
           <p className="text-sm text-[#7a7074] dark:text-[#9ca3af] leading-relaxed">
-            Estamos preparando novidades incríveis para você. No momento, a área pública de clientes está temporariamente desativada para ajustes no salão.
+            Estamos preparando novidades incríveis para você. No momento, a área pública de clientes
+            está temporariamente desativada para ajustes no salão.
           </p>
         </div>
       </div>
@@ -60,11 +61,11 @@ export const Router = () => {
     const checkFlags = async () => {
       try {
         const flags = await featureFlagsService.getPublicFlags();
-        const portalFlag = flags.find(f => f.name === 'ENABLE_CUSTOMER_PORTAL');
+        const portalFlag = flags.find((f) => f.name === 'ENABLE_CUSTOMER_PORTAL');
         // Por segurança, se a flag não existir ainda, assumimos desativada (conforme valor padrão da migration)
         setIsPortalEnabled(portalFlag ? portalFlag.enabled : false);
       } catch (error) {
-        console.error("Erro ao carregar feature flags:", error);
+        console.error('Erro ao carregar feature flags:', error);
         // Em caso de falha de conexão com a API, assume-se ativa para não bloquear se houver falha de rede temporária
         setIsPortalEnabled(true);
       }
@@ -128,14 +129,11 @@ export const Router = () => {
       <Route path="/register" element={<Register />} />
 
       <Route element={<AdminLayout />}>
-        <Route
-          path="/admin/dashboard"
-          element={<Navigate to="/admin/reports" replace />}
-        />
+        <Route path="/admin/dashboard" element={<Navigate to="/admin/reports" replace />} />
         <Route
           path="/admin/users"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <Users />
             </ProtectedRoute>
           }
@@ -143,7 +141,7 @@ export const Router = () => {
         <Route
           path="/admin/employees"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <Employees />
             </ProtectedRoute>
           }
@@ -151,7 +149,7 @@ export const Router = () => {
         <Route
           path="/admin/services"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <AdminServices />
             </ProtectedRoute>
           }
@@ -159,7 +157,7 @@ export const Router = () => {
         <Route
           path="/admin/products"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN']}>
               <Products />
             </ProtectedRoute>
           }
@@ -167,7 +165,7 @@ export const Router = () => {
         <Route
           path="/admin/appointments"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO', 'FUNCIONARIA']}>
               <AdminAppointments />
             </ProtectedRoute>
           }
@@ -175,7 +173,7 @@ export const Router = () => {
         <Route
           path="/admin/cashflow"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <CashFlow />
             </ProtectedRoute>
           }
@@ -183,7 +181,7 @@ export const Router = () => {
         <Route
           path="/admin/reports"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <Reports />
             </ProtectedRoute>
           }
@@ -194,7 +192,7 @@ export const Router = () => {
         <Route
           path="/sysadmin/feature-flags"
           element={
-            <ProtectedRoute requiredRole="SYSADMIN">
+            <ProtectedRoute allowedRoles={['SYSADMIN']}>
               <FeatureFlags />
             </ProtectedRoute>
           }
@@ -202,7 +200,7 @@ export const Router = () => {
         <Route
           path="/sysadmin/audit"
           element={
-            <ProtectedRoute requiredRole="SYSADMIN">
+            <ProtectedRoute allowedRoles={['SYSADMIN']}>
               <AuditLog />
             </ProtectedRoute>
           }

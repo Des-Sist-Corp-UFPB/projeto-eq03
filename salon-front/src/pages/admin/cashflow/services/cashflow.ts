@@ -31,5 +31,5 @@ export const cashFlowApi = {
 
   delete: async (id: number) => {
     await api.delete(`/cashflow/${id}`);
-  }
+  },
 };
