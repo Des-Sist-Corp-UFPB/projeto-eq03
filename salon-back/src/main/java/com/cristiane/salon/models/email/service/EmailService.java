@@ -149,6 +149,7 @@ public class EmailService {
             try {
                 Context context = new Context();
                 context.setVariable("appointment", appointment);
+                context.setVariable("isStaff", false);
                 String htmlContent = templateEngine.process("mail/appointment-cancellation", context);
 
                 sendViaHttpApi(clientEmail, "Agendamento Cancelado", htmlContent, businessEmail);
@@ -180,6 +181,7 @@ public class EmailService {
         try {
             Context context = new Context();
             context.setVariable("appointment", appointment);
+            context.setVariable("isStaff", true);
             String htmlContent = templateEngine.process("mail/appointment-cancellation", context);
 
             sendViaHttpApi(businessEmail, "Agendamento Cancelado", htmlContent, businessEmail);

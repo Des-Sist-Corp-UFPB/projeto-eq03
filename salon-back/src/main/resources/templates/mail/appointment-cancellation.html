@@ -100,11 +100,19 @@
             <h1>Agendamento Cancelado</h1>
         </div>
         <div class="content">
-            <p class="intro-text">
+            <p class="intro-text" th:if="${isStaff}">
+                Olá equipe,<br><br>
+                Informamos que o agendamento especificado abaixo foi cancelado pelo cliente.
+            </p>
+            <p class="intro-text" th:unless="${isStaff}">
                 Olá <strong th:text="${appointment.client.name}">Ana</strong>,<br><br>
                 Informamos que o agendamento especificado abaixo foi cancelado. Se você não solicitou este cancelamento ou acredita que ocorreu um mal-entendido, entre em contato conosco o quanto antes.
             </p>
             <div class="details-card">
+                <div class="details-row" th:if="${isStaff}">
+                    <span class="label">Cliente</span>
+                    <span class="value" th:text="${appointment.client.name}">Ana Silva</span>
+                </div>
                 <div class="details-row">
                     <span class="label">Serviço</span>
                     <span class="value" th:text="${appointment.salonService.name}">Corte Feminino</span>
@@ -117,9 +125,16 @@
                     <span class="label">Data/Hora</span>
                     <span class="value" th:text="${appointment.scheduledAt != null ? #temporals.format(appointment.scheduledAt, 'dd/MM/yyyy HH:mm') : (appointment.preferredDate != null ? #temporals.format(appointment.preferredDate, 'dd/MM/yyyy') + ' (Data preferida)' : 'Pendente')}">25/05/2026 às 14:00</span>
                 </div>
+                <div class="details-row" th:if="${isStaff and appointment.clientNotes != null and !appointment.clientNotes.isEmpty()}">
+                    <span class="label">Observações/Motivo</span>
+                    <span class="value" th:text="${appointment.clientNotes}">Cancelamento solicitado</span>
+                </div>
             </div>
-            <div class="info-box">
+            <div class="info-box" th:unless="${isStaff}">
                 Caso deseje realizar um novo agendamento, acesse a nossa plataforma ou entre em contato direto pelo nosso canal de atendimento. Estaremos felizes em atender você em uma nova oportunidade!
+            </div>
+            <div class="info-box" th:if="${isStaff}">
+                Este horário está agora disponível para novos agendamentos no painel administrativo.
             </div>
         </div>
         <div class="footer">
