@@ -4,13 +4,9 @@ import com.cristiane.salon.controller.AuthController;
 import com.cristiane.salon.models.user.service.AuthService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.test.web.servlet.setup.MockMvcBuilders;
-import org.springframework.web.context.WebApplicationContext;
-import org.mockito.Mockito;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -18,13 +14,13 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-class AuthControllerTest {
+@WebMvcTest(AuthController.class)
+class AuthControllerTest extends BaseControllerTest {
 
     @Autowired
     private MockMvc mvc;
 
-    @Autowired
+    @MockitoBean
     private AuthService authService;
 
     @Test
@@ -47,18 +43,5 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
                 .andExpect(status().isBadRequest());
-    }
-
-    @TestConfiguration
-    static class TestConfig {
-        @Bean
-        public AuthService authService() {
-            return Mockito.mock(AuthService.class);
-        }
-        
-        @Bean
-        public MockMvc mockMvc(WebApplicationContext wac) {
-            return MockMvcBuilders.webAppContextSetup(wac).build();
-        }
     }
 }

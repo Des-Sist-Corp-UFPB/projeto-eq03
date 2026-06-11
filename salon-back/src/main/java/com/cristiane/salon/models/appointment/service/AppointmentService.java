@@ -20,6 +20,7 @@ import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -88,6 +89,11 @@ public class AppointmentService {
     @Transactional
     public AppointmentResponse create(AppointmentRequest request) {
         User currentUser = getAuthenticatedUser();
+
+        if ("CLIENTE".equals(currentUser.getRoleName()) && !featureFlagService.isEnabled("ENABLE_CUSTOMER_PORTAL")) {
+            throw new AccessDeniedException("O portal do cliente está temporariamente desativado.");
+        }
+
         boolean staffCreatesForClient = isStaff(currentUser) && request.clientId() != null;
 
         if (!staffCreatesForClient && !featureFlagService.isEnabled("CLIENT_BOOKING")) {
