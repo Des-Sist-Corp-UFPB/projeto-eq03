@@ -47,6 +47,8 @@ jobs:
           tags: ${{ env.IMAGE }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+        env:
+          BUILDX_NO_DEFAULT_ATTESTATIONS: 1
 
   deploy:
     name: Deploy na VPS do Professor
