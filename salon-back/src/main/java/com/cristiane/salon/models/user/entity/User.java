@@ -94,6 +94,6 @@ public class User implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return active;
+        return Boolean.TRUE.equals(active);
     }
 }
