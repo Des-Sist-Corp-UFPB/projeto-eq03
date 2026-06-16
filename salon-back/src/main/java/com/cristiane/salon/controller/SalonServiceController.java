@@ -59,4 +59,13 @@ public class SalonServiceController {
         salonServiceManager.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/reactivate")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Auditable(action = "RESTORE", entityType = "SERVICE", captureArgs = true)
+    @Operation(summary = "Reativa um serviço (Admin)")
+    public ResponseEntity<SalonServiceResponse> reactivate(@PathVariable Long id) {
+        return ResponseEntity.ok(salonServiceManager.reactivate(id));
+    }
 }
+

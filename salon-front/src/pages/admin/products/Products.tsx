@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
@@ -22,7 +22,9 @@ export const Products = () => {
   const [editingProduct, setEditingProduct] = useState<ProductData | null>(null);
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const [productToDelete, setProductToDelete] = useState<number | null>(null);
+  const [productTargetId, setProductTargetId] = useState<number | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'reactivate'>('delete');
+
 
   const {
     register,
@@ -84,17 +86,24 @@ export const Products = () => {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!productToDelete) return;
+  const handleConfirmAction = async () => {
+    if (!productTargetId) return;
     try {
-      await productsApi.delete(productToDelete);
+      if (confirmAction === 'delete') {
+        await productsApi.delete(productTargetId);
+      } else {
+        await productsApi.reactivate(productTargetId);
+      }
       setShowConfirm(false);
       loadProducts();
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao excluir produto.');
+      const fallbackMsg =
+        confirmAction === 'delete' ? 'Erro ao excluir produto.' : 'Erro ao reativar produto.';
+      const msg = getApiErrorMessage(err, fallbackMsg);
       await showError(msg);
     }
   };
+
 
   const columns = [
     { key: 'name', label: 'Nome do Produto' },
@@ -110,25 +119,47 @@ export const Products = () => {
       label: 'Ações',
       render: (item: ProductData) => (
         <div className="flex gap-2">
-          <PermissionGate method="PUT" endpoint={`/v1/products/${item.id}`}>
-            <button
-              onClick={() => handleOpenForm(item)}
-              className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer"
-            >
-              <Edit size={15} />
-            </button>
-          </PermissionGate>
-          <PermissionGate method="DELETE" endpoint={`/v1/products/${item.id}`}>
-            <button
-              onClick={() => {
-                setProductToDelete(item.id!);
-                setShowConfirm(true);
-              }}
-              className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
-            >
-              <Trash2 size={15} />
-            </button>
-          </PermissionGate>
+          {item.active !== false ? (
+            <>
+              <PermissionGate method="PUT" endpoint={`/v1/products/${item.id}`}>
+                <button
+                  onClick={() => handleOpenForm(item)}
+                  className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer"
+                  title="Editar Produto"
+                >
+                  <Edit size={15} />
+                </button>
+              </PermissionGate>
+              <PermissionGate method="DELETE" endpoint={`/v1/products/${item.id}`}>
+                <button
+                  onClick={() => {
+                    setProductTargetId(item.id!);
+                    setConfirmAction('delete');
+                    setShowConfirm(true);
+                  }}
+                  className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
+                  title="Excluir Produto"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </PermissionGate>
+            </>
+          ) : (
+            <PermissionGate method="PATCH" endpoint={`/v1/products/${item.id}/reactivate`}>
+              <button
+                onClick={() => {
+                  setProductTargetId(item.id!);
+                  setConfirmAction('reactivate');
+                  setShowConfirm(true);
+                }}
+                className="p-1.5 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                title="Reativar Produto"
+              >
+                <RotateCcw size={15} />
+                <span>Reativar</span>
+              </button>
+            </PermissionGate>
+          )}
         </div>
       ),
     },
@@ -231,9 +262,15 @@ export const Products = () => {
       <ConfirmDialog
         show={showConfirm}
         onHide={() => setShowConfirm(false)}
-        onConfirm={confirmDelete}
-        title="Excluir Produto"
-        message="Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita."
+        onConfirm={handleConfirmAction}
+        title={confirmAction === 'delete' ? 'Excluir Produto' : 'Reativar Produto'}
+        message={
+          confirmAction === 'delete'
+            ? 'Tem certeza que deseja excluir este produto? Esta ação não pode ser desfeita.'
+            : 'Tem certeza que deseja reativar este produto? Ele aparecerá novamente nas listagens públicas.'
+        }
+        confirmLabel={confirmAction === 'delete' ? 'Excluir' : 'Reativar'}
+        variant={confirmAction === 'delete' ? 'danger' : 'primary'}
       />
     </div>
   );

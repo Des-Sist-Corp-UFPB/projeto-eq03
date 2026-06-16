@@ -10,9 +10,13 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.math.BigDecimal;
+import com.cristiane.salon.models.service.dto.SalonServiceResponse;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SalonServiceController.class)
@@ -47,4 +51,17 @@ class SalonServiceControllerTest extends BaseControllerTest {
                 .content(body))
                 .andExpect(status().isBadRequest());
     }
+
+    @Test
+    @WithMockUser
+    void reactivateReturns200() throws Exception {
+        SalonServiceResponse dummyResponse = new SalonServiceResponse(
+                1L, "cut", "description", new BigDecimal("50.0"), 30, "30 min", true
+        );
+        when(salonServiceManager.reactivate(any())).thenReturn(dummyResponse);
+
+        mvc.perform(patch("/v1/services/1/reactivate"))
+                .andExpect(status().isOk());
+    }
 }
+
