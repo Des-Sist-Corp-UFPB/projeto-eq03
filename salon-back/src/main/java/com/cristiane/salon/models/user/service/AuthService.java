@@ -83,16 +83,16 @@ public class AuthService {
 
     public TokenResponse login(LoginRequest request) {
         try {
-            authenticationManager.authenticate(
-                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
-            );
-
             User user = userRepository.findByEmail(request.email())
                     .orElseThrow(() -> new UnauthorizedException("Usuário não encontrado"));
 
             if (!user.getActive()) {
                 throw new UnauthorizedException("Sua conta está inativa");
             }
+
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(request.email(), request.password())
+            );
 
             String jwtToken = jwtService.generateAccessToken(user);
             String refreshToken = jwtService.generateRefreshToken(user);
@@ -141,6 +141,10 @@ public class AuthService {
         if (userEmail != null) {
             User user = userRepository.findByEmail(userEmail)
                     .orElseThrow(() -> new UnauthorizedException("Usuário não encontrado"));
+
+            if (!user.getActive()) {
+                throw new UnauthorizedException("Sua conta está inativa");
+            }
 
             if (jwtService.isTokenValid(refreshToken, user)) {
                 String accessToken = jwtService.generateAccessToken(user);

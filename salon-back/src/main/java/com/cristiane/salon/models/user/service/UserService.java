@@ -29,8 +29,14 @@ public class UserService {
     private final EmployeeRepository employeeRepository;
 
     @Transactional(readOnly = true)
-    public List<UserResponse> findAll() {
-        return userRepository.findAll().stream()
+    public List<UserResponse> findAll(Boolean includeInactive) {
+        List<User> users;
+        if (Boolean.TRUE.equals(includeInactive)) {
+            users = userRepository.findAll();
+        } else {
+            users = userRepository.findByActiveTrue();
+        }
+        return users.stream()
                 .map(UserResponse::fromEntity)
                 .collect(Collectors.toList());
     }
@@ -117,9 +123,18 @@ public class UserService {
 
     @Transactional
     public void delete(Long id) {
-        if (!userRepository.existsById(id)) {
-            throw new ResourceNotFoundException("Usuário não encontrado");
-        }
-        userRepository.deleteById(id);
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+        user.setActive(false);
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public UserResponse restore(Long id) {
+        User user = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Usuário não encontrado"));
+        user.setActive(true);
+        User savedUser = userRepository.save(user);
+        return UserResponse.fromEntity(savedUser);
     }
 }
