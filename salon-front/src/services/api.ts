@@ -77,6 +77,7 @@ api.interceptors.response.use(
       const refreshToken = localStorage.getItem('@Salon:refreshToken');
 
       if (!refreshToken) {
+        isRefreshing = false;
         localStorage.removeItem('@Salon:token');
         localStorage.removeItem('@Salon:refreshToken');
         window.location.href = '/login';

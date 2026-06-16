@@ -96,6 +96,11 @@ jobs:
           cd salon-front
           npm run build
 
+      - name: Run Tests with Coverage
+        run: |
+          cd salon-front
+          npm run test:coverage
+
   # # Job 4.1: Análise de Segurança do Backend (Java)
   # security-backend:
   #   name: Security Scan (Backend)

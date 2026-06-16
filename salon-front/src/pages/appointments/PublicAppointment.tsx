@@ -371,10 +371,14 @@ export const PublicAppointment = () => {
               </p>
             </div>
             <div className="space-y-1.5">
-              <label className="flex items-center gap-2 text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label
+                htmlFor="preferred-date"
+                className="flex items-center gap-2 text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider"
+              >
                 <Calendar size={16} /> Dia de preferência (opcional)
               </label>
               <input
+                id="preferred-date"
                 type="date"
                 min={localTodayIso()}
                 value={preferredDate}
@@ -383,10 +387,14 @@ export const PublicAppointment = () => {
               />
             </div>
             <div className="space-y-1.5">
-              <label className="flex items-center gap-2 text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider">
+              <label
+                htmlFor="client-notes"
+                className="flex items-center gap-2 text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wider"
+              >
                 <MessageSquare size={16} /> Observações (opcional)
               </label>
               <textarea
+                id="client-notes"
                 rows={4}
                 placeholder="Ex.: só de manhã, comentários sobre o cabelo, etc."
                 value={clientNotes}
