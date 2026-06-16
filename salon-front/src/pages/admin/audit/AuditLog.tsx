@@ -70,6 +70,7 @@ export const AuditLog = () => {
 
   useEffect(() => {
     loadAuditLogs();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [page, queryUserId, queryAction, queryEntityType, queryStartDate, queryEndDate]);
 
   const handleFilter = () => {
@@ -182,7 +183,7 @@ export const AuditLog = () => {
 
   const syntaxHighlightJson = (jsonStr: string) => {
     if (!jsonStr) return '';
-    let safeStr = jsonStr
+    const safeStr = jsonStr
       .replace(/&/g, '&amp;')
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;');
