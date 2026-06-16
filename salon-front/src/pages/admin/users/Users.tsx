@@ -113,7 +113,8 @@ export const Users = () => {
       setShowConfirm(false);
       loadUsers();
     } catch (error) {
-      const fallbackMsg = confirmAction === 'delete' ? 'Erro ao desativar usuário.' : 'Erro ao reativar usuário.';
+      const fallbackMsg =
+        confirmAction === 'delete' ? 'Erro ao desativar usuário.' : 'Erro ao reativar usuário.';
       const msg = getApiErrorMessage(error, fallbackMsg);
       await showError(msg);
     }
@@ -124,7 +125,9 @@ export const Users = () => {
       ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
       : 'bg-rose-50 text-rose-700 border border-rose-200';
     return (
-      <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${className}`}>
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${className}`}
+      >
         {active ? 'Ativo' : 'Inativo'}
       </span>
     );
@@ -209,7 +212,9 @@ export const Users = () => {
                 />
                 <div className="w-10 h-5 bg-gray-200 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#be8a83]"></div>
               </label>
-              <span className="text-xs font-semibold text-[#3b3036] select-none">Mostrar inativos</span>
+              <span className="text-xs font-semibold text-[#3b3036] select-none">
+                Mostrar inativos
+              </span>
             </div>
           )}
           <PermissionGate method="POST" endpoint="/v1/users">
