@@ -1,4 +1,4 @@
-import { useContext } from 'react';
+import { useContext, useCallback, useMemo } from 'react';
 import { AlertContext } from '../context/AlertContextBase';
 import type { AlertType } from '../context/AlertContextBase';
 
@@ -17,16 +17,16 @@ export const useAlert = () => {
     throw new Error('useAlert must be used within AlertProvider');
   }
 
-  const alert = async (message: string, options?: UseAlertOptions) => {
+  const alert = useCallback(async (message: string, options?: UseAlertOptions) => {
     return context.showAlert({
       message,
       type: options?.type || 'info',
       title: options?.title,
       confirmText: options?.confirmText || 'OK',
     });
-  };
+  }, [context]);
 
-  const confirm = async (
+  const confirm = useCallback(async (
     message: string,
     onConfirm?: () => void | Promise<void>,
     options?: UseAlertOptions
@@ -40,25 +40,25 @@ export const useAlert = () => {
       onConfirm,
       isDangerous: options?.isDangerous,
     });
-  };
+  }, [context]);
 
-  const success = async (message: string, title?: string) => {
+  const success = useCallback(async (message: string, title?: string) => {
     return context.showAlert({
       message,
       type: 'success',
       title: title || 'Sucesso!',
       confirmText: 'OK',
     });
-  };
+  }, [context]);
 
-  const error = async (message: string, title?: string) => {
+  const error = useCallback(async (message: string, title?: string) => {
     return context.showAlert({
       message,
       type: 'error',
       title: title || 'Erro!',
       confirmText: 'OK',
     });
-  };
+  }, [context]);
 
-  return { alert, confirm, success, error };
+  return useMemo(() => ({ alert, confirm, success, error }), [alert, confirm, success, error]);
 };
