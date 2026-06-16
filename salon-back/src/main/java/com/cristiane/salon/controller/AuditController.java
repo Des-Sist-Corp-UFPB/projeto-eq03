@@ -14,6 +14,9 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
 
 @RestController
 @RequestMapping("/v1/audit")
@@ -25,19 +28,21 @@ public class AuditController {
     
     @GetMapping
     @PreAuthorize("hasAnyRole('SYSADMIN')")
-    @Operation(summary = "Lista todos os logs de auditoria com paginação e filtros opcionais")
+    @Operation(summary = "Lista todos os logs de auditoria com paginação e filtros combinados")
     public ResponseEntity<Page<AuditLog>> getAllAuditLogs(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(required = false) String action,
+            @RequestParam(required = false) Long userId,
             @RequestParam(required = false) String entityType,
-            @RequestParam(required = false) String userEmail) {
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @PageableDefault(size = 15, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
         
-        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.DESC, sortBy);
-        Page<AuditLog> logs = auditLogService.getAllAuditLogs(action, entityType, userEmail, pageRequest);
+        Page<AuditLog> logs = auditLogService.getAuditLogsWithCombinedFilters(
+                userId, entityType, action, startDate, endDate, pageable
+        );
         return ResponseEntity.ok(logs);
     }
+
     
     @GetMapping("/user/{userId}")
     @PreAuthorize("hasAnyRole('SYSADMIN')")

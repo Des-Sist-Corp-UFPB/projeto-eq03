@@ -29,8 +29,10 @@ export interface UserCreateRequest {
 }
 
 export const usersApi = {
-  findAll: async () => {
-    const { data } = await api.get<UserData[]>('/users');
+  findAll: async (includeInactive?: boolean) => {
+    const { data } = await api.get<UserData[]>('/users', {
+      params: includeInactive !== undefined ? { includeInactive } : undefined,
+    });
     return data;
   },
 
@@ -51,5 +53,10 @@ export const usersApi = {
 
   delete: async (id: number) => {
     await api.delete(`/users/${id}`);
+  },
+
+  restore: async (id: number) => {
+    const { data } = await api.patch<UserData>(`/users/${id}/restore`);
+    return data;
   },
 };

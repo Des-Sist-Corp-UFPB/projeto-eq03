@@ -33,4 +33,10 @@ export const productsApi = {
   delete: async (id: number) => {
     await api.delete(`/products/${id}`);
   },
+
+  reactivate: async (id: number) => {
+    const { data } = await api.patch<ProductData>(`/products/${id}/reactivate`);
+    return data;
+  },
 };
+

@@ -80,9 +80,18 @@ public class SalonServiceManager {
         salonServiceRepository.save(service);
     }
 
+    @Transactional
+    public SalonServiceResponse reactivate(Long id) {
+        SalonService service = salonServiceRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
+        service.setActive(true);
+        return SalonServiceResponse.fromEntity(salonServiceRepository.save(service));
+    }
+
     private static String blankToNull(String s) {
         return s == null || s.isBlank() ? null : s.trim();
     }
+
 
     private static void validateDuration(Integer durationMin, String durationEstimate) {
         boolean hasMin = durationMin != null && durationMin > 0;
