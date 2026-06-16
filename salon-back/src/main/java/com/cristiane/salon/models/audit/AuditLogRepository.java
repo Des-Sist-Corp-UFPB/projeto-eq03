@@ -29,6 +29,26 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
             @Param("entityType") String entityType,
             @Param("userEmail") String userEmail,
             Pageable pageable);
+
+    @Query("SELECT a FROM AuditLog a WHERE " +
+           "(:userId IS NULL OR a.userId = :userId) AND " +
+           "(:entityType IS NULL OR a.entityType = :entityType) AND " +
+           "(:action IS NULL OR " +
+           "  (:action = 'CREATE' AND a.action LIKE 'POST %') OR " +
+           "  (:action = 'UPDATE' AND (a.action LIKE 'PUT %' OR a.action LIKE 'PATCH %')) OR " +
+           "  (:action = 'DELETE' AND a.action LIKE 'DELETE %') OR " +
+           "  (a.action = :action) OR (a.action LIKE CONCAT(:action, ' %'))" +
+           ") AND " +
+           "(cast(:startDate as timestamp) IS NULL OR a.createdAt >= :startDate) AND " +
+           "(cast(:endDate as timestamp) IS NULL OR a.createdAt <= :endDate)")
+    Page<AuditLog> findWithFiltersCombined(
+            @Param("userId") Long userId,
+            @Param("entityType") String entityType,
+            @Param("action") String action,
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate,
+            Pageable pageable);
+
     
     Page<AuditLog> findByUserId(Long userId, Pageable pageable);
     

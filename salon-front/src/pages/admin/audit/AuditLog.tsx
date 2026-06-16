@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { Filter, Eye, X, AlertCircle, Copy, Check } from 'lucide-react';
+import { Eye, X, Copy, Check } from 'lucide-react';
 import api from '../../../services/api';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { Table } from '../../../components/table/Table';
 
 interface AuditLogEntry {
   id: number;
@@ -23,9 +24,21 @@ export const AuditLog = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [totalItems, setTotalItems] = useState(0);
   const [page, setPage] = useState(0);
-  const [filterAction, setFilterAction] = useState('');
-  const [filterEntity, setFilterEntity] = useState('');
-  const [filterUser, setFilterUser] = useState('');
+
+  // User input states (unapplied)
+  const [inputUserId, setInputUserId] = useState('');
+  const [inputAction, setInputAction] = useState('');
+  const [inputEntityType, setInputEntityType] = useState('');
+  const [inputStartDate, setInputStartDate] = useState('');
+  const [inputEndDate, setInputEndDate] = useState('');
+
+  // Applied query states
+  const [queryUserId, setQueryUserId] = useState('');
+  const [queryAction, setQueryAction] = useState('');
+  const [queryEntityType, setQueryEntityType] = useState('');
+  const [queryStartDate, setQueryStartDate] = useState('');
+  const [queryEndDate, setQueryEndDate] = useState('');
+
   const [selectedLog, setSelectedLog] = useState<AuditLogEntry | null>(null);
   const [copiedFullJson, setCopiedFullJson] = useState(false);
   const { error: showError } = useAlert();
@@ -37,9 +50,11 @@ export const AuditLog = () => {
       params.append('page', page.toString());
       params.append('size', PAGE_SIZE.toString());
 
-      if (filterAction) params.append('action', filterAction);
-      if (filterEntity) params.append('entityType', filterEntity);
-      if (filterUser) params.append('userEmail', filterUser);
+      if (queryUserId) params.append('userId', queryUserId);
+      if (queryAction) params.append('action', queryAction);
+      if (queryEntityType) params.append('entityType', queryEntityType);
+      if (queryStartDate) params.append('startDate', queryStartDate);
+      if (queryEndDate) params.append('endDate', queryEndDate);
 
       const { data } = await api.get(`/audit?${params.toString()}`);
 
@@ -55,7 +70,31 @@ export const AuditLog = () => {
 
   useEffect(() => {
     loadAuditLogs();
-  }, [page, filterAction, filterEntity, filterUser]);
+  }, [page, queryUserId, queryAction, queryEntityType, queryStartDate, queryEndDate]);
+
+  const handleFilter = () => {
+    setQueryUserId(inputUserId);
+    setQueryAction(inputAction);
+    setQueryEntityType(inputEntityType);
+    setQueryStartDate(inputStartDate);
+    setQueryEndDate(inputEndDate);
+    setPage(0);
+  };
+
+  const handleClear = () => {
+    setInputUserId('');
+    setInputAction('');
+    setInputEntityType('');
+    setInputStartDate('');
+    setInputEndDate('');
+
+    setQueryUserId('');
+    setQueryAction('');
+    setQueryEntityType('');
+    setQueryStartDate('');
+    setQueryEndDate('');
+    setPage(0);
+  };
 
   const getStatusBadge = (status: string) => {
     const isSuccess = status === 'SUCCESS';
@@ -77,11 +116,15 @@ export const AuditLog = () => {
 
   const getActionBadge = (action: string) => {
     let colorClasses = 'bg-gray-100 text-gray-700 border border-gray-200';
-    switch (action.toUpperCase()) {
+    const cleanAction = action.split(' ')[0].toUpperCase();
+    switch (cleanAction) {
       case 'CREATE':
+      case 'POST':
         colorClasses = 'bg-teal-50 text-teal-700 border border-teal-200';
         break;
       case 'UPDATE':
+      case 'PUT':
+      case 'PATCH':
         colorClasses = 'bg-indigo-50 text-indigo-700 border border-indigo-200';
         break;
       case 'DELETE':
@@ -116,7 +159,7 @@ export const AuditLog = () => {
   };
 
   const getPrettyDetails = (detailsStr?: string) => {
-    if (!detailsStr) return null;
+    if (!detailsStr) return '';
     try {
       const parsed = JSON.parse(detailsStr);
       return JSON.stringify(parsed, null, 2);
@@ -137,6 +180,33 @@ export const AuditLog = () => {
     return JSON.stringify({ ...log, details: parsedDetails }, null, 2);
   };
 
+  const syntaxHighlightJson = (jsonStr: string) => {
+    if (!jsonStr) return '';
+    let safeStr = jsonStr
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+
+    return safeStr.replace(
+      /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+-]?\d+)?)/g,
+      (match) => {
+        let cls = 'text-amber-400'; // Numbers / Booleans / Null
+        if (/^"/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'text-pink-400 font-semibold'; // Keys
+          } else {
+            cls = 'text-emerald-400'; // Strings
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'text-teal-400'; // Booleans
+        } else if (/null/.test(match)) {
+          cls = 'text-rose-400'; // Null
+        }
+        return `<span class="${cls}">${match}</span>`;
+      }
+    );
+  };
+
   const copyToClipboard = async (text: string) => {
     try {
       await navigator.clipboard.writeText(text);
@@ -146,6 +216,57 @@ export const AuditLog = () => {
       // ignore
     }
   };
+
+  const columns = [
+    {
+      key: 'createdAt',
+      label: 'Data / Hora',
+      render: (item: AuditLogEntry) => formatDate(item.createdAt),
+    },
+    {
+      key: 'userEmail',
+      label: 'Usuário',
+      render: (item: AuditLogEntry) => (
+        <span title={item.userEmail}>{formatUserEmail(item.userEmail)}</span>
+      ),
+    },
+    {
+      key: 'action',
+      label: 'Ação',
+      render: (item: AuditLogEntry) => getActionBadge(item.action),
+    },
+    {
+      key: 'entityType',
+      label: 'Entidade',
+    },
+    {
+      key: 'entityId',
+      label: 'ID Ref',
+      render: (item: AuditLogEntry) => item.entityId || '-',
+    },
+    {
+      key: 'ipAddress',
+      label: 'Endereço IP',
+      render: (item: AuditLogEntry) => item.ipAddress || '-',
+    },
+    {
+      key: 'status',
+      label: 'Status',
+      render: (item: AuditLogEntry) => getStatusBadge(item.status),
+    },
+    {
+      key: 'actions',
+      label: 'Ações',
+      render: (item: AuditLogEntry) => (
+        <button
+          onClick={() => setSelectedLog(item)}
+          className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#be8a83] hover:text-white bg-[#be8a83]/5 hover:bg-[#be8a83] border border-[#be8a83]/20 hover:border-transparent rounded-lg transition-all cursor-pointer"
+        >
+          <Eye size={14} /> Detalhes
+        </button>
+      ),
+    },
+  ];
 
   return (
     <div className="max-w-7xl mx-auto space-y-6">
@@ -161,29 +282,25 @@ export const AuditLog = () => {
 
       {/* Filters Card */}
       <div className="bg-white rounded-2xl border border-gray-100 p-5 shadow-xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 items-end">
           <div className="space-y-1">
-            <label className="label-premium">Usuário / E-mail</label>
+            <label htmlFor="userIdInput" className="label-premium">ID do Usuário</label>
             <input
-              type="text"
-              placeholder="Ex: admin@salao.com"
-              value={filterUser}
-              onChange={(e) => {
-                setFilterUser(e.target.value);
-                setPage(0);
-              }}
+              id="userIdInput"
+              type="number"
+              placeholder="Ex: 1"
+              value={inputUserId}
+              onChange={(e) => setInputUserId(e.target.value)}
               className="input-premium"
             />
           </div>
 
           <div className="space-y-1">
-            <label className="label-premium">Ação</label>
+            <label htmlFor="actionSelect" className="label-premium">Ação</label>
             <select
-              value={filterAction}
-              onChange={(e) => {
-                setFilterAction(e.target.value);
-                setPage(0);
-              }}
+              id="actionSelect"
+              value={inputAction}
+              onChange={(e) => setInputAction(e.target.value)}
               className="input-premium"
             >
               <option value="">Todas as ações</option>
@@ -192,17 +309,16 @@ export const AuditLog = () => {
               <option value="DELETE">DELETE</option>
               <option value="LOGIN">LOGIN</option>
               <option value="LOGOUT">LOGOUT</option>
+              <option value="RESTORE">RESTORE</option>
             </select>
           </div>
 
           <div className="space-y-1">
-            <label className="label-premium">Entidade</label>
+            <label htmlFor="entityTypeSelect" className="label-premium">Entidade</label>
             <select
-              value={filterEntity}
-              onChange={(e) => {
-                setFilterEntity(e.target.value);
-                setPage(0);
-              }}
+              id="entityTypeSelect"
+              value={inputEntityType}
+              onChange={(e) => setInputEntityType(e.target.value)}
               className="input-premium"
             >
               <option value="">Todas as entidades</option>
@@ -216,119 +332,63 @@ export const AuditLog = () => {
             </select>
           </div>
 
-          <button
-            onClick={() => {
-              setFilterAction('');
-              setFilterEntity('');
-              setFilterUser('');
-              setPage(0);
-            }}
-            className="flex items-center justify-center gap-2 px-5 py-2.5 border border-gray-200 text-sm font-semibold text-[#3b3036]/80 hover:bg-gray-50 hover:text-[#3b3036] rounded-xl transition-all h-[42px] w-full sm:w-auto cursor-pointer"
-          >
-            <Filter size={16} /> Limpar Filtros
-          </button>
+          <div className="space-y-1">
+            <label htmlFor="startDateInput" className="label-premium">Data Inicial</label>
+            <input
+              id="startDateInput"
+              type="date"
+              value={inputStartDate}
+              onChange={(e) => setInputStartDate(e.target.value)}
+              className="input-premium"
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label htmlFor="endDateInput" className="label-premium">Data Final</label>
+            <input
+              id="endDateInput"
+              type="date"
+              value={inputEndDate}
+              onChange={(e) => setInputEndDate(e.target.value)}
+              className="input-premium"
+            />
+          </div>
+
+          <div className="flex gap-2 w-full">
+            <button
+              onClick={handleFilter}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] text-sm font-semibold rounded-xl transition-all h-[42px] w-full cursor-pointer"
+            >
+              Filtrar
+            </button>
+            <button
+              onClick={handleClear}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 border border-gray-200 text-sm font-semibold text-[#3b3036]/80 hover:bg-gray-50 hover:text-[#3b3036] rounded-xl transition-all h-[42px] w-full cursor-pointer"
+            >
+              Limpar
+            </button>
+          </div>
         </div>
       </div>
 
       {/* Table Container */}
-      <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-xs">
-        {isLoading ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-3">
-            <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be8a83]"></div>
-            <span className="text-sm text-[#3b3036]/60 font-medium">
-              Buscando logs de auditoria...
-            </span>
-          </div>
-        ) : auditLogs.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 gap-2">
-            <AlertCircle size={40} className="text-gray-300" />
-            <span className="text-sm font-semibold text-[#3b3036]/80">
-              Nenhum registro encontrado
-            </span>
-            <span className="text-xs text-[#3b3036]/50">Tente ajustar seus filtros de busca.</span>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-gray-50/70 border-b border-gray-100 text-xs font-bold text-[#3b3036]/70 uppercase tracking-wider">
-                  <th className="px-6 py-4">Data / Hora</th>
-                  <th className="px-6 py-4">Usuário</th>
-                  <th className="px-6 py-4">Ação</th>
-                  <th className="px-6 py-4">Entidade</th>
-                  <th className="px-6 py-4">ID Ref</th>
-                  <th className="px-6 py-4">Endereço IP</th>
-                  <th className="px-6 py-4">Status</th>
-                  <th className="px-6 py-4 text-right">Ações</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-50">
-                {auditLogs.map((log) => (
-                  <tr key={log.id} className="hover:bg-gray-50/50 transition-colors group">
-                    <td className="px-6 py-3.5 text-sm text-[#3b3036]/60 font-medium whitespace-nowrap">
-                      {formatDate(log.createdAt)}
-                    </td>
-                    <td
-                      className="px-6 py-3.5 text-sm font-semibold text-[#3b3036] max-w-[200px] truncate"
-                      title={log.userEmail}
-                    >
-                      {formatUserEmail(log.userEmail)}
-                    </td>
-                    <td className="px-6 py-3.5 whitespace-nowrap">{getActionBadge(log.action)}</td>
-                    <td className="px-6 py-3.5 text-sm text-[#3b3036]/80 font-medium">
-                      {log.entityType}
-                    </td>
-                    <td className="px-6 py-3.5 text-sm font-mono text-gray-500">
-                      {log.entityId || '-'}
-                    </td>
-                    <td className="px-6 py-3.5 text-sm font-mono text-gray-500">
-                      {log.ipAddress || '-'}
-                    </td>
-                    <td className="px-6 py-3.5 whitespace-nowrap">{getStatusBadge(log.status)}</td>
-                    <td className="px-6 py-3.5 text-right whitespace-nowrap">
-                      <button
-                        onClick={() => setSelectedLog(log)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-[#be8a83] hover:text-white bg-[#be8a83]/5 hover:bg-[#be8a83] border border-[#be8a83]/20 hover:border-transparent rounded-lg transition-all cursor-pointer"
-                      >
-                        <Eye size={14} /> Detalhes
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
-
-      {/* Pagination */}
-      {!isLoading && auditLogs.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 py-4">
-          <span className="text-sm font-medium text-[#3b3036]/60">
-            Exibindo <span className="font-semibold text-[#3b3036]">{auditLogs.length}</span> de{' '}
-            <span className="font-semibold text-[#3b3036]">{totalItems}</span> registros
+      {isLoading ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3 bg-white rounded-2xl border border-gray-100 shadow-xs">
+          <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be8a83]"></div>
+          <span className="text-sm text-[#3b3036]/60 font-medium">
+            Buscando logs de auditoria...
           </span>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setPage(Math.max(0, page - 1))}
-              disabled={page === 0}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-            >
-              Anterior
-            </button>
-            <span className="text-sm font-semibold text-[#3b3036] px-3">
-              Página {page + 1} de {Math.ceil(totalItems / PAGE_SIZE)}
-            </span>
-            <button
-              onClick={() => setPage(page + 1)}
-              disabled={(page + 1) * PAGE_SIZE >= totalItems}
-              className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-semibold text-[#3b3036] hover:bg-gray-50 disabled:opacity-40 disabled:hover:bg-transparent transition-all cursor-pointer"
-            >
-              Próxima
-            </button>
-          </div>
         </div>
+      ) : (
+        <Table
+          columns={columns}
+          data={auditLogs}
+          keyExtractor={(item) => item.id}
+          currentPage={page + 1}
+          totalPages={Math.ceil(totalItems / PAGE_SIZE)}
+          onPageChange={(p) => setPage(p - 1)}
+          emptyMessage="Nenhum registro encontrado. Tente ajustar seus filtros de busca."
+        />
       )}
 
       {/* Details Modal */}
@@ -406,14 +466,14 @@ export const AuditLog = () => {
                 </div>
               </div>
 
-              {/* Pretty parsed details string */}
+              {/* Pretty parsed details string with custom JSON colorizer */}
               {selectedLog.details && (
                 <div className="space-y-2">
                   <span className="block text-xs font-bold text-[#3b3036]/60 uppercase tracking-wider">
                     Resumo do Payload / Detalhes
                   </span>
-                  <pre className="bg-[#261f23] text-[#e5a49c] p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/10 max-h-40 shadow-inner">
-                    {getPrettyDetails(selectedLog.details)}
+                  <pre className="bg-[#1e191c] p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/20 max-h-48 shadow-inner text-[#f8f8f2]">
+                    <code dangerouslySetInnerHTML={{ __html: syntaxHighlightJson(getPrettyDetails(selectedLog.details)) }} />
                   </pre>
                 </div>
               )}
@@ -439,8 +499,8 @@ export const AuditLog = () => {
                     )}
                   </button>
                 </div>
-                <pre className="bg-[#1e191c] text-green-400 p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/20 max-h-64 shadow-inner">
-                  {getFullLogJson(selectedLog)}
+                <pre className="bg-[#1e191c] p-4 rounded-xl overflow-x-auto text-xs font-mono border border-black/20 max-h-64 shadow-inner text-[#f8f8f2]">
+                  <code dangerouslySetInnerHTML={{ __html: syntaxHighlightJson(getFullLogJson(selectedLog)) }} />
                 </pre>
               </div>
             </div>

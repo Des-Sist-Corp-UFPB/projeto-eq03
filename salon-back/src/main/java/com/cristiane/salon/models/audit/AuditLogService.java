@@ -11,6 +11,10 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 
 @Service
@@ -87,6 +91,39 @@ public class AuditLogService {
         }
         
         return auditLogRepository.findWithFilters(searchAction, searchEntity, searchEmail, pageable);
+    }
+
+    public Page<AuditLog> getAuditLogsWithCombinedFilters(
+            Long userId,
+            String entityType,
+            String action,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
+        
+        String searchAction = (action == null || action.trim().isEmpty()) ? null : action.trim();
+        String searchEntity = (entityType == null || entityType.trim().isEmpty()) ? null : entityType.trim();
+
+        LocalDateTime queryStart = null;
+        if (startDate != null) {
+            ZonedDateTime recifeStart = startDate.atTime(LocalTime.of(0, 0, 0)).atZone(ZoneId.of("America/Recife"));
+            queryStart = recifeStart.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        }
+
+        LocalDateTime queryEnd = null;
+        if (endDate != null) {
+            ZonedDateTime recifeEnd = endDate.atTime(LocalTime.of(23, 59, 59)).atZone(ZoneId.of("America/Recife"));
+            queryEnd = recifeEnd.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        }
+
+        return auditLogRepository.findWithFiltersCombined(
+                userId,
+                searchEntity,
+                searchAction,
+                queryStart,
+                queryEnd,
+                pageable
+        );
     }
     
     public Page<AuditLog> getAuditLogsByUser(Long userId, Pageable pageable) {
