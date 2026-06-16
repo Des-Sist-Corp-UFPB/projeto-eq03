@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
-import { Plus, Edit, Trash2 } from 'lucide-react';
+import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
@@ -22,7 +22,9 @@ export const AdminServices = () => {
   const [editingService, setEditingService] = useState<SalonServiceData | null>(null);
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const [serviceToDelete, setServiceToDelete] = useState<number | null>(null);
+  const [serviceTargetId, setServiceTargetId] = useState<number | null>(null);
+  const [confirmAction, setConfirmAction] = useState<'delete' | 'reactivate'>('delete');
+
 
   const {
     register,
@@ -99,17 +101,24 @@ export const AdminServices = () => {
     }
   };
 
-  const confirmDelete = async () => {
-    if (!serviceToDelete) return;
+  const handleConfirmAction = async () => {
+    if (!serviceTargetId) return;
     try {
-      await salonServicesApi.delete(serviceToDelete);
+      if (confirmAction === 'delete') {
+        await salonServicesApi.delete(serviceTargetId);
+      } else {
+        await salonServicesApi.reactivate(serviceTargetId);
+      }
       setShowConfirm(false);
       loadServices();
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao excluir serviço.');
+      const fallbackMsg =
+        confirmAction === 'delete' ? 'Erro ao excluir serviço.' : 'Erro ao reativar serviço.';
+      const msg = getApiErrorMessage(err, fallbackMsg);
       await showError(msg);
     }
   };
+
 
   const columns = [
     { key: 'name', label: 'Nome' },
@@ -134,25 +143,47 @@ export const AdminServices = () => {
       label: 'Ações',
       render: (item: SalonServiceData) => (
         <div className="flex gap-2">
-          <PermissionGate method="PUT" endpoint={`/v1/services/${item.id}`}>
-            <button
-              onClick={() => handleOpenForm(item)}
-              className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer"
-            >
-              <Edit size={15} />
-            </button>
-          </PermissionGate>
-          <PermissionGate method="DELETE" endpoint={`/v1/services/${item.id}`}>
-            <button
-              onClick={() => {
-                setServiceToDelete(item.id!);
-                setShowConfirm(true);
-              }}
-              className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
-            >
-              <Trash2 size={15} />
-            </button>
-          </PermissionGate>
+          {item.active ? (
+            <>
+              <PermissionGate method="PUT" endpoint={`/v1/services/${item.id}`}>
+                <button
+                  onClick={() => handleOpenForm(item)}
+                  className="p-1.5 text-indigo-600 hover:bg-indigo-50 border border-indigo-200 rounded-lg transition-all cursor-pointer"
+                  title="Editar Serviço"
+                >
+                  <Edit size={15} />
+                </button>
+              </PermissionGate>
+              <PermissionGate method="DELETE" endpoint={`/v1/services/${item.id}`}>
+                <button
+                  onClick={() => {
+                    setServiceTargetId(item.id!);
+                    setConfirmAction('delete');
+                    setShowConfirm(true);
+                  }}
+                  className="p-1.5 text-rose-600 hover:bg-rose-50 border border-rose-200 rounded-lg transition-all cursor-pointer"
+                  title="Excluir Serviço"
+                >
+                  <Trash2 size={15} />
+                </button>
+              </PermissionGate>
+            </>
+          ) : (
+            <PermissionGate method="PATCH" endpoint={`/v1/services/${item.id}/reactivate`}>
+              <button
+                onClick={() => {
+                  setServiceTargetId(item.id!);
+                  setConfirmAction('reactivate');
+                  setShowConfirm(true);
+                }}
+                className="p-1.5 text-emerald-600 hover:bg-emerald-50 border border-emerald-200 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
+                title="Reativar Serviço"
+              >
+                <RotateCcw size={15} />
+                <span>Reativar</span>
+              </button>
+            </PermissionGate>
+          )}
         </div>
       ),
     },
@@ -272,9 +303,15 @@ export const AdminServices = () => {
       <ConfirmDialog
         show={showConfirm}
         onHide={() => setShowConfirm(false)}
-        onConfirm={confirmDelete}
-        title="Excluir Serviço"
-        message="Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita."
+        onConfirm={handleConfirmAction}
+        title={confirmAction === 'delete' ? 'Excluir Serviço' : 'Reativar Serviço'}
+        message={
+          confirmAction === 'delete'
+            ? 'Tem certeza que deseja excluir este serviço? Esta ação não pode ser desfeita.'
+            : 'Tem certeza que deseja reativar este serviço? Ele aparecerá novamente nas listagens públicas.'
+        }
+        confirmLabel={confirmAction === 'delete' ? 'Excluir' : 'Reativar'}
+        variant={confirmAction === 'delete' ? 'danger' : 'primary'}
       />
     </div>
   );

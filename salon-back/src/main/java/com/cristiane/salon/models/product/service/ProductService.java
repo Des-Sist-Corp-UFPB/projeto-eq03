@@ -64,4 +64,13 @@ public class ProductService {
         product.setActive(false);
         productRepository.save(product);
     }
+
+    @Transactional
+    public ProductResponse reactivate(Long id) {
+        Product product = productRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Produto não encontrado"));
+        product.setActive(true);
+        return ProductResponse.fromEntity(productRepository.save(product));
+    }
 }
+

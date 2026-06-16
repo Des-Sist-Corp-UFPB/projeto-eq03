@@ -59,4 +59,13 @@ public class ProductController {
         productService.delete(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PatchMapping("/{id}/reactivate")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Auditable(action = "RESTORE", entityType = "PRODUCT", captureArgs = true)
+    @Operation(summary = "Reativa um produto (Admin)")
+    public ResponseEntity<ProductResponse> reactivate(@PathVariable Long id) {
+        return ResponseEntity.ok(productService.reactivate(id));
+    }
 }
+

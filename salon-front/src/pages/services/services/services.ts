@@ -47,4 +47,10 @@ export const salonServicesApi = {
   delete: async (id: number) => {
     await api.delete(`/services/${id}`);
   },
+
+  reactivate: async (id: number) => {
+    const { data } = await api.patch<SalonServiceData>(`/services/${id}/reactivate`);
+    return data;
+  },
 };
+
