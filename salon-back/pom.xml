@@ -230,9 +230,9 @@
                         </goals>
                         <configuration>
                             <excludes>
-                                <exclude>com/cristiane/salon/models/**/dto/*</exclude>
-                                <exclude>com/cristiane/salon/models/**/entity/*</exclude>
-                                <exclude>com/cristiane/salon/config/*</exclude>
+                                <exclude>com/cristiane/salon/models/**/dto/**</exclude>
+                                <exclude>com/cristiane/salon/models/**/entity/**</exclude>
+                                <exclude>com/cristiane/salon/config/**</exclude>
                             </excludes>
                             <rules>
                                 <rule>
