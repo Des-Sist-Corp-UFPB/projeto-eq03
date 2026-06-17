@@ -15,6 +15,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
 
 import java.lang.reflect.Method;
+import java.util.Map;
+import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -36,10 +38,8 @@ class AuditAspectTest {
         auditAspect = new AuditAspect(auditLogService, objectMapper);
     }
 
-    // A dummy method to simulate Controller method with PathVariable
     public void dummyUpdateMethod(@PathVariable Long id, String status) {}
-
-    // A dummy method for create
+    public void dummyUpdateMethodStringPath(@PathVariable String id) {}
     public void dummyCreateMethod() {}
 
     @Test
@@ -63,6 +63,52 @@ class AuditAspectTest {
 
         verify(auditLogService).logAction(
                 any(), any(), eq("UPDATE"), eq("Dummy"), eq(42L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testExtractEntityIdFromPathVariableString() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        
+        Method method = this.getClass().getMethod("dummyUpdateMethodStringPath", String.class);
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        
+        Object[] args = new Object[]{ "100" };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("UPDATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("UPDATE"), eq("Dummy"), eq(100L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testExtractEntityIdFromPathVariableStringInvalid() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        
+        Method method = this.getClass().getMethod("dummyUpdateMethodStringPath", String.class);
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        
+        Object[] args = new Object[]{ "abc" };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("UPDATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("UPDATE"), eq("Dummy"), isNull(), any(), eq("SUCCESS")
         );
     }
 
@@ -94,6 +140,50 @@ class AuditAspectTest {
     }
 
     @Test
+    void testExtractEntityIdFromReturnValueNumber() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+        
+        auditAspect.logSuccessfulAction(joinPoint, auditable, 77L);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("CREATE"), eq("Dummy"), eq(77L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testExtractEntityIdFromRecordStyleId() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        class RecordDummy {
+            public Long id() { return 123L; }
+        }
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, new RecordDummy());
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("CREATE"), eq("Dummy"), eq(123L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
     void testStatusOverrideToCompleted() throws Exception {
         JoinPoint joinPoint = mock(JoinPoint.class);
         MethodSignature signature = mock(MethodSignature.class);
@@ -103,6 +193,30 @@ class AuditAspectTest {
         when(joinPoint.getSignature()).thenReturn(signature);
         
         when(signature.getParameterNames()).thenReturn(new String[]{"id", "status"});
+        Object[] args = new Object[]{ 10L, "DONE" };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("APPOINTMENT_STATUS_CHANGED");
+        when(auditable.entityType()).thenReturn("Appointment");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("APPOINTMENT_COMPLETED"), eq("Appointment"), eq(10L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testStatusOverrideToCompletedWithoutParamNames() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        
+        Method method = this.getClass().getMethod("dummyUpdateMethod", Long.class, String.class);
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        
+        when(signature.getParameterNames()).thenReturn(null); // Force fallback to arg check
         Object[] args = new Object[]{ 10L, "DONE" };
         when(joinPoint.getArgs()).thenReturn(args);
 
@@ -146,6 +260,166 @@ class AuditAspectTest {
                 any(), any(), any(), any(), any(),
                 argThat(details -> details != null && details.contains("\"password\":\"***\"") && details.contains("\"clientNotes\":\"***\"") && details.contains("\"name\":\"Public Name\"")),
                 eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testLogFailedAction_shouldAuditFailureWithExceptionMessage() {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("DELETE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        Exception ex = new RuntimeException("Database error");
+
+        auditAspect.logFailedAction(joinPoint, auditable, ex);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("DELETE"), eq("Dummy"), isNull(), isNull(), eq("FAILURE"), eq("Database error")
+        );
+    }
+
+    @Test
+    void testExtractEntityIdFromLongArgumentFallback() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        
+        Object[] args = new Object[]{ "NotALong", 88L };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("CREATE"), eq("Dummy"), eq(88L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testExtractEntityIdFromReflectionGetId() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        class EntityWithGetId {
+            public Long getId() {
+                return 15L;
+            }
+        }
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, new EntityWithGetId());
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("CREATE"), eq("Dummy"), eq(15L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testExtractEntityIdFromReflectionFieldId() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        class EntityWithFieldId {
+            private Long id = 25L;
+        }
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, new EntityWithFieldId());
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("CREATE"), eq("Dummy"), eq(25L), any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testMaskingNestedCollectionsAndMaps() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+
+        Map<String, Object> innerMap = Map.of("password", "secret1", "name", "child");
+        Map<String, Object> payload = Map.of(
+                "token", "jwtSecret",
+                "nestedList", List.of(innerMap),
+                "nestedMap", Map.of("cvv", "123", "card", "4321")
+        );
+
+        Object[] args = new Object[]{ payload };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+        when(auditable.captureArgs()).thenReturn(true);
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), any(), any(), any(),
+                argThat(details -> details != null 
+                        && details.contains("\"password\":\"***\"") 
+                        && details.contains("\"token\":\"***\"")
+                        && details.contains("\"cvv\":\"***\"")
+                        && details.contains("\"card\":\"***\"")
+                ),
+                eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testMaskingFailureGracefulFallback() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+
+        // A class that cannot be mapped easily or throws exception during conversion
+        class UnmappableClass {
+            @Override
+            public String toString() { return "unmappable"; }
+        }
+
+        Object[] args = new Object[]{ new UnmappableClass() };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+        when(auditable.captureArgs()).thenReturn(true);
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), any(), any(), any(),
+                any(), eq("SUCCESS")
         );
     }
 }
