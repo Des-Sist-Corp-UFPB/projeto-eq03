@@ -9,27 +9,15 @@ import jakarta.servlet.ServletRequest;
 import jakarta.servlet.ServletResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
-import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.testcontainers.containers.PostgreSQLContainer;
-import org.testcontainers.junit.jupiter.Container;
-import org.testcontainers.junit.jupiter.Testcontainers;
 
 import static org.mockito.ArgumentMatchers.any;
 
-@Testcontainers
 @ActiveProfiles("test")
 @Import(TestSecurityConfig.class)
 public abstract class BaseControllerTest {
-
-    @Container
-    @ServiceConnection
-    static PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>("postgres:16-alpine")
-            .withDatabaseName("salon_test")
-            .withUsername("sa")
-            .withPassword("sa");
 
     @MockitoBean
     protected JwtAuthenticationFilter jwtAuthenticationFilter;
