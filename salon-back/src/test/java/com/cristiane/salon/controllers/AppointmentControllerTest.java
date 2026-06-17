@@ -1,6 +1,7 @@
 package com.cristiane.salon.controllers;
 
 import com.cristiane.salon.controller.AppointmentController;
+import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,9 +11,17 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.List;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AppointmentController.class)
@@ -48,14 +57,97 @@ class AppointmentControllerTest extends BaseControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
-    // Disabled because method security is disabled in WebMvcTest slice
-    // @Test
-    // @WithMockUser
-    // void createReturns403_whenNoPermission() throws Exception {
-    //     String body = "{\"employeeId\":1,\"serviceId\":1}";
-    //     mvc.perform(post("/v1/appointments")
-    //             .contentType(MediaType.APPLICATION_JSON)
-    //             .content(body))
-    //             .andExpect(status().isForbidden());
-    // }
+    @Test
+    @WithMockUser
+    void confirmReturns200() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
+        );
+        when(appointmentService.confirm(eq(1L), any())).thenReturn(response);
+
+        String body = "{\"scheduledAt\":\"2026-06-16T10:00:00\"}";
+
+        mvc.perform(patch("/v1/appointments/1/confirm")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CONFIRMED"));
+    }
+
+    @Test
+    @WithMockUser
+    void declineReturns200() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "DECLINED"
+        );
+        when(appointmentService.decline(eq(1L))).thenReturn(response);
+
+        mvc.perform(patch("/v1/appointments/1/decline")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DECLINED"));
+    }
+
+    @Test
+    @WithMockUser
+    void getMyAppointmentsReturnsList() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "REQUESTED"
+        );
+        when(appointmentService.getMyAppointments()).thenReturn(List.of(response));
+
+        mvc.perform(get("/v1/appointments/my")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].clientName").value("Client"));
+    }
+
+    @Test
+    @WithMockUser
+    void findAllReturnsList() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
+        );
+        when(appointmentService.findAll()).thenReturn(List.of(response));
+
+        mvc.perform(get("/v1/appointments")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].clientName").value("Client"));
+    }
+
+    @Test
+    @WithMockUser
+    void cancelReturns200() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CANCELLED"
+        );
+        when(appointmentService.cancel(eq(1L))).thenReturn(response);
+
+        mvc.perform(patch("/v1/appointments/1/cancel")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CANCELLED"));
+    }
+
+    @Test
+    @WithMockUser
+    void updateStatusReturns200() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "DONE"
+        );
+        when(appointmentService.updateStatus(eq(1L), eq("DONE"))).thenReturn(response);
+
+        mvc.perform(patch("/v1/appointments/1/status")
+                .param("status", "DONE")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("DONE"));
+    }
 }
