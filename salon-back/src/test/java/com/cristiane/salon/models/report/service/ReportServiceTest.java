@@ -334,4 +334,154 @@ class ReportServiceTest {
         assertEquals(new BigDecimal("200.00"), itemDave.baseAmount());
         assertEquals(new BigDecimal("320.00"), itemDave.calculatedPay());
     }
+
+    @Test
+    void shouldHandleNullDateParamsAndDefaultCorrectly() {
+        // Given
+        when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
+        when(employeeRepository.findAll()).thenReturn(List.of());
+
+        // When
+        FinancialReportResponse report = reportService.generateFinancialReport(null, null);
+
+        // Then
+        LocalDate expectedFrom = LocalDate.now().withDayOfMonth(1);
+        LocalDate expectedTo = LocalDate.now().plusDays(30);
+        String expectedPeriod = expectedFrom + " a " + expectedTo;
+        assertEquals(expectedPeriod, report.period());
+    }
+
+    @Test
+    void shouldHandleFallbackDatesInReportPeriodCorrectly() {
+        // Given
+        User clientUser = new User();
+        clientUser.setName("Cliente");
+        Employee emp = new Employee();
+        emp.setId(1L);
+        emp.setUser(clientUser);
+
+        SalonService service = new SalonService();
+        service.setName("Corte");
+        service.setPrice(BigDecimal.TEN);
+
+        LocalDate from = LocalDate.now();
+        LocalDate to = LocalDate.now().plusDays(5);
+
+        // Appointment 1: using preferredDate
+        Appointment apt1 = new Appointment();
+        apt1.setStatus(AppointmentStatus.DONE);
+        apt1.setEmployee(emp);
+        apt1.setSalonService(service);
+        apt1.setScheduledAt(null);
+        apt1.setPreferredDate(LocalDate.now().plusDays(2));
+
+        // Appointment 2: using createdAt
+        Appointment apt2 = new Appointment();
+        apt2.setStatus(AppointmentStatus.DONE);
+        apt2.setEmployee(emp);
+        apt2.setSalonService(service);
+        apt2.setScheduledAt(null);
+        apt2.setPreferredDate(null);
+        apt2.setCreatedAt(LocalDateTime.now().plusDays(3));
+
+        // Appointment 3: using nothing (should not match)
+        Appointment apt3 = new Appointment();
+        apt3.setStatus(AppointmentStatus.DONE);
+        apt3.setEmployee(emp);
+        apt3.setSalonService(service);
+        apt3.setScheduledAt(null);
+        apt3.setPreferredDate(null);
+        apt3.setCreatedAt(null);
+
+        when(employeeRepository.findAll()).thenReturn(List.of(emp));
+        when(appointmentRepository.findAll()).thenReturn(List.of(apt1, apt2, apt3));
+        when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        // When
+        FinancialReportResponse report = reportService.generateFinancialReport(from, to);
+
+        // Then
+        // Should have matched apt1 and apt2, so 2 done appointments in total
+        assertEquals(2, report.employeeFinanceDetails().get(0).doneAppointmentsCount());
+        assertEquals(BigDecimal.ZERO, report.employeeFinanceDetails().get(0).calculatedPayout());
+    }
+
+    @Test
+    void shouldCalculateGlobalHybridCommissionCorrectly() {
+        // Given
+        Employee emp = new Employee();
+        emp.setId(1L);
+        User user = new User();
+        user.setName("Alice");
+        emp.setUser(user);
+        emp.setRemunerationType(RemunerationType.FIXO_E_COMISSIONADO);
+        emp.setCommissionScope(CommissionScope.GLOBAL);
+        emp.setRemunerationValue(new BigDecimal("500.00")); // Base
+        emp.setCommissionValue(new BigDecimal("10.00")); // 10%
+
+        SalonService service = new SalonService();
+        service.setPrice(new BigDecimal("150.00"));
+
+        Appointment apt = new Appointment();
+        apt.setStatus(AppointmentStatus.DONE);
+        apt.setEmployee(emp);
+        apt.setSalonService(service);
+        apt.setScheduledAt(LocalDateTime.now());
+
+        when(employeeRepository.findAll()).thenReturn(List.of(emp));
+        when(appointmentRepository.findAll()).thenReturn(List.of(apt));
+        when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        // When
+        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now().plusDays(1));
+
+        // Then
+        // Global done value = 150.00
+        // Salary = 500.00
+        // Commission = 10% of 150.00 = 15.00
+        // Total payout = 515.00
+        assertEquals(new BigDecimal("500.00"), report.totalSalaryPaid());
+        assertEquals(new BigDecimal("15.00"), report.totalCommissionPaid());
+        EmployeeFinanceResponse detail = report.employeeFinanceDetails().get(0);
+        assertEquals(new BigDecimal("515.00"), detail.calculatedPayout());
+    }
+
+    @Test
+    void shouldHandleNullRemunerationValuesGracefully() {
+        // Given
+        Employee emp = new Employee();
+        emp.setId(1L);
+        User user = new User();
+        user.setName("Alice");
+        emp.setUser(user);
+        emp.setRemunerationType(RemunerationType.FIXO_E_COMISSIONADO);
+        emp.setCommissionScope(CommissionScope.INDIVIDUAL);
+        emp.setRemunerationValue(null);
+        emp.setCommissionValue(null);
+
+        SalonService service = new SalonService();
+        service.setPrice(new BigDecimal("100.00"));
+
+        Appointment apt = new Appointment();
+        apt.setStatus(AppointmentStatus.DONE);
+        apt.setEmployee(emp);
+        apt.setSalonService(service);
+        apt.setScheduledAt(LocalDateTime.now());
+
+        when(employeeRepository.findAll()).thenReturn(List.of(emp));
+        when(appointmentRepository.findAll()).thenReturn(List.of(apt));
+        when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
+                .thenReturn(List.of());
+
+        // When
+        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now().plusDays(1));
+
+        // Then
+        assertEquals(0, report.totalSalaryPaid().compareTo(BigDecimal.ZERO));
+        assertEquals(0, report.totalCommissionPaid().compareTo(BigDecimal.ZERO));
+    }
 }
+

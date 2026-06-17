@@ -11,12 +11,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 import com.cristiane.salon.models.product.dto.ProductResponse;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(ProductController.class)
@@ -61,5 +64,54 @@ class ProductControllerTest extends BaseControllerTest {
         mvc.perform(patch("/v1/products/1/reactivate"))
                 .andExpect(status().isOk());
     }
-}
 
+    @Test
+    @WithMockUser
+    void findAllReturnsProducts() throws Exception {
+        ProductResponse response = new ProductResponse(1L, "Hair Spray", 20, new BigDecimal("15.50"), true);
+        when(productService.findAll(eq(true))).thenReturn(List.of(response));
+
+        mvc.perform(get("/v1/products")
+                .param("active", "true")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Hair Spray"));
+    }
+
+    @Test
+    @WithMockUser
+    void findByIdReturnsProduct() throws Exception {
+        ProductResponse response = new ProductResponse(2L, "Shampoo", 50, new BigDecimal("25.00"), true);
+        when(productService.findById(eq(2L))).thenReturn(response);
+
+        mvc.perform(get("/v1/products/2")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Shampoo"));
+    }
+
+    @Test
+    @WithMockUser
+    void updateReturnsUpdatedProduct() throws Exception {
+        ProductResponse response = new ProductResponse(2L, "New Shampoo", 40, new BigDecimal("28.00"), true);
+        when(productService.update(eq(2L), any())).thenReturn(response);
+
+        String body = "{\"name\":\"New Shampoo\",\"price\":28.00}";
+
+        mvc.perform(put("/v1/products/2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("New Shampoo"));
+    }
+
+    @Test
+    @WithMockUser
+    void deleteReturnsNoContent() throws Exception {
+        doNothing().when(productService).delete(eq(3L));
+
+        mvc.perform(delete("/v1/products/3")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+    }
+}

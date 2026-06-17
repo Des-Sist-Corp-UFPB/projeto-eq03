@@ -11,12 +11,15 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.math.BigDecimal;
+import java.util.List;
 import com.cristiane.salon.models.service.dto.SalonServiceResponse;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(SalonServiceController.class)
@@ -63,5 +66,60 @@ class SalonServiceControllerTest extends BaseControllerTest {
         mvc.perform(patch("/v1/services/1/reactivate"))
                 .andExpect(status().isOk());
     }
-}
 
+    @Test
+    @WithMockUser
+    void findAllReturnsServices() throws Exception {
+        SalonServiceResponse response = new SalonServiceResponse(
+                1L, "Haircut", "Classic trim", new BigDecimal("45.00"), 30, "30m", true
+        );
+        when(salonServiceManager.findAll(eq(true))).thenReturn(List.of(response));
+
+        mvc.perform(get("/v1/services")
+                .param("active", "true")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].name").value("Haircut"));
+    }
+
+    @Test
+    @WithMockUser
+    void findByIdReturnsService() throws Exception {
+        SalonServiceResponse response = new SalonServiceResponse(
+                2L, "Manicure", "Nail care", new BigDecimal("30.00"), 45, "45m", true
+        );
+        when(salonServiceManager.findById(eq(2L))).thenReturn(response);
+
+        mvc.perform(get("/v1/services/2")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Manicure"));
+    }
+
+    @Test
+    @WithMockUser
+    void updateReturnsUpdatedService() throws Exception {
+        SalonServiceResponse response = new SalonServiceResponse(
+                2L, "Pedicure", "Nail care", new BigDecimal("35.00"), 45, "45m", true
+        );
+        when(salonServiceManager.update(eq(2L), any())).thenReturn(response);
+
+        String body = "{\"name\":\"Pedicure\",\"durationMin\":45}";
+
+        mvc.perform(put("/v1/services/2")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.name").value("Pedicure"));
+    }
+
+    @Test
+    @WithMockUser
+    void deleteReturnsNoContent() throws Exception {
+        doNothing().when(salonServiceManager).delete(eq(3L));
+
+        mvc.perform(delete("/v1/services/3")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isNoContent());
+    }
+}

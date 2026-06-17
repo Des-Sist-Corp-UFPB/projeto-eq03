@@ -62,7 +62,7 @@ jobs:
       - name: Build & Run Unit Tests
         run: |
           cd salon-back
-          ./mvnw clean test -Dspring.profiles.active=test
+          ./mvnw clean verify -Dspring.profiles.active=test
 
   # Job 3: Lint e Build de Validação do Frontend (React/Node)
   ci-frontend:
