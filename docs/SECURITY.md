@@ -12,6 +12,7 @@ Authentication via **JWT** (stateless). Authorization via **Roles** + **granular
 | GERENTE_DE_ATENDIMENTO | Manages clients, views reports              |
 | FUNCIONARIA            | Views/manages own appointments              |
 | CLIENTE                | Self-service booking and profile            |
+| SYSADMIN               | Manages system configurations/feature flags |
 
 ## Auth Flow
 
@@ -57,10 +58,12 @@ Example seed data:
 ## Public Routes (no token required)
 
 ```
+GET  /ping
 POST /v1/auth/**
 GET  /v1/services
 GET  /v1/products
-GET  /v1/appointments/slots
+GET  /v1/employees/booking
+GET  /v1/feature-flags
      /swagger-ui/**
      /v3/api-docs/**
 ```

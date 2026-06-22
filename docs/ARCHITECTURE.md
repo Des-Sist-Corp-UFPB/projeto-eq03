@@ -16,27 +16,35 @@ salao-cristiane/
 ## Backend (`salon-back`)
 
 ```
-src/main/java/br/com/api/
+src/main/java/com/cristiane/salon/
+├── annotation/
+│   └── Auditable.java
+├── aspect/
+│   └── AuditAspect.java
 ├── config/
 │   ├── CorsConfig.java
 │   ├── SecurityConfig.java
+│   ├── MethodSecurityConfig.java
 │   ├── OpenApiConfig.java
-│   └── BeanConfig.java
+│   └── AuditLogTableInitializer.java
 ├── security/
 │   ├── JwtService.java
 │   ├── JwtAuthenticationFilter.java
-│   ├── EntityPermissionEvaluator.java
-│   ├── VerifyUserPermissions.java
 │   ├── CustomPermissionEvaluator.java
-│   └── SecurityUserDetailsService.java
+│   ├── EntityPermissionEvaluator.java
+│   ├── AuditRequestFilter.java
+│   ├── SecurityUserDetailsService.java
+│   └── VerifyUserPermissions.java
 ├── controller/
 │   ├── AuthController.java
 │   ├── UserController.java
-│   ├── ServiceController.java
+│   ├── SalonServiceController.java
 │   ├── ProductController.java
 │   ├── EmployeeController.java
 │   ├── AppointmentController.java
 │   ├── CashFlowController.java
+│   ├── FeatureFlagController.java
+│   ├── AuditController.java
 │   └── ReportController.java
 ├── exception/
 │   ├── GlobalExceptionHandler.java
@@ -44,22 +52,29 @@ src/main/java/br/com/api/
 │   ├── BadRequestException.java
 │   └── UnauthorizedException.java
 └── models/
-    ├── user/       { entity, dto, enums, repository, service }
-    ├── service/    { entity, dto, enums, repository, service }
-    ├── product/    { entity, dto, repository, service }
-    ├── employee/   { entity, dto, repository, service }
-    ├── appointment/{ entity, dto, enums, repository, service }
-    ├── cashflow/   { entity, dto, repository, service }
-    └── report/     { dto, service }
+    ├── user/        { entity, dto, repository, service }
+    ├── service/     { entity, dto, repository, service }
+    ├── product/     { entity, dto, repository, service }
+    ├── employee/    { entity, dto, repository, service }
+    ├── appointment/ { entity, dto, enums, repository, service }
+    ├── cashflow/    { entity, dto, repository, service }
+    ├── report/      { dto, service }
+    ├── audit/       { entity, repository, service }
+    ├── featureflag/ { entity, repository, service }
+    └── email/       { service }
 
 resources/
 ├── db/migration/
 │   ├── V1__create_security_tables.sql
 │   ├── V2__insert_roles_permissions.sql
-│   └── V3__create_business_tables.sql
-├── application.yml
-├── application-dev.yml
-└── application-prod.yml
+│   ├── ...
+│   └── V17__cleanup_audit_logs.sql
+├── templates/
+│   └── mail/        # Thymeleaf e-mail templates
+├── application.yaml
+├── application-dev.yaml
+├── application-test.yaml
+└── application-prod.yaml
 ```
 
 ## Frontend (`salon-front`)
@@ -82,10 +97,13 @@ src/
 │   ├── AdminLayout.tsx     # Admin sidebar + header
 │   └── CustomerLayout.tsx  # Customer area
 ├── pages/
-│   ├── public/        # Home, Services, Appointment, Login, Register
-│   ├── admin/         # Dashboard, Users, Employees, Services, Products, Appointments, CashFlow, Reports
-│   ├── customer/      # MyAppointments, Profile
-│   └── auth/          # Login, Register
+│   ├── admin/         # Users, Employees, Services, Products, Appointments, CashFlow, Reports
+│   ├── appointments/  # PublicAppointment, MyAppointments
+│   ├── auth/          # Login, Register
+│   ├── home/          # PublicHome
+│   ├── profile/       # Profile
+│   ├── services/      # PublicServices
+│   └── sysadmin/      # FeatureFlags, AuditLog (admin console)
 ├── services/
 │   └── api.ts         # Axios instance with interceptors & auto-refresh
 ├── styles/

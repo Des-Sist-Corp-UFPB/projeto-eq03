@@ -110,60 +110,103 @@ Base URL: `/v1` — All responses in JSON. Protected routes require `Authorizati
 | http_method | varchar | GET, POST, PUT, DELETE, * |
 | classe      | varchar | Domain grouping           |
 
-### `tb_service`
-| Column      | Type    |
-|-------------|---------|
-| id          | bigint  |
-| name        | varchar |
-| description | text    |
-| price       | numeric |
-| duration_min| integer |
-| active      | boolean |
+### `tb_salon_service`
+| Column       | Type      | Notes                     |
+|--------------|-----------|---------------------------|
+| id           | bigint  | PK                        |
+| name         | varchar   |                           |
+| description  | text      |                           |
+| price        | numeric   | Nullable (defined on checkout)|
+| duration_min | integer   |                           |
+| duration_text| varchar   | e.g. "45 min"             |
+| active       | boolean   |                           |
 
 ### `tb_product`
-| Column | Type    |
-|--------|---------|
-| id     | bigint  |
-| name   | varchar |
-| stock  | integer |
-| price  | numeric |
+| Column | Type    | Notes                     |
+|--------|---------|---------------------------|
+| id     | bigint  | PK                        |
+| name   | varchar |                           |
+| stock  | integer |                           |
+| price  | numeric |                           |
+| active | boolean | Default TRUE (soft-delete)|
 
 ### `tb_employee`
-| Column  | Type    | Notes         |
-|---------|---------|---------------|
-| id      | bigint  |               |
-| user_id | bigint  | FK → tb_user  |
-| bio     | text    |               |
+| Column           | Type    | Notes                     |
+|------------------|---------|---------------------------|
+| id               | bigint  | PK                        |
+| user_id          | bigint  | FK → tb_user              |
+| bio              | text    |                           |
+| remuneration     | numeric | Monthly fixed salary      |
+| commission_value | numeric | Service commission rate   |
 
 ### `tb_appointment`
-| Column        | Type      | Notes                |
-|---------------|-----------|----------------------|
-| id            | bigint    |                      |
-| client_id     | bigint    | FK → tb_user         |
-| employee_id   | bigint    | FK → tb_employee     |
-| service_id    | bigint    | FK → tb_service      |
-| scheduled_at  | timestamp |                      |
-| status        | varchar   | PENDING/CONFIRMED/DONE/CANCELLED |
+| Column         | Type      | Notes                               |
+|----------------|-----------|-------------------------------------|
+| id             | bigint    | PK                                  |
+| client_id      | bigint    | FK → tb_user                        |
+| employee_id    | bigint    | FK → tb_employee                    |
+| service_id     | bigint    | FK → tb_salon_service               |
+| scheduled_at   | timestamp | Nullable (defined when confirmed)  |
+| preferred_date | date      | Client preference                   |
+| client_notes   | text      | Client notes                        |
+| status         | varchar   | REQUESTED/CONFIRMED/DONE/CANCELLED/DECLINED|
+| created_at     | timestamp |                                     |
 
 ### `tb_cashflow`
-| Column      | Type      | Notes              |
-|-------------|-----------|--------------------|
-| id          | bigint    |                    |
-| type        | varchar   | INCOME / EXPENSE   |
-| amount      | numeric   |                    |
-| description | varchar   |                    |
-| date        | date      |                    |
-| appointment_id | bigint | FK (nullable)      |
+| Column         | Type      | Notes              |
+|----------------|-----------|--------------------|
+| id             | bigint    | PK                 |
+| type           | varchar   | INCOME / EXPENSE   |
+| amount         | numeric   |                    |
+| description    | varchar   |                    |
+| date           | date      |                    |
+| appointment_id | bigint    | FK (nullable)      |
+
+### `tb_audit_log`
+| Column        | Type      | Notes                               |
+|---------------|-----------|-------------------------------------|
+| id            | bigint    | PK                                  |
+| user_id       | bigint    | Nullable (actor ID)                 |
+| user_email    | varchar   | Actor email / SYSTEM                |
+| action        | varchar   | e.g. CREATE, APPOINTMENT_COMPLETED  |
+| entity_type   | varchar   | e.g. User, Appointment              |
+| entity_id     | bigint    | Target entity ID reference          |
+| details       | text      | Masked parameters payload in JSON   |
+| ip_address    | varchar   | Client IP address                   |
+| user_agent    | text      | Client web browser header           |
+| status        | varchar   | SUCCESS / FAILURE                   |
+| error_message | text      |                                     |
+| created_at    | timestamp |                                     |
+
+### `tb_feature_flag`
+| Column      | Type    | Notes                     |
+|-------------|---------|---------------------------|
+| name        | varchar | PK (e.g. EMAIL_NOTIFICATIONS) |
+| enabled     | boolean | Toggle state              |
+| description | varchar |                           |
 
 ## Flyway Migrations
 
-> ⚠️ **WARNING FOR DEVELOPERS AND AI AGENTS:**
-> **NEVER** edit a Flyway migration file once it has been run or committed (e.g., `V1__`, `V2__`, `V3__`, `V4__`). 
-> Modifying an existing migration will break the checksums and cause Flyway to fail on startup.
-> If a database schema change is needed, **ALWAYS** create a new versioned migration file (e.g., `V5__your_change.sql`).
+> ⚠️ **WARNING FOR DEVELOPERS:**
+> **NEVER** edit a Flyway migration file once it has been run or committed. Doing so will break the checksum validation on startup. 
+> To apply database changes, **ALWAYS** write a new sequential migration file (e.g., `V18__your_new_change.sql`).
 
-| Version | File                               | Creates                                          |
-|---------|------------------------------------|--------------------------------------------------|
-| V1      | `V1__create_security_tables.sql`   | `tb_role`, `tb_permission`, `tb_user`, join tables |
-| V2      | `V2__insert_roles_permissions.sql` | Seed ADMIN, GERENTE, FUNCIONARIA, CLIENTE roles  |
-| V3      | `V3__create_business_tables.sql`   | `tb_service`, `tb_product`, `tb_employee`, `tb_appointment`, `tb_cashflow` |
+| Version | File | Description |
+|---|---|---|
+| **V1** | `V1__create_security_tables.sql` | Creates role, permission, user, and join tables |
+| **V2** | `V2__insert_roles_permissions.sql` | Seeds default role profiles and admin authorities |
+| **V3** | `V3__create_business_tables.sql` | Creates service, product, employee, appointment, and cashflow tables |
+| **V4** | `V4__rename_service_table.sql` | Renames `tb_service` to `tb_salon_service` to avoid keyword conflicts |
+| **V5** | `V5__flexible_price_and_appointment_request.sql` | Makes service price and appointment scheduled date nullable, adds client notes/preferred date |
+| **V6** | `V6__service_duration_estimate.sql` | Adds service duration in text representation |
+| **V7** | `V7__create_audit_log_table.sql` | Creates system audit log table and tracking indices |
+| **V8** | `V8__add_permissions_to_roles.sql` | Seed granular endpoint mapping and permissions for all roles |
+| **V9** | `V9__add_sysadmin_role_and_feature_flags.sql` | Adds SYSADMIN profile, creates feature flags table, seeds system user and initial flags |
+| **V10** | `V10__update_admin_password.sql` | Updates seeded administrator user password |
+| **V11** | `V11__make_audit_log_fields_nullable.sql` | Relaxes constraints on audit logging to allow anonymous/system-triggered events |
+| **V12** | `V12__add_active_column_to_product.sql` | Adds active column to products for soft-deleting |
+| **V13** | `V13__add_remuneration_to_employee.sql` | Adds base remuneration column for professionals |
+| **V14** | `V14__add_commission_value_to_employee.sql` | Adds commission value column for professionals |
+| **V15** | `V15__add_enable_customer_portal_feature_flag.sql` | Seeds customer portal availability feature toggle |
+| **V16** | `V16__set_sysadmin_role_for_sysadmin_user.sql` | Maps system admin role explicitly to sysadmin user |
+| **V17** | `V17__cleanup_audit_logs.sql` | Removes deprecated/dev-related audit logs |

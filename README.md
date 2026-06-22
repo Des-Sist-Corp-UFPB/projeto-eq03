@@ -1,91 +1,101 @@
-# Cristiane Moura – Beauty Salon SaaS
+# 💇‍♀️ Salon - Espaço Cristiane Moura
 
-Full-featured SaaS for managing a beauty salon, covering admin operations, online booking, employee management, and financial reporting. All system-facing text output (UI labels, messages, notifications) must be in **pt-BR**.
+**Serviço de Gestão e Agendamento para Salão de Beleza**
 
-## Stack
+Sistema para gerenciamento de salão de beleza. Abrange operações administrativas, agendamento online, gestão de equipe e relatórios financeiros.
 
-**Backend:** Java 21 · Spring Boot 3.4.6 · Spring Security · JWT · Spring Data JPA · PostgreSQL · Flyway · Lombok · Spring Validation · Springdoc OpenAPI · Maven
+---
 
-**Frontend:** React 18 · TypeScript · Vite · Bootstrap 5 · React-Bootstrap · Axios · React Router DOM · React Hook Form · Recharts · jsPDF
+## 🚀 Status da Entrega 1 (Requisitos Acadêmicos)
 
-**Infra:** Docker · Docker Compose · GitHub Actions · Nginx · Linux VPS
+O sistema cumpre os requisitos exigidos utilizando padrões modernos de desenvolvimento:
 
-## Monorepo Structure
+- **Log de Auditoria:**
+  - **Backend:** Interceptação de requisições usando a anotação `@Auditable`. Captura IP real, User-Agent e mascara dados sensíveis (senhas, cartões) antes de salvar no banco.
+  - **Frontend:** Console administrativo com filtros combinados e leitor de JSON com _syntax highlighting_.
+- **Integração com Serviço Externo (Resend API):**
+  - Envio de e-mails transacionais (confirmações, cancelamentos) com templates em Thymeleaf.
+  - Processamento em segundo plano (`@Async`) usando o novo `RestClient` do Spring.
+- **Testes de Qualidade e Cobertura Comprovável:**
+  - **Backend (JaCoCo - ~91%):** Testes unitários/integração com JUnit 5 e Mockito. O Maven está configurado para **barrar o build** se a cobertura cair abaixo de 85%.
+  - **Frontend (Vitest - ~99%):** Cobertura quase total de rotas, contextos e UI utilizando React Testing Library.
 
-```
-salao-cristiane/
-├── salon-back/      # Spring Boot API
-├── salon-front/     # React SPA
-├── docs/            # Project documentation
+---
+
+## 🛠️ Stack Tecnológica
+
+- **Backend:** Java 21 · Spring Boot 4.0.6 · Spring Security · JWT · Spring Data JPA · PostgreSQL · Flyway · JaCoCo · Lombok · Springdoc OpenAPI
+- **Frontend:** React 19 · TypeScript · Vite · Vitest · Tailwind CSS v4.0 · Axios · React Router v7 · React Hook Form · Recharts · jsPDF · PWA
+- **Infra:** Docker · Docker Compose · GitHub Actions · Nginx
+
+---
+
+## 💎 Padrões de Arquitetura
+
+- **Soft-Deletes:** Exclusão lógica (campo `active`) para produtos e usuários, não quebrando o histórico financeiro do banco.
+- **Global Exception Handler:** Centralização de erros (`@RestControllerAdvice`). Oculta metadados do banco em falhas e formata respostas de erro de forma amigável.
+- **Igualdade Referencial:** Uso de `useCallback` e `useMemo` no React para evitar re-renderizações e travamentos na interface.
+- **Feature Flags Dinâmicas:** Toggles no banco de dados (`CLIENT_BOOKING`, `EMAIL_NOTIFICATIONS`) que ligam/desligam funcionalidades no sistema em tempo real, sem precisar de novo deploy.
+
+---
+
+## 📁 Estrutura do Monorepo
+
+```text
+projeto-eq03/
+├── salon-back/      # API Spring Boot (Java 21)
+├── salon-front/     # SPA React (PWA)
+├── docs/            # Documentação detalhada e diagramas
 ├── docker-compose.yml
 └── README.md
 ```
 
-## Prerequisites
+---
 
-- Java 21, Maven 3.9+
-- Node.js 20+, npm 10+
-- PostgreSQL 16+ (or Docker)
-- Docker & Docker Compose
+## ⚙️ Pré-requisitos e Execução Local
 
-## Running Locally
+**Requisitos:** Java 21, Maven 3.9+, Node.js 22+, PostgreSQL 16+ (ou Docker).
 
 ```bash
-# 1. Clone
-git clone https://github.com/Elksandro2/sass-salon.git
-cd sass-salon
+# 1. Clonar o repositório
+git clone https://github.com/Des-Sist-Corp-UFPB/projeto-eq03.git
+cd projeto-eq03
 
-# 2. Start database
-docker compose up db -d
+# 2. Subir banco de dados e SMTP (via Docker ou serviços locais/IDE)
+docker compose up db mailpit -d
 
-# 3. Backend
+# 3. Iniciar a API Backend
 cd salon-back
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=dev
 
-# 4. Frontend
-cd salon-front
+# 4. Iniciar o Frontend
+cd ../salon-front
 npm install
 npm run dev
 ```
 
-| Service  | URL                              |
-|----------|----------------------------------|
-| Frontend | http://localhost:5173            |
-| Backend  | http://localhost:8080            |
-| Swagger  | http://localhost:8080/swagger-ui.html |
+| Serviço      | URL Local                               | Descrição                  |
+| :----------- | :-------------------------------------- | :------------------------- |
+| **Frontend** | `http://localhost:5173`                 | Interface SPA / PWA        |
+| **Backend**  | `http://localhost:8080`                 | API REST                   |
+| **Swagger**  | `http://localhost:8080/swagger-ui.html` | Documentação dos Endpoints |
 
-## Application Profiles
+---
 
-**dev** – local DB, verbose logs, Swagger enabled, CORS open to localhost  
-**prod** – env vars, reduced logs, strict CORS, hardened security
+## 📜 Convenções de Código
 
-## Features
+- **DTOs:** Utilização de Java `record` (ex: `UserCreateRequest` / `UserResponse`, evitando o sufixo genérico `DTO`).
+- **Entidades:** Mapeamento JPA com tabelas (`tb_`), usando Lombok apenas onde necessário.
+- **Versionamento:** Endpoints versionados na base da URL (ex: `/v1/users`).
+- **Segurança:** Autenticação via JWT com roles e controle de autoridade granular por endpoint e método HTTP.
 
-**Public area:** view services & products, online booking, customer registration, login
+---
 
-**Customer area:** booking history, profile management, cancel appointments
+## 📖 Documentação Adicional
 
-**Admin area:** dashboard, user/employee/service/product management, cash flow, reports, permission control
+Mais detalhes sobre a arquitetura do projeto, APIs, testes e diretrizes de desenvolvimento/agentes de IA estão disponíveis no diretório [`docs/`](./docs/):
 
-## Code Conventions
-
-- DTOs → Java `record` (named `UserRequest` / `UserResponse`, never `UserDTO`)
-- Entities → Lombok (`@Getter @Setter @Entity @Table`)
-- All endpoints versioned under `/v1`
-- Security: JWT + Roles + granular Authorities per endpoint/HTTP method
-
-## Instructions for AI Agents
-
-When assisting with development in this repository, **you must ensure that code updates are broken down into small, atomic commits grouped by functionality**. 
-- Do not batch unrelated changes into single large commits.
-- Suggest and create individual commits for distinct units of work (e.g., one commit for a new endpoint, another for its frontend integration).
-- Provide descriptive commit messages that clearly explain the specific functionality added or changed.
-
-## Roadmap
-
-- WhatsApp notifications
-- Image upload (S3/MinIO)
-- Advanced reports & exports
-- Multi-tenant support
-- Inventory management
-- Automatic commission calculation
+- [ARCHITECTURE.md](./docs/ARCHITECTURE.md) - Estrutura de pacotes do Monorepo e padrões arquiteturais.
+- [API.md](./docs/API.md) - Referência de Endpoints REST e Esquema de Banco de Dados.
+- [TESTING.md](./docs/TESTING.md) - Estratégia de testes de qualidade no Backend e Frontend.
+- [SECURITY.md](./docs/SECURITY.md) - Detalhes do controle de autenticação e autorização por papéis.

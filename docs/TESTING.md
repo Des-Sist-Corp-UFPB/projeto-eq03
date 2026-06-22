@@ -4,23 +4,21 @@
 
 **Unit tests** — JUnit 5 + Mockito. Test service layer in isolation (mock repositories).
 
-**Integration tests** — `@SpringBootTest` + Testcontainers (PostgreSQL container). Test full request/response cycle via `MockMvc`.
+**Integration tests** — `@SpringBootTest` + Testcontainers (PostgreSQL container). Test full request/response cycle via `MockMvc` with Spring Security Mocking (`@WithMockUser`).
 
-Coverage target: **≥ 80%** on service and controller layers.
+Coverage target: Minimum **85%** on service and controller layers (enforced by `jacoco-maven-plugin`).
 
 Key scenarios:
 - Login with valid/invalid credentials
 - JWT validation and expiry
 - Permission denied (403) for unauthorized roles
 - CRUD success and failure paths for all entities
-- Appointment slot conflict detection
+- Appointment slot conflict detection (overlap rules)
 - Cash flow entry creation and listing
 
 ## Frontend
 
-**Unit tests** — Vitest + React Testing Library. Test components in isolation (mock API calls).
-
-**E2E tests** — Cypress. Runs against the dev environment.
+**Unit & Component tests** — Vitest + React Testing Library (RTL). Test pages, components, hooks (e.g., `usePermission`), and contexts (e.g., `AuthContext`) in isolation.
 
 Key scenarios:
 - Login flow (success, wrong password, expired token)
@@ -37,10 +35,10 @@ Key scenarios:
 cd salon-back
 ./mvnw test
 
-# Frontend unit
+# Frontend Unit/Component tests
 cd salon-front
 npm run test
 
-# Frontend E2E (dev server must be running)
-npm run cypress:open
+# Frontend Coverage report
+npm run test:coverage
 ```
