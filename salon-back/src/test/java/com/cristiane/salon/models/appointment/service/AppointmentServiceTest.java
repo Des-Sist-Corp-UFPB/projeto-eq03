@@ -18,6 +18,8 @@ import com.cristiane.salon.models.email.service.EmailService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -65,6 +67,12 @@ class AppointmentServiceTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private MercadoPagoPaymentService mercadoPagoPaymentService;
+
+    @Mock
+    private AuditLogService auditLogService;
 
     @InjectMocks
     private AppointmentService appointmentService;

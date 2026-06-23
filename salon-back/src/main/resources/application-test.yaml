@@ -11,3 +11,13 @@ logging:
   level:
     root: WARN
     com.cristiane.salon: INFO
+
+security:
+  jwt:
+    secret: test-secret-key-must-be-at-least-256-bits-long-otherwise-it-will-throw-exception!!
+    access-token-expiration-ms: 900000
+    refresh-token-expiration-ms: 604800000
+
+mercadopago:
+  access-token: test-token
+  webhook-secret: test_secret

@@ -149,5 +149,21 @@ class AppointmentControllerTest extends BaseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("DONE"));
+     }
+
+    @Test
+    @WithMockUser
+    void updatePaymentStatusReturns200() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED", "PAID", null, null
+        );
+        when(appointmentService.updatePaymentStatus(eq(1L), eq("PAID"))).thenReturn(response);
+
+        mvc.perform(patch("/v1/appointments/1/payment-status")
+                .param("paymentStatus", "PAID")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paymentStatus").value("PAID"));
     }
 }
