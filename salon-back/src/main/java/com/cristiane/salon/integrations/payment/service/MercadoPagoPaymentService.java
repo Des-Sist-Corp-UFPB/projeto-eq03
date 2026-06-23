@@ -1,4 +1,4 @@
-package com.cristiane.salon.integrations.payment;
+package com.cristiane.salon.integrations.payment.service;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
@@ -35,9 +35,27 @@ public class MercadoPagoPaymentService {
 
             log.info("PIX gerado no Mercado Pago com sucesso para o Agendamento ID: {}", appointmentId);
             return payment;
+        } catch (com.mercadopago.exceptions.MPApiException e) {
+            // Essa é a linha de mestre: ela pega o JSON exato que o Mercado Pago devolveu com o motivo da recusa
+            log.error("Mercado Pago recusou o pagamento! Status: {} | Detalhes: {}", 
+                      e.getApiResponse().getStatusCode(), 
+                      e.getApiResponse().getContent());
+                      
+            throw new BadRequestException("Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.");
         } catch (Exception e) {
             log.error("Erro ao comunicar com a API do Mercado Pago: ", e);
             throw new BadRequestException("Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.");
+        }
+    }
+
+    public Payment getPayment(Long paymentId) {
+        try {
+            PaymentClient client = new PaymentClient();
+            // Vai na API do Mercado Pago oficial consultar o status real desse ID
+            return client.get(paymentId);
+        } catch (Exception e) {
+            log.error("Erro ao buscar pagamento no Mercado Pago: ", e);
+            return null; // Se der erro (ex: ID falso de hacker), retorna nulo
         }
     }
 }

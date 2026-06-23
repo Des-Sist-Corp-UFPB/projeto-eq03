@@ -3,10 +3,12 @@ package com.cristiane.salon.models.appointment.service;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
+import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
+import com.cristiane.salon.models.appointment.enums.PaymentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import com.cristiane.salon.models.cashflow.entity.CashFlow;
 import com.cristiane.salon.models.cashflow.enums.CashFlowType;
@@ -19,7 +21,11 @@ import com.cristiane.salon.models.email.service.EmailService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
+import com.mercadopago.resources.payment.Payment;
+
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
@@ -32,6 +38,7 @@ import java.time.LocalTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AppointmentService {
@@ -43,6 +50,7 @@ public class AppointmentService {
     private final CashFlowRepository cashFlowRepository;
     private final FeatureFlagService featureFlagService;
     private final EmailService emailService;
+    private final MercadoPagoPaymentService mercadoPagoPaymentService;
 
     private static int blockingMinutes(SalonService service) {
         if (service.getDurationMin() != null && service.getDurationMin() > 0) {
@@ -231,6 +239,88 @@ public class AppointmentService {
         return appointmentRepository.findAll().stream()
                 .map(AppointmentResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public AppointmentResponse generatePixPayment(Long id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        User currentUser = getAuthenticatedUser();
+        boolean isAdmin = isStaff(currentUser);
+
+        // Regra 1: Apenas o dono do agendamento ou a equipe do salão podem gerar o PIX
+        if (!isAdmin && !appointment.getClient().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Você não tem permissão para gerar pagamento para este agendamento");
+        }
+
+        // Regra 2: Não gerar se já estiver pago
+        if (appointment.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new BadRequestException("Este agendamento já está pago.");
+        }
+
+        // Regra 3: Apenas gerar cobrança se o salão já confirmou o horário ou concluiu o serviço
+        if (appointment.getStatus() == AppointmentStatus.REQUESTED || appointment.getStatus() == AppointmentStatus.CANCELLED || appointment.getStatus() == AppointmentStatus.DECLINED) {
+            throw new BadRequestException("Apenas agendamentos confirmados ou concluídos podem gerar PIX de cobrança.");
+        }
+
+        BigDecimal amount = appointment.getSalonService().getPrice();
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new BadRequestException("Este serviço não possui um valor configurado para cobrança.");
+        }
+
+        // Gera a cobrança na API do Mercado Pago
+        String description = "Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName();
+        String payerEmail = appointment.getClient().getEmail();
+
+        Payment payment = mercadoPagoPaymentService.createPixPayment(amount, description, payerEmail, appointment.getId());
+
+        // Extrai o "Copia e Cola" de dentro da resposta complexa da API
+        String qrCodeCopiaECola = payment.getPointOfInteraction().getTransactionData().getQrCode();
+
+        // Salva os dados no banco e marca que está aguardando o cliente pagar
+        appointment.setPaymentId(payment.getId());
+        appointment.setPixQrCode(qrCodeCopiaECola);
+        appointment.setPaymentStatus(PaymentStatus.PENDING);
+
+        Appointment saved = appointmentRepository.save(appointment);
+        return AppointmentResponse.fromEntity(saved);
+    }
+
+    @Transactional
+    public void processPixPaymentWebhook(Long paymentId) {
+        // 1. Double-Check: Consulta o Mercado Pago
+        Payment payment = mercadoPagoPaymentService.getPayment(paymentId);
+        
+        // 2. Verifica se é um pagamento real e se foi aprovado
+        if (payment == null || !"approved".equals(payment.getStatus())) {
+            log.warn("Webhook ignorado. Pagamento {} não existe ou não está aprovado.", paymentId);
+            return; 
+        }
+
+        // 3. Pega aquele external_reference que enviamos na hora de criar o PIX
+        Long appointmentId = Long.valueOf(payment.getExternalReference());
+        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);
+
+        // 4. Se não achar o agendamento ou se já estiver pago, não faz nada (Idempotência)
+        if (appointment == null || appointment.getPaymentStatus() == PaymentStatus.PAID) {
+            return; 
+        }
+
+        // 5. MARCA COMO PAGO!
+        appointment.setPaymentStatus(PaymentStatus.PAID);
+        appointmentRepository.save(appointment);
+
+        // 6. Lança a receita no Fluxo de Caixa financeiro do salão
+        CashFlow cashFlow = new CashFlow();
+        cashFlow.setType(CashFlowType.INCOME);
+        cashFlow.setAmount(payment.getTransactionAmount());
+        cashFlow.setDescription("Pagamento PIX do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName());
+        cashFlow.setDate(java.time.LocalDate.now());
+        cashFlow.setAppointment(appointment);
+        cashFlowRepository.save(cashFlow);
+        
+        log.info("✅ SUCESSO! Agendamento {} marcado como PAGO e dinheiro lançado no Caixa.", appointmentId);
     }
 
     @Transactional

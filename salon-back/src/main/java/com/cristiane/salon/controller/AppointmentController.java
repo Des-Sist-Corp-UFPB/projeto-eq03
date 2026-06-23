@@ -79,4 +79,12 @@ public class AppointmentController {
     public ResponseEntity<AppointmentResponse> updateStatus(@PathVariable Long id, @RequestParam String status) {
         return ResponseEntity.ok(appointmentService.updateStatus(id, status));
     }
+
+    @PostMapping("/{id}/pix")
+    @PreAuthorize("isAuthenticated()") // Permite cliente e admin, pois a validação real de dono da reserva é feita lá no Service
+    @Auditable(action = "PIX_GENERATED", entityType = "Appointment", captureArgs = true)
+    @Operation(summary = "Gera a chave PIX (Copia e Cola) para um agendamento")
+    public ResponseEntity<AppointmentResponse> generatePix(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.generatePixPayment(id));
+    }
 }
