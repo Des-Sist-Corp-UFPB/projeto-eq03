@@ -21,6 +21,23 @@ public record AppointmentResponse(
         Long paymentId,
         String pixQrCode
 ) {
+    public AppointmentResponse(
+            Long id,
+            Long clientId,
+            String clientName,
+            Long employeeId,
+            String employeeName,
+            Long serviceId,
+            String serviceName,
+            LocalDateTime scheduledAt,
+            LocalDate preferredDate,
+            String clientNotes,
+            String status
+    ) {
+        this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
+                scheduledAt, preferredDate, clientNotes, status, null, null, null);
+    }
+
     public static AppointmentResponse fromEntity(Appointment appointment) {
         return new AppointmentResponse(
                 appointment.getId(),

@@ -80,6 +80,14 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.updateStatus(id, status));
     }
 
+    @PatchMapping("/{id}/payment-status")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Auditable(action = "APPOINTMENT_PAYMENT_STATUS_CHANGED", entityType = "Appointment", captureArgs = true)
+    @Operation(summary = "Atualiza o status de pagamento de um agendamento (Admin/Gerente/Funcionária)")
+    public ResponseEntity<AppointmentResponse> updatePaymentStatus(@PathVariable Long id, @RequestParam String paymentStatus) {
+        return ResponseEntity.ok(appointmentService.updatePaymentStatus(id, paymentStatus));
+    }
+
     @PostMapping("/{id}/pix")
     @PreAuthorize("isAuthenticated()") // Permite cliente e admin, pois a validação real de dono da reserva é feita lá no Service
     @Auditable(action = "PIX_GENERATED", entityType = "Appointment", captureArgs = true)

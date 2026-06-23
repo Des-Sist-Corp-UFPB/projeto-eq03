@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagamento Confirmado!</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f8f9fa;
+            color: #333333;
+            margin: 0;
+            padding: 0;
+            -webkit-font-smoothing: antialiased;
+        }
+        .container {
+            max-width: 600px;
+            margin: 40px auto;
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+            border: 1px solid #eaeaea;
+        }
+        .header {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            padding: 40px 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 24px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+        .content {
+            padding: 40px 30px;
+        }
+        .intro-text {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 24px;
+            color: #555555;
+        }
+        .details-card {
+            background-color: #fdfdfd;
+            border: 1px solid #f0f0f0;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+        }
+        .details-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #f5f5f5;
+        }
+        .details-row:last-child {
+            border-bottom: none;
+        }
+        .label {
+            font-weight: 600;
+            color: #666666;
+            font-size: 14px;
+            width: 35%;
+        }
+        .value {
+            color: #111111;
+            font-size: 14px;
+            width: 65%;
+            text-align: right;
+            font-weight: 500;
+        }
+        .alert-box {
+            background-color: #ecfdf5;
+            border-left: 4px solid #10b981;
+            padding: 16px;
+            border-radius: 4px;
+            margin-top: 12px;
+            color: #065f46;
+            font-size: 14px;
+            font-weight: 500;
+        }
+        .footer {
+            background-color: #f8f9fa;
+            padding: 24px;
+            text-align: center;
+            font-size: 12px;
+            color: #888888;
+            border-top: 1px solid #eaeaea;
+        }
+        .footer p {
+            margin: 4px 0;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Pagamento Confirmado!</h1>
+        </div>
+        <div class="content">
+            <p class="intro-text">
+                Olá <strong th:text="${appointment.client.name}">Ana</strong>,<br><br>
+                Recebemos o seu pagamento via PIX para o agendamento abaixo. Seu horário está totalmente confirmado e pago!
+            </p>
+            <div class="details-card">
+                <div class="details-row">
+                    <span class="label">Serviço</span>
+                    <span class="value" th:text="${appointment.salonService.name}">Corte Feminino</span>
+                </div>
+                <div class="details-row">
+                    <span class="label">Profissional</span>
+                    <span class="value" th:text="${appointment.employee.user.name}">Cristiane Moura</span>
+                </div>
+                <div class="details-row">
+                    <span class="label">Data & Horário</span>
+                    <span class="value" th:text="${appointment.scheduledAt != null ? #temporals.format(appointment.scheduledAt, 'dd/MM/yyyy HH:mm') : 'Não definido'}">25/05/2026 às 14:00</span>
+                </div>
+                <div class="details-row">
+                    <span class="label">Valor Pago</span>
+                    <span class="value" th:text="${appointment.salonService.price != null ? 'R$ ' + #numbers.formatDecimal(appointment.salonService.price, 1, 2) : 'Não definido'}">R$ 85,00</span>
+                </div>
+            </div>
+            <div class="alert-box">
+                Obrigado pelo pagamento antecipado! Estamos ansiosos para receber você. Caso precise de suporte, entre em contato pelo nosso telefone.
+            </div>
+        </div>
+        <div class="footer">
+            <p>Este é um e-mail automático enviado por <strong>Sass Salon</strong>.</p>
+            <p>&copy; 2026 Cristiane Moura Beauty Salon. Todos os direitos reservados.</p>
+        </div>
+    </div>
+</body>
+</html>

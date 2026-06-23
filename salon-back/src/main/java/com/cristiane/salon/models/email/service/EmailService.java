@@ -137,6 +137,49 @@ public class EmailService {
     }
 
     @Async
+    public void sendPaymentConfirmationNotificationToClient(Appointment appointment) {
+        if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
+            log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
+            return;
+        }
+
+        String clientEmail = appointment.getClient().getEmail();
+        if (clientEmail == null || clientEmail.trim().isEmpty()) {
+            log.info("Cliente não possui e-mail cadastrado.");
+            return;
+        }
+
+        try {
+            Context context = new Context();
+            context.setVariable("appointment", appointment);
+            String htmlContent = templateEngine.process("mail/payment-confirmation", context);
+
+            sendViaHttpApi(clientEmail, "Pagamento Recebido e Confirmado!", htmlContent, businessEmail);
+            log.info("E-mail de confirmação de pagamento enviado com sucesso para: {}", clientEmail);
+
+            auditLogService.logAction(
+                    null,
+                    "SYSTEM",
+                    "EMAIL_SENT",
+                    "Appointment",
+                    appointment.getId(),
+                    "E-mail de confirmação de pagamento enviado para: " + clientEmail,
+                    "SUCCESS");
+        } catch (Exception e) {
+            log.warn("Falha ao enviar e-mail de confirmação de pagamento para o cliente {}: {}", clientEmail, e.getMessage());
+            auditLogService.logAction(
+                    null,
+                    "SYSTEM",
+                    "EMAIL_SENT",
+                    "Appointment",
+                    appointment.getId(),
+                    "Falha ao enviar e-mail de confirmação de pagamento para: " + clientEmail,
+                    "FAILURE",
+                    e.getMessage());
+        }
+    }
+
+    @Async
     public void sendCancellationNotification(Appointment appointment) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");

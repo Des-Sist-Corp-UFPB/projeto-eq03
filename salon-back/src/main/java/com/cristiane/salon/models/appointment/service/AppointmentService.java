@@ -21,6 +21,7 @@ import com.cristiane.salon.models.email.service.EmailService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
+import com.cristiane.salon.models.audit.AuditLogService;
 import com.mercadopago.resources.payment.Payment;
 
 import lombok.RequiredArgsConstructor;
@@ -51,6 +52,7 @@ public class AppointmentService {
     private final FeatureFlagService featureFlagService;
     private final EmailService emailService;
     private final MercadoPagoPaymentService mercadoPagoPaymentService;
+    private final AuditLogService auditLogService;
 
     private static int blockingMinutes(SalonService service) {
         if (service.getDurationMin() != null && service.getDurationMin() > 0) {
@@ -323,6 +325,23 @@ public class AppointmentService {
         cashFlow.setAppointment(appointment);
         cashFlowRepository.save(cashFlow);
         
+        try {
+            emailService.sendPaymentConfirmationNotificationToClient(appointment);
+        } catch (Exception e) {
+            log.error("Erro ao enviar e-mail de confirmação de pagamento (efeito colateral): {}", e.getMessage());
+        }
+
+        // 7. Registra no log de auditoria
+        auditLogService.logAction(
+                appointment.getClient().getId(),
+                appointment.getClient().getEmail(),
+                "PIX_PAYMENT_CONFIRMED",
+                "Appointment",
+                appointment.getId(),
+                "Pagamento PIX do agendamento #" + appointment.getId() + " recebido com sucesso via webhook.",
+                "SUCCESS"
+        );
+        
         log.info("✅ SUCESSO! Agendamento {} marcado como PAGO e dinheiro lançado no Caixa.", appointmentId);
     }
 
@@ -405,6 +424,47 @@ public class AppointmentService {
             return AppointmentResponse.fromEntity(saved);
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Status inválido");
+        }
+    }
+
+    @Transactional
+    public AppointmentResponse updatePaymentStatus(Long id, String paymentStatusStr) {
+        if (!isStaff(getAuthenticatedUser())) {
+            throw new UnauthorizedException("Apenas a equipe pode atualizar o status de pagamento");
+        }
+
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        try {
+            PaymentStatus paymentStatus = PaymentStatus.valueOf(paymentStatusStr.toUpperCase());
+            appointment.setPaymentStatus(paymentStatus);
+
+            if (paymentStatus == PaymentStatus.PAID) {
+                SalonService svc = appointment.getSalonService();
+                BigDecimal servicePrice = svc.getPrice();
+                boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
+
+                if (shouldAutoBill) {
+                    boolean alreadyBilled = cashFlowRepository.findAll().stream()
+                            .anyMatch(cf -> cf.getAppointment() != null && cf.getAppointment().getId().equals(id));
+
+                    if (!alreadyBilled) {
+                        CashFlow cashFlow = new CashFlow();
+                        cashFlow.setType(CashFlowType.INCOME);
+                        cashFlow.setAmount(servicePrice);
+                        cashFlow.setDescription("Pagamento (Confirmado Admin) do agendamento #" + appointment.getId() + " - " + svc.getName());
+                        cashFlow.setDate(java.time.LocalDate.now());
+                        cashFlow.setAppointment(appointment);
+                        cashFlowRepository.save(cashFlow);
+                    }
+                }
+            }
+
+            Appointment saved = appointmentRepository.save(appointment);
+            return AppointmentResponse.fromEntity(saved);
+        } catch (IllegalArgumentException e) {
+            throw new BadRequestException("Status de pagamento inválido");
         }
     }
 }
