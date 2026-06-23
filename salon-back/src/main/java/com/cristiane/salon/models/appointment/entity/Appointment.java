@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.appointment.entity;
 
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
+import com.cristiane.salon.models.appointment.enums.PaymentStatus;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.service.entity.SalonService;
 import com.cristiane.salon.models.user.entity.User;
@@ -56,4 +57,16 @@ public class Appointment {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private AppointmentStatus status = AppointmentStatus.PENDING;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "payment_status", length = 20)
+    private PaymentStatus paymentStatus = PaymentStatus.PENDING;
+
+    /** ID gerado pelo Mercado Pago para rastrear o pagamento via Webhook */
+    @Column(name = "payment_id")
+    private Long paymentId;
+
+    /** A string "Copia e Cola" do PIX gerada pela API */
+    @Column(name = "pix_qr_code", columnDefinition = "TEXT")
+    private String pixQrCode;
 }

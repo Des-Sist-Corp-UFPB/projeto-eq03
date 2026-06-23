@@ -25,3 +25,6 @@ logging:
     name: logs/salon.log
     max-size: 10MB
     max-history: 10
+
+mercadopago:
+  access-token: ${MERCADO_PAGO_ACCESS_TOKEN}

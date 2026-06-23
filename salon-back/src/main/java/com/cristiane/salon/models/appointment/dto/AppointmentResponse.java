@@ -16,7 +16,10 @@ public record AppointmentResponse(
         LocalDateTime scheduledAt,
         LocalDate preferredDate,
         String clientNotes,
-        String status
+        String status,
+        String paymentStatus,
+        Long paymentId,
+        String pixQrCode
 ) {
     public static AppointmentResponse fromEntity(Appointment appointment) {
         return new AppointmentResponse(
@@ -30,7 +33,10 @@ public record AppointmentResponse(
                 appointment.getScheduledAt(),
                 appointment.getPreferredDate(),
                 appointment.getClientNotes(),
-                appointment.getStatus().name()
+                appointment.getStatus().name(),
+                appointment.getPaymentStatus() != null ? appointment.getPaymentStatus().name() : null,
+                appointment.getPaymentId(),
+                appointment.getPixQrCode()
         );
     }
 }
