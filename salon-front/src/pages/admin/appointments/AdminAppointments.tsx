@@ -52,9 +52,10 @@ export const AdminAppointments = () => {
   const [confirmSaving, setConfirmSaving] = useState(false);
 
   const [showPixModal, setShowPixModal] = useState(false);
-  const [currentPixCode, setCurrentPixCode] = useState('');
+  const [currentPixCode, setCurrentPixCode] = useState<string | null>(null);
   const [currentServiceName, setCurrentServiceName] = useState('');
   const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [currentPixAppointmentId, setCurrentPixAppointmentId] = useState<number | null>(null);
   const [isGeneratingPix, setIsGeneratingPix] = useState(false);
 
   const parseDate = (dateValue: string | number[] | null | undefined): number => {
@@ -198,18 +199,24 @@ export const AdminAppointments = () => {
     }
   };
 
-  const handlePayWithPix = async (id: number, serviceName: string, price: number | null) => {
+  const handleOpenPixModal = (id: number, serviceName: string, price: number | null, existingQrCode?: string | null) => {
+    setCurrentPixAppointmentId(id);
+    setCurrentServiceName(serviceName);
+    setCurrentPrice(price);
+    setCurrentPixCode(existingQrCode ?? null);
+    setShowPixModal(true);
+  };
+
+  const handleGeneratePix = async () => {
+    if (!currentPixAppointmentId) return;
     setIsGeneratingPix(true);
     try {
-      const data = await appointmentsApi.generatePix(id);
+      const data = await appointmentsApi.generatePix(currentPixAppointmentId);
       if (data.pixQrCode) {
         setCurrentPixCode(data.pixQrCode);
-        setCurrentServiceName(serviceName);
-        setCurrentPrice(price);
-        setShowPixModal(true);
         setAppointments((prev) =>
           prev.map((apt) =>
-            apt.id === id
+            apt.id === currentPixAppointmentId
               ? {
                   ...apt,
                   paymentStatus: data.paymentStatus || 'PENDING',
@@ -434,12 +441,7 @@ export const AdminAppointments = () => {
                   {item.pixQrCode ? (
                     <button
                       type="button"
-                      onClick={() => {
-                        setCurrentPixCode(item.pixQrCode!);
-                        setCurrentServiceName(item.serviceName);
-                        setCurrentPrice(price);
-                        setShowPixModal(true);
-                      }}
+                      onClick={() => handleOpenPixModal(item.id, item.serviceName, price, item.pixQrCode)}
                       className="w-full text-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
                     >
                       Ver PIX
@@ -447,11 +449,10 @@ export const AdminAppointments = () => {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => handlePayWithPix(item.id, item.serviceName, price)}
-                      disabled={isGeneratingPix}
-                      className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-lg text-xs font-semibold transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                      onClick={() => handleOpenPixModal(item.id, item.serviceName, price, null)}
+                      className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
                     >
-                      {isGeneratingPix ? 'Gerando...' : 'Pagar com PIX'}
+                      Pagar com PIX
                     </button>
                   )}
                 </>
@@ -670,10 +671,15 @@ export const AdminAppointments = () => {
 
       <PixPaymentModal
         show={showPixModal}
-        onHide={() => setShowPixModal(false)}
+        onHide={() => {
+          setShowPixModal(false);
+          setCurrentPixCode(null);
+        }}
+        onGeneratePix={handleGeneratePix}
         pixQrCode={currentPixCode}
         serviceName={currentServiceName}
         price={currentPrice}
+        isGenerating={isGeneratingPix}
       />
     </>
   );

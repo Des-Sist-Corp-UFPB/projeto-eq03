@@ -15,8 +15,9 @@ export const MyAppointments = () => {
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
 
   const [showPixModal, setShowPixModal] = useState(false);
-  const [currentPixCode, setCurrentPixCode] = useState('');
+  const [currentPixCode, setCurrentPixCode] = useState<string | null>(null);
   const [currentServiceName, setCurrentServiceName] = useState('');
+  const [currentPixAppointmentId, setCurrentPixAppointmentId] = useState<number | null>(null);
   const [isGeneratingPix, setIsGeneratingPix] = useState(false);
 
   const parseInstant = (dateValue: string | number[] | null | undefined): number => {
@@ -66,17 +67,23 @@ export const MyAppointments = () => {
     }
   };
 
-  const handlePayWithPix = async (id: number, serviceName: string) => {
+  const handleOpenPixModal = (id: number, serviceName: string, existingQrCode?: string | null) => {
+    setCurrentPixAppointmentId(id);
+    setCurrentServiceName(serviceName);
+    setCurrentPixCode(existingQrCode ?? null);
+    setShowPixModal(true);
+  };
+
+  const handleGeneratePix = async () => {
+    if (!currentPixAppointmentId) return;
     setIsGeneratingPix(true);
     try {
-      const data = await appointmentsApi.generatePix(id);
+      const data = await appointmentsApi.generatePix(currentPixAppointmentId);
       if (data.pixQrCode) {
         setCurrentPixCode(data.pixQrCode);
-        setCurrentServiceName(serviceName);
-        setShowPixModal(true);
         setAppointments((prev) =>
           prev.map((apt) =>
-            apt.id === id
+            apt.id === currentPixAppointmentId
               ? {
                   ...apt,
                   paymentStatus: data.paymentStatus || 'PENDING',
@@ -290,11 +297,7 @@ export const MyAppointments = () => {
                           {apt.pixQrCode ? (
                             <button
                               type="button"
-                              onClick={() => {
-                                setCurrentPixCode(apt.pixQrCode!);
-                                setCurrentServiceName(apt.serviceName);
-                                setShowPixModal(true);
-                              }}
+                              onClick={() => handleOpenPixModal(apt.id, apt.serviceName, apt.pixQrCode)}
                               className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                             >
                               Ver QR Code PIX
@@ -302,11 +305,10 @@ export const MyAppointments = () => {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => handlePayWithPix(apt.id, apt.serviceName)}
-                              disabled={isGeneratingPix}
-                              className="w-full py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-xl text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+                              onClick={() => handleOpenPixModal(apt.id, apt.serviceName, null)}
+                              className="w-full py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-xl text-xs font-semibold transition-all cursor-pointer"
                             >
-                              {isGeneratingPix ? 'Gerando PIX...' : 'Pagar com PIX'}
+                              Pagar com PIX
                             </button>
                           )}
                         </>
@@ -344,9 +346,14 @@ export const MyAppointments = () => {
 
       <PixPaymentModal
         show={showPixModal}
-        onHide={() => setShowPixModal(false)}
+        onHide={() => {
+          setShowPixModal(false);
+          setCurrentPixCode(null);
+        }}
+        onGeneratePix={handleGeneratePix}
         pixQrCode={currentPixCode}
         serviceName={currentServiceName}
+        isGenerating={isGeneratingPix}
       />
     </div>
   );
