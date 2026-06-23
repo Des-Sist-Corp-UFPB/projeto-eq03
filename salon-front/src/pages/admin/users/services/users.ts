@@ -5,6 +5,7 @@ export interface UserData {
   name: string;
   email: string;
   phone: string;
+  cpf?: string | null;
   role: string;
   active: boolean;
   createdAt: string;
@@ -15,6 +16,7 @@ export interface UserUpdateRequest {
   email?: string;
   password?: string;
   phone?: string;
+  cpf?: string;
   active?: boolean;
   roleId?: number;
 }
@@ -26,6 +28,10 @@ export interface UserCreateRequest {
   phone?: string;
   active?: boolean;
   roleId: number;
+}
+
+export interface UpdateCpfRequest {
+  cpf: string;
 }
 
 export const usersApi = {
@@ -57,6 +63,11 @@ export const usersApi = {
 
   restore: async (id: number) => {
     const { data } = await api.patch<UserData>(`/users/${id}/restore`);
+    return data;
+  },
+
+  updateMyCpf: async (cpf: string) => {
+    const { data } = await api.patch<UserData>('/users/me/cpf', { cpf });
     return data;
   },
 };

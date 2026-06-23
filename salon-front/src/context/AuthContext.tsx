@@ -8,6 +8,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   login: (accessToken: string, refreshToken: string, redirect?: boolean) => void;
   logout: () => void;
+  updateUserCpf: (cpf: string) => void;
   isLoading: boolean;
 }
 
@@ -28,6 +29,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           role: decoded.role,
           userId: decoded.userId,
           authorities: decoded.authorities || [],
+          cpf: null,
         });
       } catch {
         localStorage.removeItem('@Salon:token');
@@ -48,6 +50,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       role: decoded.role,
       userId: decoded.userId,
       authorities: decoded.authorities || [],
+      cpf: null,
     };
 
     setUser(userData);
@@ -69,9 +72,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     window.location.href = '/login';
   }, []);
 
+  /**
+   * Atualiza o CPF do usuário em memória sem recarregar a página.
+   * Chamado após o fluxo JIT de coleta no PixPaymentModal.
+   */
+  const updateUserCpf = useCallback((cpf: string) => {
+    setUser((prev) => (prev ? { ...prev, cpf } : prev));
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, isLoading }}>
+    <AuthContext.Provider value={{ user, isAuthenticated: !!user, login, logout, updateUserCpf, isLoading }}>
       {children}
     </AuthContext.Provider>
   );
 };
+

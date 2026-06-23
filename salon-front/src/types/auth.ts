@@ -17,4 +17,5 @@ export interface UserContextData {
   role: string;
   userId: number;
   authorities: string[];
+  cpf?: string | null;
 }
