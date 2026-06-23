@@ -62,6 +62,19 @@ const mockAppointments = [
   },
 ];
 
+const renderMyAppointments = () => {
+  return customRender(<MyAppointments />, {
+    user: {
+      email: 'client@salao.com',
+      role: 'CLIENTE',
+      userId: 5,
+      authorities: [],
+      cpf: '12345678909',
+    },
+    isAuthenticated: true,
+  });
+};
+
 describe('MyAppointments Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -83,7 +96,7 @@ describe('MyAppointments Component', () => {
 
   it('renders loading indicator then lists appointments with proper badges', async () => {
     await act(async () => {
-      customRender(<MyAppointments />);
+      renderMyAppointments();
     });
 
     expect(screen.getByText('Minha Agenda')).toBeInTheDocument();
@@ -102,7 +115,7 @@ describe('MyAppointments Component', () => {
 
   it('triggers generatePix when clicking Pagar com PIX on unpaid confirmed appointment without pixQrCode', async () => {
     await act(async () => {
-      customRender(<MyAppointments />);
+      renderMyAppointments();
     });
 
     const payBtn = screen.getByRole('button', { name: 'Pagar com PIX' });
@@ -121,7 +134,7 @@ describe('MyAppointments Component', () => {
 
   it('opens modal immediately without generating new PIX if pixQrCode is already present', async () => {
     await act(async () => {
-      customRender(<MyAppointments />);
+      renderMyAppointments();
     });
 
     const viewPixBtn = screen.getByRole('button', { name: 'Ver QR Code PIX' });
@@ -140,7 +153,7 @@ describe('MyAppointments Component', () => {
     vi.mocked(appointmentsApi.cancel).mockResolvedValue({} as any);
 
     await act(async () => {
-      customRender(<MyAppointments />);
+      renderMyAppointments();
     });
 
     const cancelButtons = screen.getAllByRole('button', { name: 'Cancelar Agendamento' });

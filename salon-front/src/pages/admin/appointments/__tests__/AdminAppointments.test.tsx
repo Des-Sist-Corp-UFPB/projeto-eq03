@@ -93,6 +93,19 @@ const mockUsers = [
   { id: 6, name: 'Joao', role: 'CLIENTE', email: 'joao@salao.com', phone: '999999999', active: true, createdAt: '2026-06-16T15:00:00Z' },
 ];
 
+const renderAdminAppointments = () => {
+  return customRender(<AdminAppointments />, {
+    user: {
+      email: 'admin@salao.com',
+      role: 'ADMIN',
+      userId: 1,
+      authorities: [],
+      cpf: '12345678909',
+    },
+    isAuthenticated: true,
+  });
+};
+
 describe('AdminAppointments Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -118,7 +131,7 @@ describe('AdminAppointments Component', () => {
 
   it('renders the appointments table and lists all entries', async () => {
     await act(async () => {
-      customRender(<AdminAppointments />);
+      renderAdminAppointments();
     });
 
     expect(screen.getByText('Agendamentos (Admin)')).toBeInTheDocument();
@@ -130,7 +143,7 @@ describe('AdminAppointments Component', () => {
 
   it('triggers updateStatus when the appointment status select is changed', async () => {
     await act(async () => {
-      customRender(<AdminAppointments />);
+      renderAdminAppointments();
     });
 
     const selects = screen.getAllByRole('combobox');
@@ -149,7 +162,7 @@ describe('AdminAppointments Component', () => {
 
   it('triggers updatePaymentStatus when the payment status select is changed', async () => {
     await act(async () => {
-      customRender(<AdminAppointments />);
+      renderAdminAppointments();
     });
 
     const selects = screen.getAllByRole('combobox');
@@ -167,7 +180,7 @@ describe('AdminAppointments Component', () => {
 
   it('triggers generatePix when clicking Pagar com PIX', async () => {
     await act(async () => {
-      customRender(<AdminAppointments />);
+      renderAdminAppointments();
     });
 
     const payBtn = screen.getByRole('button', { name: 'Pagar com PIX' });
@@ -188,7 +201,7 @@ describe('AdminAppointments Component', () => {
     vi.mocked(appointmentsApi.cancel).mockResolvedValue({} as any);
 
     await act(async () => {
-      customRender(<AdminAppointments />);
+      renderAdminAppointments();
     });
 
     const cancelButtons = screen.getAllByRole('button', { name: 'Cancelar' });
@@ -212,7 +225,7 @@ describe('AdminAppointments Component', () => {
     vi.mocked(appointmentsApi.confirm).mockResolvedValue({} as any);
 
     await act(async () => {
-      customRender(<AdminAppointments />);
+      renderAdminAppointments();
     });
 
     const defineTimeBtn = screen.getByRole('button', { name: 'Definir horário' });

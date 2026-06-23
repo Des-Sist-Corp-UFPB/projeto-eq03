@@ -4,6 +4,7 @@ import type { RenderOptions } from '@testing-library/react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
 import type { UserContextData } from '../types/auth';
+import { vi } from 'vitest';
 
 interface CustomRenderOptions extends Omit<RenderOptions, 'queries'> {
   route?: string;
@@ -11,6 +12,7 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'queries'> {
   isAuthenticated?: boolean;
   login?: (accessToken: string, refreshToken: string, redirect?: boolean) => void;
   logout?: () => void;
+  updateUserCpf?: (cpf: string) => void;
   isLoading?: boolean;
 }
 
@@ -22,6 +24,7 @@ const customRender = (
     isAuthenticated = false,
     login = () => {},
     logout = () => {},
+    updateUserCpf = vi.fn(),
     isLoading = false,
     ...renderOptions
   }: CustomRenderOptions = {}
@@ -30,7 +33,7 @@ const customRender = (
 
   const Wrapper = ({ children }: { children: ReactNode }) => {
     return (
-      <AuthContext.Provider value={{ user, isAuthenticated, login, logout, isLoading }}>
+      <AuthContext.Provider value={{ user, isAuthenticated, login, logout, updateUserCpf, isLoading }}>
         <BrowserRouter>{children}</BrowserRouter>
       </AuthContext.Provider>
     );

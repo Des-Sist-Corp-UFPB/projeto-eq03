@@ -13,6 +13,7 @@ describe('usePermission', () => {
       isAuthenticated: false,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 
@@ -31,6 +32,7 @@ describe('usePermission', () => {
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 
@@ -49,6 +51,7 @@ describe('usePermission', () => {
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 
@@ -67,6 +70,7 @@ describe('usePermission', () => {
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 
@@ -85,6 +89,7 @@ describe('usePermission', () => {
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 
@@ -103,6 +108,7 @@ describe('usePermission', () => {
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 
@@ -122,6 +128,7 @@ describe('usePermission', () => {
       isAuthenticated: true,
       login: vi.fn(),
       logout: vi.fn(),
+      updateUserCpf: vi.fn(),
       isLoading: false,
     });
 

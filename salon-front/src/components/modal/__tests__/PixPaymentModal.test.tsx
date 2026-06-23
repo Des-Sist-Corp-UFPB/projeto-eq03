@@ -2,10 +2,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, act, render } from '@testing-library/react';
 import { PixPaymentModal } from '../PixPaymentModal';
 
+vi.mock('../../../hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: {
+      email: 'client@salao.com',
+      role: 'CLIENTE',
+      userId: 5,
+      authorities: [],
+      cpf: '12345678909',
+    },
+    updateUserCpf: vi.fn(),
+  }),
+}));
+
 describe('PixPaymentModal Component', () => {
   const defaultProps = {
     show: true,
     onHide: vi.fn(),
+    onGeneratePix: vi.fn(),
     pixQrCode: '00020101021226870014br.gov.bcb.pix2565qr.mercadopago.com/pix/v2/foo-bar-id',
     serviceName: 'Corte de Cabelo Feminino',
     price: 85.5,
