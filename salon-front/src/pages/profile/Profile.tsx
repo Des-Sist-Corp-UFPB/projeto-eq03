@@ -7,12 +7,31 @@ import { Save, User as UserIcon } from 'lucide-react';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 
+interface ProfileFormData extends UserUpdateRequest {
+  cpf?: string;
+}
+
+// Aplica máscara ###.###.###-## enquanto o usuário digita
+const formatCpf = (value: string) => {
+  const digits = value.replace(/\D/g, '').slice(0, 11);
+  return digits
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+};
+
 export const Profile = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
 
-  const { register, handleSubmit, setValue } = useForm<UserUpdateRequest>();
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    formState: { errors },
+  } = useForm<ProfileFormData>();
 
   const { error: showError, success: showSuccess } = useAlert();
 
@@ -25,6 +44,9 @@ export const Profile = () => {
         setValue('name', data.name);
         setValue('email', data.email);
         setValue('phone', data.phone || '');
+        if (data.cpf) {
+          setValue('cpf', formatCpf(data.cpf));
+        }
       } catch (err) {
         const msg = getApiErrorMessage(err, 'Erro ao carregar os dados do perfil.');
         await showError(msg);
@@ -36,14 +58,18 @@ export const Profile = () => {
     loadProfile();
   }, [user, setValue]);
 
-  const onSubmit = async (data: UserUpdateRequest) => {
+  const onSubmit = async (data: ProfileFormData) => {
     if (!user?.userId) return;
 
     setIsSaving(true);
     try {
-      const updateData = { ...data };
+      const updateData: UserUpdateRequest = { ...data };
       if (!updateData.password) {
         delete updateData.password;
+      }
+      // Remove máscara antes de enviar ao backend (somente dígitos)
+      if (updateData.cpf) {
+        updateData.cpf = updateData.cpf.replace(/\D/g, '');
       }
 
       await profileApi.updateProfile(user.userId, updateData);
@@ -55,6 +81,8 @@ export const Profile = () => {
       setIsSaving(false);
     }
   };
+
+  const cpfValue = watch('cpf') || '';
 
   if (isLoading) {
     return (
@@ -83,12 +111,20 @@ export const Profile = () => {
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
-              <label className="label-premium">Nome Completo</label>
+              <label className="label-premium">
+                Nome Completo <span className="text-rose-500">*</span>
+              </label>
               <input
                 type="text"
-                {...register('name', { required: true })}
-                className="input-premium"
+                {...register('name', {
+                  required: 'Nome é obrigatório',
+                  minLength: { value: 3, message: 'Mínimo 3 caracteres' },
+                })}
+                className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
+              {errors.name && (
+                <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -103,7 +139,9 @@ export const Profile = () => {
           </div>
 
           <div className="space-y-1.5">
-            <label className="label-premium">E-mail</label>
+            <label className="label-premium">
+              E-mail <span className="text-rose-500">*</span>
+            </label>
             <input
               type="email"
               {...register('email', { required: true })}
@@ -115,15 +153,46 @@ export const Profile = () => {
             </p>
           </div>
 
+          {/* CPF — opcional, coletado preferencialmente no momento do PIX */}
+          <div className="space-y-1.5">
+            <label className="label-premium">
+              CPF{' '}
+              <span className="text-xs text-[#7a7074] font-normal">(Opcional — necessário para pagamentos via PIX)</span>
+            </label>
+            <input
+              type="text"
+              placeholder="000.000.000-00"
+              value={cpfValue}
+              {...register('cpf', {
+                validate: (v) => {
+                  if (!v) return true;
+                  const digits = v.replace(/\D/g, '');
+                  return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
+                },
+              })}
+              onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
+              className={`input-premium ${errors.cpf ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              maxLength={14}
+            />
+            {errors.cpf && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="label-premium">Nova Senha</label>
               <input
                 type="password"
-                {...register('password')}
+                {...register('password', {
+                  minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+                })}
                 placeholder="Deixe em branco para não alterar"
-                className="input-premium"
+                className={`input-premium ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
+              {errors.password && (
+                <span className="text-xs text-rose-500 font-semibold">{errors.password.message}</span>
+              )}
             </div>
           </div>
 
@@ -142,3 +211,4 @@ export const Profile = () => {
     </div>
   );
 };
+
