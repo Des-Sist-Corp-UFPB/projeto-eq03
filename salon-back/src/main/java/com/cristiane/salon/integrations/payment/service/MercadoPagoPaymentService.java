@@ -6,6 +6,7 @@ import java.time.OffsetDateTime;
 import org.springframework.stereotype.Service;
 
 import com.cristiane.salon.exception.BadRequestException;
+import com.mercadopago.client.common.IdentificationRequest;
 import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
@@ -28,6 +29,12 @@ public class MercadoPagoPaymentService {
                     .dateOfExpiration(OffsetDateTime.now().plusHours(24))
                     .payer(PaymentPayerRequest.builder()
                             .email(payerEmail)
+                            .firstName("Comprador")
+                            .lastName("de Teste")
+                            .identification(IdentificationRequest.builder()
+                                    .type("CPF")
+                                    .number("12345678909")
+                                    .build())
                             .build())
                     .build();
 

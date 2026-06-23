@@ -271,7 +271,10 @@ public class AppointmentService {
 
         // Gera a cobrança na API do Mercado Pago
         String description = "Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName();
-        String payerEmail = appointment.getClient().getEmail();
+        // String payerEmail = appointment.getClient().getEmail();
+
+        // Fixe o e-mail do Comprador de Teste
+        String payerEmail = "cliente.pagador.teste@gmail.com";
 
         Payment payment = mercadoPagoPaymentService.createPixPayment(amount, description, payerEmail, appointment.getId());
 
