@@ -271,14 +271,19 @@ public class AppointmentService {
             throw new BadRequestException("Este serviço não possui um valor configurado para cobrança.");
         }
 
-        // Gera a cobrança na API do Mercado Pago
+        // Verifica se o cliente possui CPF cadastrado (obrigatório para PIX)
+        String clientCpf = appointment.getClient().getCpf();
+        if (clientCpf == null || clientCpf.isBlank()) {
+            throw new BadRequestException("CPF é obrigatório para gerar o PIX. Por favor, cadastre seu CPF antes de continuar.");
+        }
+
+        // Gera a cobrança na API do Mercado Pago com dados reais do cliente
         String description = "Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName();
-        // String payerEmail = appointment.getClient().getEmail();
+        String payerEmail = appointment.getClient().getEmail();
+        String payerName = appointment.getClient().getName();
 
-        // Fixe o e-mail do Comprador de Teste
-        String payerEmail = "cliente.pagador.teste@gmail.com";
+        Payment payment = mercadoPagoPaymentService.createPixPayment(amount, description, payerEmail, payerName, clientCpf, appointment.getId());
 
-        Payment payment = mercadoPagoPaymentService.createPixPayment(amount, description, payerEmail, appointment.getId());
 
         // Extrai o "Copia e Cola" de dentro da resposta complexa da API
         String qrCodeCopiaECola = payment.getPointOfInteraction().getTransactionData().getQrCode();

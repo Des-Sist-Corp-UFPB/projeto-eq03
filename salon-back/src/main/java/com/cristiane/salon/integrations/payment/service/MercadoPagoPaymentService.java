@@ -17,9 +17,14 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 public class MercadoPagoPaymentService {
-    public Payment createPixPayment(BigDecimal amount, String description, String payerEmail, Long appointmentId) {
+    public Payment createPixPayment(BigDecimal amount, String description, String payerEmail, String payerName, String payerCpf, Long appointmentId) {
         try {
             PaymentClient client = new PaymentClient();
+
+            // Divide o nome completo em primeiro e último nome para a API do Mercado Pago
+            String[] nameParts = (payerName != null ? payerName.trim() : "Cliente").split("\\s+", 2);
+            String firstName = nameParts[0];
+            String lastName = nameParts.length > 1 ? nameParts[1] : firstName;
 
             PaymentCreateRequest request = PaymentCreateRequest.builder()
                     .transactionAmount(amount)
@@ -29,11 +34,11 @@ public class MercadoPagoPaymentService {
                     .dateOfExpiration(OffsetDateTime.now().plusHours(24))
                     .payer(PaymentPayerRequest.builder()
                             .email(payerEmail)
-                            .firstName("Comprador")
-                            .lastName("de Teste")
+                            .firstName(firstName)
+                            .lastName(lastName)
                             .identification(IdentificationRequest.builder()
                                     .type("CPF")
-                                    .number("12345678909")
+                                    .number(payerCpf)
                                     .build())
                             .build())
                     .build();
@@ -44,16 +49,17 @@ public class MercadoPagoPaymentService {
             return payment;
         } catch (com.mercadopago.exceptions.MPApiException e) {
             // Essa é a linha de mestre: ela pega o JSON exato que o Mercado Pago devolveu com o motivo da recusa
-            log.error("Mercado Pago recusou o pagamento! Status: {} | Detalhes: {}", 
-                      e.getApiResponse().getStatusCode(), 
+            log.error("Mercado Pago recusou o pagamento! Status: {} | Detalhes: {}",
+                      e.getApiResponse().getStatusCode(),
                       e.getApiResponse().getContent());
-                      
+
             throw new BadRequestException("Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.");
         } catch (Exception e) {
             log.error("Erro ao comunicar com a API do Mercado Pago: ", e);
             throw new BadRequestException("Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.");
         }
     }
+
 
     public Payment getPayment(Long paymentId) {
         try {
