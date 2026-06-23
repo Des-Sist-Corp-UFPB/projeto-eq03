@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { appointmentsApi } from './services/appointments';
 import type { AppointmentResponse } from './services/appointments';
 import { ConfirmDialog } from '../../components/modal/ConfirmDialog';
+import { PixPaymentModal } from '../../components/modal/PixPaymentModal';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { CalendarX } from 'lucide-react';
@@ -12,6 +13,11 @@ export const MyAppointments = () => {
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
+
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [currentPixCode, setCurrentPixCode] = useState('');
+  const [currentServiceName, setCurrentServiceName] = useState('');
+  const [isGeneratingPix, setIsGeneratingPix] = useState(false);
 
   const parseInstant = (dateValue: string | number[] | null | undefined): number => {
     if (!dateValue) return 0;
@@ -58,6 +64,62 @@ export const MyAppointments = () => {
       const msg = getApiErrorMessage(error, 'Erro ao cancelar agendamento.');
       await showError(msg);
     }
+  };
+
+  const handlePayWithPix = async (id: number, serviceName: string) => {
+    setIsGeneratingPix(true);
+    try {
+      const data = await appointmentsApi.generatePix(id);
+      if (data.pixQrCode) {
+        setCurrentPixCode(data.pixQrCode);
+        setCurrentServiceName(serviceName);
+        setShowPixModal(true);
+        setAppointments((prev) =>
+          prev.map((apt) =>
+            apt.id === id
+              ? {
+                  ...apt,
+                  paymentStatus: data.paymentStatus || 'PENDING',
+                  pixQrCode: data.pixQrCode,
+                }
+              : apt
+          )
+        );
+      } else {
+        await showError('O código PIX não pôde ser gerado.');
+      }
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Erro ao gerar pagamento via PIX');
+      await showError(msg);
+    } finally {
+      setIsGeneratingPix(false);
+    }
+  };
+
+  const getPaymentStatusBadge = (
+    paymentStatus: string | null | undefined,
+    pixQrCode: string | null | undefined
+  ) => {
+    if (!paymentStatus) return null;
+    const styles: Record<string, string> = {
+      PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+      PAID: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      CANCELLED: 'bg-rose-50 text-rose-700 border border-rose-200',
+      MANUAL: 'bg-blue-50 text-blue-700 border border-blue-200',
+    };
+    const labels: Record<string, string> = {
+      PENDING: pixQrCode ? 'PIX gerado (Aguardando)' : 'Pagamento Pendente',
+      PAID: 'Pago',
+      CANCELLED: 'Pagamento Cancelado',
+      MANUAL: 'Pago Manualmente',
+    };
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${styles[paymentStatus] || 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+      >
+        {labels[paymentStatus] || paymentStatus}
+      </span>
+    );
   };
 
   const getStatusBadge = (status: string) => {
@@ -195,7 +257,10 @@ export const MyAppointments = () => {
                   <h4 className="font-bold text-[#3b3036] text-sm leading-tight">
                     {apt.serviceName}
                   </h4>
-                  {getStatusBadge(apt.status)}
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    {getStatusBadge(apt.status)}
+                    {getPaymentStatusBadge(apt.paymentStatus, apt.pixQrCode)}
+                  </div>
                 </div>
 
                 {apt.clientNotes && (
@@ -213,21 +278,56 @@ export const MyAppointments = () => {
                   </span>
                 </div>
 
-                {apt.status !== 'CANCELLED' &&
+                {(apt.status === 'CONFIRMED' &&
+                  (apt.paymentStatus === 'PENDING' || !apt.paymentStatus)) ||
+                (apt.status !== 'CANCELLED' &&
                   apt.status !== 'DONE' &&
-                  apt.status !== 'DECLINED' && (
-                    <div className="mt-3 pt-3 border-t border-dashed border-gray-100">
-                      <button
-                        onClick={() => {
-                          setAppointmentToCancel(apt.id);
-                          setShowConfirm(true);
-                        }}
-                        className="w-full py-2 text-rose-600 border border-dashed border-rose-200 bg-transparent hover:bg-rose-50 hover:border-rose-400 rounded-xl text-xs font-semibold transition-all"
-                      >
-                        Cancelar Agendamento
-                      </button>
-                    </div>
-                  )}
+                  apt.status !== 'DECLINED') ? (
+                  <div className="mt-3 pt-3 border-t border-dashed border-gray-100 flex flex-col gap-2">
+                    {apt.status === 'CONFIRMED' &&
+                      (apt.paymentStatus === 'PENDING' || !apt.paymentStatus) && (
+                        <>
+                          {apt.pixQrCode ? (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setCurrentPixCode(apt.pixQrCode!);
+                                setCurrentServiceName(apt.serviceName);
+                                setShowPixModal(true);
+                              }}
+                              className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                            >
+                              Ver QR Code PIX
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => handlePayWithPix(apt.id, apt.serviceName)}
+                              disabled={isGeneratingPix}
+                              className="w-full py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-xl text-xs font-semibold transition-all disabled:opacity-50 cursor-pointer"
+                            >
+                              {isGeneratingPix ? 'Gerando PIX...' : 'Pagar com PIX'}
+                            </button>
+                          )}
+                        </>
+                      )}
+
+                    {apt.status !== 'CANCELLED' &&
+                      apt.status !== 'DONE' &&
+                      apt.status !== 'DECLINED' && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAppointmentToCancel(apt.id);
+                            setShowConfirm(true);
+                          }}
+                          className="w-full py-2 text-rose-600 border border-dashed border-rose-200 bg-transparent hover:bg-rose-50 hover:border-rose-400 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                        >
+                          Cancelar Agendamento
+                        </button>
+                      )}
+                  </div>
+                ) : null}
               </div>
             </div>
           ))}
@@ -240,6 +340,13 @@ export const MyAppointments = () => {
         onConfirm={confirmCancel}
         title="Cancelar Horário"
         message="Puxa, tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita."
+      />
+
+      <PixPaymentModal
+        show={showPixModal}
+        onHide={() => setShowPixModal(false)}
+        pixQrCode={currentPixCode}
+        serviceName={currentServiceName}
       />
     </div>
   );

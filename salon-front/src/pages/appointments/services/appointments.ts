@@ -23,6 +23,9 @@ export interface AppointmentResponse {
   preferredDate?: string | null;
   clientNotes?: string | null;
   status: string;
+  paymentStatus?: string | null;
+  paymentId?: number | null;
+  pixQrCode?: string | null;
 }
 
 interface AppointmentCreatePayload {
@@ -94,6 +97,18 @@ export const appointmentsApi = {
     const { data } = await api.patch<AppointmentResponse>(`/appointments/${id}/status`, null, {
       params: { status },
     });
+    return data;
+  },
+
+  updatePaymentStatus: async (id: number, paymentStatus: string) => {
+    const { data } = await api.patch<AppointmentResponse>(`/appointments/${id}/payment-status`, null, {
+      params: { paymentStatus },
+    });
+    return data;
+  },
+
+  generatePix: async (id: number) => {
+    const { data } = await api.post<AppointmentResponse>(`/appointments/${id}/pix`);
     return data;
   },
 };

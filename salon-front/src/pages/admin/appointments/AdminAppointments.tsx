@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Clock, User as UserIcon, Calendar as CalendarIcon, X } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
+import { PixPaymentModal } from '../../../components/modal/PixPaymentModal';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { appointmentsApi } from '../../appointments/services/appointments';
 import type { AppointmentResponse } from '../../appointments/services/appointments';
@@ -35,6 +36,7 @@ export const AdminAppointments = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [clients, setClients] = useState<UserData[]>([]);
   const [services, setServices] = useState<SalonServiceData[]>([]);
+  const [allServices, setAllServices] = useState<SalonServiceData[]>([]);
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
 
   const [selectedClient, setSelectedClient] = useState('');
@@ -48,6 +50,12 @@ export const AdminAppointments = () => {
   const [confirmTarget, setConfirmTarget] = useState<AppointmentResponse | null>(null);
   const [confirmDateTime, setConfirmDateTime] = useState('');
   const [confirmSaving, setConfirmSaving] = useState(false);
+
+  const [showPixModal, setShowPixModal] = useState(false);
+  const [currentPixCode, setCurrentPixCode] = useState('');
+  const [currentServiceName, setCurrentServiceName] = useState('');
+  const [currentPrice, setCurrentPrice] = useState<number | null>(null);
+  const [isGeneratingPix, setIsGeneratingPix] = useState(false);
 
   const parseDate = (dateValue: string | number[] | null | undefined): number => {
     if (!dateValue) return 0;
@@ -94,6 +102,7 @@ export const AdminAppointments = () => {
       ]);
       setClients(usersData.filter((u) => u.role === 'CLIENTE'));
       setServices(servicesData.filter((s) => s.active));
+      setAllServices(servicesData);
       setEmployees(employeesData);
     } catch (err) {
       await showError('Erro ao carregar dados do formulário');
@@ -180,6 +189,72 @@ export const AdminAppointments = () => {
     }
   };
 
+  const handlePaymentStatusChange = async (id: number, newPaymentStatus: string) => {
+    try {
+      await appointmentsApi.updatePaymentStatus(id, newPaymentStatus);
+      loadAppointments();
+    } catch (error) {
+      await showError('Erro ao atualizar status de pagamento');
+    }
+  };
+
+  const handlePayWithPix = async (id: number, serviceName: string, price: number | null) => {
+    setIsGeneratingPix(true);
+    try {
+      const data = await appointmentsApi.generatePix(id);
+      if (data.pixQrCode) {
+        setCurrentPixCode(data.pixQrCode);
+        setCurrentServiceName(serviceName);
+        setCurrentPrice(price);
+        setShowPixModal(true);
+        setAppointments((prev) =>
+          prev.map((apt) =>
+            apt.id === id
+              ? {
+                  ...apt,
+                  paymentStatus: data.paymentStatus || 'PENDING',
+                  pixQrCode: data.pixQrCode,
+                }
+              : apt
+          )
+        );
+      } else {
+        await showError('O código PIX não pôde ser gerado.');
+      }
+    } catch (error) {
+      const msg = getApiErrorMessage(error, 'Erro ao gerar pagamento via PIX');
+      await showError(msg);
+    } finally {
+      setIsGeneratingPix(false);
+    }
+  };
+
+  const getPaymentStatusBadge = (
+    paymentStatus: string | null | undefined,
+    pixQrCode: string | null | undefined
+  ) => {
+    if (!paymentStatus) return null;
+    const styles: Record<string, string> = {
+      PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
+      PAID: 'bg-emerald-50 text-emerald-700 border border-emerald-200',
+      CANCELLED: 'bg-rose-50 text-rose-700 border border-rose-200',
+      MANUAL: 'bg-blue-50 text-blue-700 border border-blue-200',
+    };
+    const labels: Record<string, string> = {
+      PENDING: pixQrCode ? 'PIX gerado (Aguardando)' : 'Pagamento Pendente',
+      PAID: 'Pago',
+      CANCELLED: 'Pagamento Cancelado',
+      MANUAL: 'Pago Manualmente',
+    };
+    return (
+      <span
+        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold ${styles[paymentStatus] || 'bg-gray-100 text-gray-600 border border-gray-200'}`}
+      >
+        {labels[paymentStatus] || paymentStatus}
+      </span>
+    );
+  };
+
   const getStatusBadge = (status: string) => {
     const styles: Record<string, string> = {
       PENDING: 'bg-amber-50 text-amber-700 border border-amber-200',
@@ -252,19 +327,23 @@ export const AdminAppointments = () => {
     },
     {
       key: 'status',
-      label: 'Status',
+      label: 'Status / Pagamento',
       render: (item: AppointmentResponse) => (
-        <div className="flex flex-col items-start gap-2">
-          {getStatusBadge(item.status)}
+        <div className="flex flex-col items-start gap-2.5">
+          <div className="flex flex-wrap gap-1">
+            {getStatusBadge(item.status)}
+            {getPaymentStatusBadge(item.paymentStatus, item.pixQrCode)}
+          </div>
+
           {item.status === 'REQUESTED' && (
-            <div className="flex flex-wrap gap-1.5 mt-1">
+            <div className="flex flex-col gap-1.5 mt-1" style={{ width: '150px' }}>
               <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/confirm`}>
                 <button
                   onClick={() => {
                     setConfirmTarget(item);
                     setConfirmDateTime('');
                   }}
-                  className="px-2.5 py-1 bg-[#be8a83] text-white hover:bg-[#a6726b] text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                  className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] text-xs font-semibold rounded-lg transition-all cursor-pointer"
                 >
                   Definir horário
                 </button>
@@ -272,52 +351,114 @@ export const AdminAppointments = () => {
               <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/decline`}>
                 <button
                   onClick={() => handleDecline(item.id)}
-                  className="px-2.5 py-1 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all cursor-pointer"
+                  className="w-full text-center px-2.5 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all cursor-pointer"
                 >
                   Recusar
                 </button>
               </PermissionGate>
             </div>
           )}
-          <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/status`}>
-            {item.status !== 'CANCELLED' &&
-              item.status !== 'DONE' &&
-              item.status !== 'DECLINED' &&
-              item.status !== 'REQUESTED' && (
-                <select
-                  value={item.status}
-                  onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                  className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all cursor-pointer mt-1"
-                  style={{ width: '140px' }}
-                >
-                  <option value="PENDING">Pendente</option>
-                  <option value="CONFIRMED">Confirmado</option>
-                  <option value="DONE">Concluído</option>
-                </select>
+
+          <div className="flex flex-col gap-2 mt-1">
+            <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/status`}>
+              {item.status !== 'CANCELLED' &&
+                item.status !== 'DONE' &&
+                item.status !== 'DECLINED' &&
+                item.status !== 'REQUESTED' && (
+                  <div className="flex flex-col gap-0.5">
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Agendamento</span>
+                    <select
+                      value={item.status}
+                      onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                      className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all cursor-pointer"
+                      style={{ width: '150px' }}
+                    >
+                      <option value="PENDING">Pendente</option>
+                      <option value="CONFIRMED">Confirmado</option>
+                      <option value="DONE">Concluído</option>
+                    </select>
+                  </div>
+                )}
+            </PermissionGate>
+
+            <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/payment-status`}>
+              {item.status !== 'CANCELLED' && item.status !== 'DECLINED' && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Pagamento</span>
+                  <select
+                    value={item.paymentStatus || 'PENDING'}
+                    onChange={(e) => handlePaymentStatusChange(item.id, e.target.value)}
+                    className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all cursor-pointer"
+                    style={{ width: '150px' }}
+                  >
+                    <option value="PENDING">Pendente</option>
+                    <option value="PAID">Pago</option>
+                    <option value="CANCELLED">Cancelado</option>
+                    <option value="MANUAL">Pago Manualmente</option>
+                  </select>
+                </div>
               )}
-          </PermissionGate>
+            </PermissionGate>
+          </div>
         </div>
       ),
     },
     {
       key: 'actions',
       label: 'Ações',
-      render: (item: AppointmentResponse) =>
-        item.status !== 'CANCELLED' &&
-        item.status !== 'DONE' &&
-        item.status !== 'DECLINED' && (
-          <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/cancel`}>
-            <button
-              onClick={() => {
-                setAppointmentToCancel(item.id);
-                setShowConfirm(true);
-              }}
-              className="px-2.5 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer hover:border-rose-300"
-            >
-              Cancelar
-            </button>
-          </PermissionGate>
-        ),
+      render: (item: AppointmentResponse) => {
+        const service = allServices.find((s) => s.id === item.serviceId);
+        const price = service ? (service.price ?? null) : null;
+
+        return (
+          <div className="flex flex-col gap-1.5">
+            {item.status !== 'CANCELLED' &&
+              item.status !== 'DONE' &&
+              item.status !== 'DECLINED' && (
+                <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/cancel`}>
+                  <button
+                    onClick={() => {
+                      setAppointmentToCancel(item.id);
+                      setShowConfirm(true);
+                    }}
+                    className="w-full text-center px-2.5 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer hover:border-rose-300"
+                  >
+                    Cancelar
+                  </button>
+                </PermissionGate>
+              )}
+
+            {item.status === 'CONFIRMED' &&
+              (item.paymentStatus === 'PENDING' || !item.paymentStatus) && (
+                <>
+                  {item.pixQrCode ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setCurrentPixCode(item.pixQrCode!);
+                        setCurrentServiceName(item.serviceName);
+                        setCurrentPrice(price);
+                        setShowPixModal(true);
+                      }}
+                      className="w-full text-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
+                    >
+                      Ver PIX
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => handlePayWithPix(item.id, item.serviceName, price)}
+                      disabled={isGeneratingPix}
+                      className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-lg text-xs font-semibold transition-all disabled:opacity-50 whitespace-nowrap cursor-pointer"
+                    >
+                      {isGeneratingPix ? 'Gerando...' : 'Pagar com PIX'}
+                    </button>
+                  )}
+                </>
+              )}
+          </div>
+        );
+      },
     },
   ];
 
@@ -424,11 +565,12 @@ export const AdminAppointments = () => {
                     </select>
                   </div>
                   <div>
-                    <label className={labelCls}>
+                    <label htmlFor="create-datetime" className={labelCls}>
                       <CalendarIcon size={14} className="inline mr-1" />
                       Data e hora
                     </label>
                     <input
+                      id="create-datetime"
                       type="datetime-local"
                       value={selectedDateTime}
                       onChange={(e) => setSelectedDateTime(e.target.value)}
@@ -487,8 +629,9 @@ export const AdminAppointments = () => {
                 outros agendamentos confirmados do mesmo profissional serão bloqueados.
               </p>
               <div>
-                <label className={labelCls}>Data e hora</label>
+                <label htmlFor="confirm-datetime" className={labelCls}>Data e hora</label>
                 <input
+                  id="confirm-datetime"
                   type="datetime-local"
                   value={confirmDateTime}
                   onChange={(e) => setConfirmDateTime(e.target.value)}
@@ -523,6 +666,14 @@ export const AdminAppointments = () => {
         onConfirm={confirmCancel}
         title="Cancelar Agendamento"
         message="Tem certeza que deseja cancelar este agendamento? Esta ação não pode ser desfeita."
+      />
+
+      <PixPaymentModal
+        show={showPixModal}
+        onHide={() => setShowPixModal(false)}
+        pixQrCode={currentPixCode}
+        serviceName={currentServiceName}
+        price={currentPrice}
       />
     </>
   );

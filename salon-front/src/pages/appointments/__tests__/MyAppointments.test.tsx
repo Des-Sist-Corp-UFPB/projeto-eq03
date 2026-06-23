@@ -1,0 +1,159 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { screen, fireEvent, act, customRender } from '../../../test/test-utils';
+import { MyAppointments } from '../MyAppointments';
+import { appointmentsApi } from '../services/appointments';
+
+vi.mock('../services/appointments', () => ({
+  appointmentsApi: {
+    getMyAppointments: vi.fn(),
+    cancel: vi.fn(),
+    generatePix: vi.fn(),
+  },
+}));
+
+vi.mock('../../../hooks/useAlert', () => ({
+  useAlert: () => ({
+    error: vi.fn(),
+    success: vi.fn(),
+    alert: vi.fn(),
+    confirm: vi.fn(),
+  }),
+}));
+
+const mockAppointments = [
+  {
+    id: 1,
+    clientId: 5,
+    clientName: 'Elksandro',
+    employeeId: 10,
+    employeeName: 'Mariana',
+    serviceId: 1,
+    serviceName: 'Corte de Cabelo',
+    scheduledAt: '2026-06-25T14:00:00Z',
+    status: 'CONFIRMED',
+    paymentStatus: 'PENDING',
+    pixQrCode: null,
+  },
+  {
+    id: 2,
+    clientId: 5,
+    clientName: 'Elksandro',
+    employeeId: 10,
+    employeeName: 'Mariana',
+    serviceId: 2,
+    serviceName: 'Manicure',
+    scheduledAt: '2026-06-26T10:00:00Z',
+    status: 'CONFIRMED',
+    paymentStatus: 'PENDING',
+    pixQrCode: 'pix-copia-e-cola-code-mock-2',
+  },
+  {
+    id: 3,
+    clientId: 5,
+    clientName: 'Elksandro',
+    employeeId: 10,
+    employeeName: 'Mariana',
+    serviceId: 1,
+    serviceName: 'Escova',
+    scheduledAt: '2026-06-27T16:00:00Z',
+    status: 'PENDING',
+    paymentStatus: null,
+    pixQrCode: null,
+  },
+];
+
+describe('MyAppointments Component', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    vi.mocked(appointmentsApi.getMyAppointments).mockResolvedValue(mockAppointments);
+    vi.mocked(appointmentsApi.generatePix).mockResolvedValue({
+      id: 1,
+      clientId: 5,
+      clientName: 'Elksandro',
+      employeeId: 10,
+      employeeName: 'Mariana',
+      serviceId: 1,
+      serviceName: 'Corte de Cabelo',
+      scheduledAt: '2026-06-25T14:00:00Z',
+      status: 'CONFIRMED',
+      paymentStatus: 'PENDING',
+      pixQrCode: 'pix-generated-qr-code-1',
+    });
+  });
+
+  it('renders loading indicator then lists appointments with proper badges', async () => {
+    await act(async () => {
+      customRender(<MyAppointments />);
+    });
+
+    expect(screen.getByText('Minha Agenda')).toBeInTheDocument();
+    expect(screen.getByText('Corte de Cabelo')).toBeInTheDocument();
+    expect(screen.getByText('Manicure')).toBeInTheDocument();
+    expect(screen.getByText('Escova')).toBeInTheDocument();
+
+    // Confirm status badges are present
+    expect(screen.getAllByText('Confirmado')).toHaveLength(2);
+    expect(screen.getByText('Pendente')).toBeInTheDocument();
+
+    // Confirm payment badges
+    expect(screen.getByText('Pagamento Pendente')).toBeInTheDocument();
+    expect(screen.getByText('PIX gerado (Aguardando)')).toBeInTheDocument();
+  });
+
+  it('triggers generatePix when clicking Pagar com PIX on unpaid confirmed appointment without pixQrCode', async () => {
+    await act(async () => {
+      customRender(<MyAppointments />);
+    });
+
+    const payBtn = screen.getByRole('button', { name: 'Pagar com PIX' });
+    expect(payBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(payBtn);
+    });
+
+    expect(appointmentsApi.generatePix).toHaveBeenCalledWith(1);
+    
+    // Check if the PIX Payment Modal opens with the generated code
+    expect(screen.getByText('Pagamento via PIX')).toBeInTheDocument();
+    expect(screen.getAllByText('Corte de Cabelo')).toHaveLength(2);
+  });
+
+  it('opens modal immediately without generating new PIX if pixQrCode is already present', async () => {
+    await act(async () => {
+      customRender(<MyAppointments />);
+    });
+
+    const viewPixBtn = screen.getByRole('button', { name: 'Ver QR Code PIX' });
+    expect(viewPixBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(viewPixBtn);
+    });
+
+    expect(appointmentsApi.generatePix).not.toHaveBeenCalled();
+    expect(screen.getByText('Pagamento via PIX')).toBeInTheDocument();
+    expect(screen.getAllByText('Manicure')).toHaveLength(2);
+  });
+
+  it('opens cancellation confirmation modal and cancels appointment when confirmed', async () => {
+    vi.mocked(appointmentsApi.cancel).mockResolvedValue({} as any);
+
+    await act(async () => {
+      customRender(<MyAppointments />);
+    });
+
+    const cancelButtons = screen.getAllByRole('button', { name: 'Cancelar Agendamento' });
+    // Click cancellation button for first appointment (ID 3 due to descending date sort)
+    fireEvent.click(cancelButtons[0]);
+
+    expect(screen.getByText('Cancelar Horário')).toBeInTheDocument();
+    
+    const confirmBtn = screen.getByRole('button', { name: 'Confirmar' });
+    await act(async () => {
+      fireEvent.click(confirmBtn);
+    });
+
+    expect(appointmentsApi.cancel).toHaveBeenCalledWith(3);
+  });
+});
