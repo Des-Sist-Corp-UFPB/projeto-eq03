@@ -60,7 +60,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void findAllReturnsUsers() throws Exception {
-        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", "ROLE_ADMIN", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", null, "ROLE_ADMIN", true, LocalDateTime.now());
         when(userService.findAll(any())).thenReturn(List.of(response));
 
         mvc.perform(get("/v1/users")
@@ -73,7 +73,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void findByIdReturnsUser() throws Exception {
-        UserResponse response = new UserResponse(2L, "Bob", "bob@example.com", "88888888", "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(2L, "Bob", "bob@example.com", "88888888", null, "CLIENTE", true, LocalDateTime.now());
         when(userService.findById(eq(2L))).thenReturn(response);
 
         mvc.perform(get("/v1/users/details/id/2")
@@ -85,7 +85,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void updateReturnsUpdatedUser() throws Exception {
-        UserResponse response = new UserResponse(2L, "Updated Bob", "bob@example.com", "88888888", "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(2L, "Updated Bob", "bob@example.com", "88888888", null, "CLIENTE", true, LocalDateTime.now());
         when(userService.update(eq(2L), any())).thenReturn(response);
 
         String body = "{\"name\":\"Updated Bob\",\"email\":\"bob@example.com\"}";
@@ -110,12 +110,39 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void restoreReturnsRestoredUser() throws Exception {
-        UserResponse response = new UserResponse(4L, "Restored", "restored@example.com", "77777777", "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(4L, "Restored", "restored@example.com", "77777777", null, "CLIENTE", true, LocalDateTime.now());
         when(userService.restore(eq(4L))).thenReturn(response);
 
         mvc.perform(patch("/v1/users/4/restore")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.name").value("Restored"));
+    }
+
+    @Test
+    @WithMockUser
+    void updateMyCpfReturnsOk_whenValidCpf() throws Exception {
+        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", "12345678901", "CLIENTE", true, LocalDateTime.now());
+        when(userService.updateMyCpf("12345678901")).thenReturn(response);
+
+        String body = "{\"cpf\":\"12345678901\"}";
+
+        mvc.perform(patch("/v1/users/me/cpf")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.cpf").value("12345678901"));
+    }
+
+    @Test
+    @WithMockUser
+    void updateMyCpfReturns400_whenCpfIsInvalid() throws Exception {
+        // CPF com menos de 11 dígitos deve retornar 400 (falha na validação Bean Validation)
+        String body = "{\"cpf\":\"123\"}";
+
+        mvc.perform(patch("/v1/users/me/cpf")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest());
     }
 }

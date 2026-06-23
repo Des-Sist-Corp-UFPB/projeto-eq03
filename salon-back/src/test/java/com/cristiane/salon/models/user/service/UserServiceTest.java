@@ -2,6 +2,7 @@ package com.cristiane.salon.models.user.service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import com.cristiane.salon.models.user.dto.UserCreateRequest;
@@ -11,6 +12,7 @@ import com.cristiane.salon.models.user.entity.Role;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.RoleRepository;
 import com.cristiane.salon.models.user.repository.UserRepository;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -18,6 +20,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.time.LocalDateTime;
@@ -52,9 +57,25 @@ class UserServiceTest {
     private Role clientRole;
     private Role staffRole;
 
+    @AfterEach
+    void tearDown() {
+        SecurityContextHolder.clearContext();
+    }
+
+    private void mockAuthenticatedUser(User user) {
+        Authentication auth = mock(Authentication.class);
+        lenient().when(auth.getName()).thenReturn(user.getEmail());
+        SecurityContext secCtx = mock(SecurityContext.class);
+        lenient().when(secCtx.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(secCtx);
+        lenient().when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
+    }
+
+
     @BeforeEach
     void setUp() {
         clientRole = new Role(1L, "CLIENTE", null);
+
         staffRole = new Role(2L, "FUNCIONARIA", null);
 
         activeUser = new User();
@@ -275,7 +296,7 @@ class UserServiceTest {
     @Test
     void update_whenUserNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
-        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "email@example.com", "pass", "123", true, 1L);
+        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "email@example.com", "pass", "123", null, false, 1L);
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -287,7 +308,7 @@ class UserServiceTest {
     @Test
     void update_whenEmailChangedAndAlreadyInUse_shouldThrowBadRequestException() {
         // Arrange
-        UserUpdateRequest request = new UserUpdateRequest(null, "other@example.com", null, null, null, null);
+        UserUpdateRequest request = new UserUpdateRequest(null, "other@example.com", null, null, null, null, null);
         when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
         when(userRepository.findByEmail("other@example.com")).thenReturn(Optional.of(inactiveUser));
 
@@ -300,7 +321,7 @@ class UserServiceTest {
     @Test
     void update_whenRoleChangedAndRoleNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
-        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, null, 99L);
+        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, null, null, 99L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
         when(roleRepository.findById(99L)).thenReturn(Optional.empty());
 
@@ -313,7 +334,7 @@ class UserServiceTest {
     @Test
     void update_withAllFieldsAndChangeRoleToStaff_whenEmployeeDoesNotExist_shouldCreateEmployee() {
         // Arrange
-        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "maria@example.com", "new_password", "8177777777", false, 2L);
+        UserUpdateRequest request = new UserUpdateRequest("Updated Name", "maria@example.com", "new_password", "8177777777", null, false, 2L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
         when(roleRepository.findById(2L)).thenReturn(Optional.of(staffRole));
         when(passwordEncoder.encode("new_password")).thenReturn("new_encoded_pass");
@@ -351,7 +372,7 @@ class UserServiceTest {
     @Test
     void update_withChangeRoleToStaff_whenEmployeeAlreadyExists_shouldNotDuplicateEmployee() {
         // Arrange
-        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, null, 2L);
+        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, null, null, 2L);
         when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
         when(roleRepository.findById(2L)).thenReturn(Optional.of(staffRole));
 
@@ -378,7 +399,7 @@ class UserServiceTest {
     @Test
     void update_whenPasswordIsBlankOrNull_shouldNotEncodePassword() {
         // Arrange
-        UserUpdateRequest request = new UserUpdateRequest(null, null, "  ", null, null, null);
+        UserUpdateRequest request = new UserUpdateRequest(null, null, "  ", null, null, null, null);
         when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
         when(userRepository.save(any(User.class))).thenReturn(activeUser);
 
@@ -445,5 +466,71 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.restore(99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessage("Usuário não encontrado");
+    }
+
+    // --- updateMyCpf tests ---
+
+    @Test
+    void updateMyCpf_whenSuccess_shouldSaveCpfForAuthenticatedUser() {
+        // Arrange
+        mockAuthenticatedUser(activeUser);
+        when(userRepository.findByCpf("12345678901")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenReturn(activeUser);
+
+        // Act
+        UserResponse result = userService.updateMyCpf("12345678901");
+
+        // Assert
+        assertThat(activeUser.getCpf()).isEqualTo("12345678901");
+        assertThat(result).isNotNull();
+        verify(userRepository).save(activeUser);
+    }
+
+    @Test
+    void updateMyCpf_whenCpfAlreadyInUseByAnotherUser_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(activeUser);
+
+        User otherUser = new User();
+        otherUser.setId(99L);
+        otherUser.setCpf("12345678901");
+        when(userRepository.findByCpf("12345678901")).thenReturn(Optional.of(otherUser));
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.updateMyCpf("12345678901"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Este CPF já está cadastrado em outra conta.");
+    }
+
+    @Test
+    void updateMyCpf_whenSameUserAlreadyHasCpf_shouldUpdateSuccessfully() {
+        // Arrange — user 10 already owns this CPF
+        activeUser.setCpf("12345678901");
+        mockAuthenticatedUser(activeUser);
+        when(userRepository.findByCpf("12345678901")).thenReturn(Optional.of(activeUser));
+        when(userRepository.save(any(User.class))).thenReturn(activeUser);
+
+        // Act
+        UserResponse result = userService.updateMyCpf("12345678901");
+
+        // Assert — should NOT throw, because it's the same user
+        assertThat(result).isNotNull();
+        verify(userRepository).save(activeUser);
+    }
+
+    @Test
+    void updateMyCpf_whenUserNotAuthenticated_shouldThrowUnauthorizedException() {
+        // Arrange — configure SecurityContext with unknown email
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("unknown@ghost.com");
+        SecurityContext secCtx = mock(SecurityContext.class);
+        when(secCtx.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(secCtx);
+        when(userRepository.findByEmail("unknown@ghost.com")).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.updateMyCpf("12345678901"))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Usuário não autenticado");
     }
 }

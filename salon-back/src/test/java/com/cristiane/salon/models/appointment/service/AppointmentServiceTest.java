@@ -915,4 +915,108 @@ class AppointmentServiceTest {
         
         verify(cashFlowRepository).save(any(CashFlow.class));
     }
+
+    // --- generatePixPayment tests ---
+
+    @Test
+    void generatePixPayment_whenClientHasNoCpf_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser); // clientUser does NOT have CPF set
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("CPF é obrigatório para gerar o PIX");
+    }
+
+    @Test
+    void generatePixPayment_whenAppointmentAlreadyPaid_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+        apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PAID);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Este agendamento já está pago.");
+    }
+
+    @Test
+    void generatePixPayment_whenClientNotOwner_shouldThrowUnauthorizedException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser); // ID 10
+
+        User otherClient = new User();
+        otherClient.setId(99L);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(otherClient); // Owned by ID 99
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Você não tem permissão para gerar pagamento para este agendamento");
+    }
+
+    @Test
+    void generatePixPayment_whenStatusIsRequested_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setStatus(AppointmentStatus.REQUESTED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("confirmados ou concluídos");
+    }
+
+    @Test
+    void generatePixPayment_whenServiceHasNoPrice_shouldThrowBadRequestException() {
+        // Arrange
+        clientUser.setCpf("12345678901");
+        mockAuthenticatedUser(clientUser);
+
+        salonService.setPrice(null);
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("não possui um valor configurado");
+    }
 }
+
