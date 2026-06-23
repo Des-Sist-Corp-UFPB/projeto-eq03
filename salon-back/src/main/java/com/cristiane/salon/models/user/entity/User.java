@@ -38,6 +38,9 @@ public class User implements UserDetails {
     @Column(length = 20)
     private String phone;
 
+    @Column(length = 14, unique = true)
+    private String cpf;
+
     @Column(nullable = false)
     private Boolean active = true;
 

@@ -9,6 +9,7 @@ public record UserResponse(
         String name,
         String email,
         String phone,
+        String cpf,
         String role,
         Boolean active,
         LocalDateTime createdAt
@@ -19,9 +20,11 @@ public record UserResponse(
                 user.getName(),
                 user.getEmail(),
                 user.getPhone(),
+                user.getCpf(),
                 user.getRoleName(),
                 user.getActive(),
                 user.getCreatedAt()
         );
     }
 }
+

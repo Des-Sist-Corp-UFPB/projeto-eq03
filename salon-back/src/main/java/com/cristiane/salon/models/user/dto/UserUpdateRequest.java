@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.user.dto;
 
 import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record UserUpdateRequest(
@@ -16,7 +17,11 @@ public record UserUpdateRequest(
         @Size(max = 20, message = "O telefone não pode exceder 20 caracteres")
         String phone,
 
+        @Pattern(regexp = "^\\d{11}$", message = "O CPF deve conter exatamente 11 dígitos numéricos (sem pontos ou traços)")
+        String cpf,
+
         Boolean active,
-        
+
         Long roleId
 ) {}
+
