@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.user.controller;
 
 import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.user.dto.UpdateCpfRequest;
 import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
@@ -76,5 +77,11 @@ public class UserController {
     @Operation(summary = "Reativa um usuário desativado (Admin)")
     public ResponseEntity<UserResponse> restore(@PathVariable Long id) {
         return ResponseEntity.ok(userService.restore(id));
+    }
+
+    @PatchMapping("/me/cpf")
+    @Operation(summary = "Atualiza o CPF do próprio usuário autenticado (JIT no pagamento PIX)")
+    public ResponseEntity<UserResponse> updateMyCpf(@Valid @RequestBody UpdateCpfRequest request) {
+        return ResponseEntity.ok(userService.updateMyCpf(request.cpf()));
     }
 }

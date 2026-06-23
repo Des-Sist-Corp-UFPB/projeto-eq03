@@ -2,6 +2,7 @@ package com.cristiane.salon.models.user.service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
@@ -12,6 +13,7 @@ import com.cristiane.salon.models.user.repository.UserRepository;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -96,6 +98,12 @@ public class UserService {
 
         if (request.name() != null) user.setName(request.name());
         if (request.phone() != null) user.setPhone(request.phone());
+        if (request.cpf() != null && !request.cpf().isBlank()) {
+            if (userRepository.findByCpf(request.cpf()).filter(u -> !u.getId().equals(id)).isPresent()) {
+                throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
+            }
+            user.setCpf(request.cpf());
+        }
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.password()));
         }
@@ -136,5 +144,26 @@ public class UserService {
         user.setActive(true);
         User savedUser = userRepository.save(user);
         return UserResponse.fromEntity(savedUser);
+    }
+
+    /**
+     * Atualiza o CPF do próprio usuário autenticado (fluxo JIT no pagamento via PIX).
+     * Garante atomicidade via @Transactional e verifica duplicação antes de persistir.
+     */
+    @Transactional
+    public UserResponse updateMyCpf(String cpf) {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UnauthorizedException("Usuário não autenticado"));
+
+        userRepository.findByCpf(cpf)
+                .filter(existing -> !existing.getId().equals(user.getId()))
+                .ifPresent(dup -> {
+                    throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
+                });
+
+        user.setCpf(cpf);
+        User saved = userRepository.save(user);
+        return UserResponse.fromEntity(saved);
     }
 }

@@ -155,6 +155,19 @@ public class GlobalExceptionHandler {
                 ? ex.getMostSpecificCause().getMessage()
                 : "";
         log.warn("Integridade no banco: {}", cause);
+
+        // CPF duplicado → 409 Conflict com mensagem amigável
+        if (cause.contains("tb_user_cpf_key") || (cause.contains("cpf") && cause.contains("unique"))) {
+            ErrorResponse error = new ErrorResponse(
+                    LocalDateTime.now(),
+                    HttpStatus.CONFLICT.value(),
+                    "CPF Duplicado",
+                    "Este CPF já está cadastrado em outra conta.",
+                    request.getRequestURI()
+            );
+            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+        }
+
         String hint = "Não foi possível concluir a operação no banco de dados.";
         if (cause.contains("scheduled_at") || cause.contains("null value")) {
             hint = "O banco ainda parece exigir data/hora no agendamento. Confirme se as migrações Flyway (ex.: V5) foram aplicadas no ambiente.";
@@ -168,6 +181,7 @@ public class GlobalExceptionHandler {
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
+
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
