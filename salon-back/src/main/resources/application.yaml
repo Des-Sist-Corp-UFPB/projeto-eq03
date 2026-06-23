@@ -28,3 +28,4 @@ logging:
 
 mercadopago:
   access-token: ${MERCADO_PAGO_ACCESS_TOKEN}
+  webhook-secret: ${MERCADO_PAGO_WEBHOOK_SECRET}
