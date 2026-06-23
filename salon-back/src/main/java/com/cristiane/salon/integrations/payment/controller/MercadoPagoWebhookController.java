@@ -36,7 +36,10 @@ public class MercadoPagoWebhookController {
             @RequestHeader(value = "x-request-id", required = false) String xRequestId,
             @RequestBody String rawBody) {
 
-        log.debug("Recebido webhook do Mercado Pago. x-signature: {}, x-request-id: {}", xSignature, xRequestId);
+        log.info("Webhook recebido. x-signature presente: {} (tamanho: {}), x-request-id presente: {} (tamanho: {})",
+                xSignature != null, xSignature != null ? xSignature.length() : 0,
+                xRequestId != null, xRequestId != null ? xRequestId.length() : 0);
+        log.info("Webhook Secret Configurado: {} caracteres", webhookSecret != null ? webhookSecret.length() : "NULL");
 
         if (xSignature == null || xSignature.isEmpty()) {
             log.warn("Assinatura do webhook ausente");
@@ -109,7 +112,15 @@ public class MercadoPagoWebhookController {
                 hexString.append(hex);
             }
             
-            return hexString.toString().equalsIgnoreCase(v1);
+            boolean isValid = hexString.toString().equalsIgnoreCase(v1);
+            if (!isValid) {
+                String partialV1 = (v1.length() > 5) ? v1.substring(0, 5) : v1;
+                String calculated = hexString.toString();
+                String partialCalc = (calculated.length() > 5) ? calculated.substring(0, 5) : calculated;
+                log.error("Falha na validação de assinatura do Mercado Pago. Recebida (parcial): {}, Calculada (parcial): {}. Manifest: [{}]",
+                        partialV1, partialCalc, manifest);
+            }
+            return isValid;
         } catch (Exception e) {
             log.error("Erro ao validar assinatura", e);
             return false;
