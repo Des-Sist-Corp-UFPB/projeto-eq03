@@ -1,4 +1,4 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.integrations.payment.controller;
 
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import com.cristiane.salon.models.appointment.entity.Appointment;
@@ -10,7 +10,7 @@ import com.cristiane.salon.models.audit.AuditLogRepository;
 import com.cristiane.salon.models.cashflow.entity.CashFlow;
 import com.cristiane.salon.models.cashflow.enums.CashFlowType;
 import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
-import com.cristiane.salon.models.email.service.EmailService;
+import com.cristiane.salon.integrations.email.service.EmailService;
 import com.cristiane.salon.models.employee.entity.CommissionScope;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.entity.RemunerationType;

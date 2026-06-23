@@ -1,4 +1,4 @@
-package com.cristiane.salon.models.email.service;
+package com.cristiane.salon.integrations.email.service;
 
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.audit.AuditLogService;
