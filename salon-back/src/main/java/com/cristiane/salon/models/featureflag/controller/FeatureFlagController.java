@@ -1,4 +1,4 @@
-package com.cristiane.salon.controller;
+package com.cristiane.salon.models.featureflag.controller;
 
 import com.cristiane.salon.models.featureflag.entity.FeatureFlag;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;

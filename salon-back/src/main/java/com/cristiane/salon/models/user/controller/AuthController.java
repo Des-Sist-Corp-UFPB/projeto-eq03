@@ -1,4 +1,4 @@
-package com.cristiane.salon.controller;
+package com.cristiane.salon.models.user.controller;
 
 import com.cristiane.salon.models.user.dto.LoginRequest;
 import com.cristiane.salon.models.user.dto.RefreshTokenRequest;

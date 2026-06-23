@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.featureflag.controller;
 
-import com.cristiane.salon.controller.FeatureFlagController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.featureflag.controller.FeatureFlagController;
 import com.cristiane.salon.models.featureflag.entity.FeatureFlag;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import org.junit.jupiter.api.Test;

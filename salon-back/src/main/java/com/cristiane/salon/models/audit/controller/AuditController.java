@@ -1,4 +1,4 @@
-package com.cristiane.salon.controller;
+package com.cristiane.salon.models.audit.controller;
 
 import com.cristiane.salon.models.audit.AuditLog;
 import com.cristiane.salon.models.audit.AuditLogService;

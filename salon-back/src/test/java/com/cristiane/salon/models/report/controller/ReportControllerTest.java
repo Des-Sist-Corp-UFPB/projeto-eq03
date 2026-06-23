@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.report.controller;
 
-import com.cristiane.salon.controller.ReportController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.report.controller.ReportController;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.PayrollReportResponse;

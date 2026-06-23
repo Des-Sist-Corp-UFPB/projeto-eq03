@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.user.controller;
 
-import com.cristiane.salon.controller.UserController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.user.controller.UserController;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.service.UserService;
 import org.junit.jupiter.api.Test;

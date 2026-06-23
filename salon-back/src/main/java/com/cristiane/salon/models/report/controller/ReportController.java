@@ -1,4 +1,4 @@
-package com.cristiane.salon.controller;
+package com.cristiane.salon.models.report.controller;
 
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;

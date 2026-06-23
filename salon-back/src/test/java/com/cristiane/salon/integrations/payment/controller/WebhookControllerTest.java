@@ -1,4 +1,6 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.integrations.payment.controller;
+
+import com.cristiane.salon.controllers.BaseControllerTest;
 
 import com.cristiane.salon.integrations.payment.controller.MercadoPagoWebhookController;
 import com.cristiane.salon.models.appointment.service.AppointmentService;

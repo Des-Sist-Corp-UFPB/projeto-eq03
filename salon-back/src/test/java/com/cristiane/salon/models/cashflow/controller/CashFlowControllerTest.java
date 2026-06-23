@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.cashflow.controller;
 
-import com.cristiane.salon.controller.CashFlowController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.cashflow.controller.CashFlowController;
 import com.cristiane.salon.models.cashflow.dto.CashFlowResponse;
 import com.cristiane.salon.models.cashflow.service.CashFlowService;
 import org.junit.jupiter.api.Test;

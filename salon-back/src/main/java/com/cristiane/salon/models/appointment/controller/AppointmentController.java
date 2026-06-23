@@ -1,4 +1,4 @@
-package com.cristiane.salon.controller;
+package com.cristiane.salon.models.appointment.controller;
 
 import com.cristiane.salon.annotation.Auditable;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;

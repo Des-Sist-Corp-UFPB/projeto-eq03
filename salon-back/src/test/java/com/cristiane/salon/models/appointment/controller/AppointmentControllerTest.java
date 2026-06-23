@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.appointment.controller;
 
-import com.cristiane.salon.controller.AppointmentController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.appointment.controller.AppointmentController;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import org.junit.jupiter.api.Test;

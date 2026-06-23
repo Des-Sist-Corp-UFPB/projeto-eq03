@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.service.controller;
 
-import com.cristiane.salon.controller.SalonServiceController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.service.controller.SalonServiceController;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

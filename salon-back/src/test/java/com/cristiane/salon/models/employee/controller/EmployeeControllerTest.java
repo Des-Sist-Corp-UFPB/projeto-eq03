@@ -1,6 +1,8 @@
-package com.cristiane.salon.controllers;
+package com.cristiane.salon.models.employee.controller;
 
-import com.cristiane.salon.controller.EmployeeController;
+import com.cristiane.salon.controllers.BaseControllerTest;
+
+import com.cristiane.salon.models.employee.controller.EmployeeController;
 import com.cristiane.salon.models.employee.dto.EmployeeBookingResponse;
 import com.cristiane.salon.models.employee.dto.EmployeeResponse;
 import com.cristiane.salon.models.employee.entity.CommissionScope;
