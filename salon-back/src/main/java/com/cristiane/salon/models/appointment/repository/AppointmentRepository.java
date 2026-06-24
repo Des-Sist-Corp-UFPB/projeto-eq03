@@ -14,6 +14,12 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
     
     List<Appointment> findByClientId(Long clientId);
     
+    @Query("SELECT COUNT(a) FROM Appointment a WHERE a.client.id = :clientId")
+    Long countByClientId(@Param("clientId") Long clientId);
+
+    @Query("SELECT MAX(a.scheduledAt) FROM Appointment a WHERE a.client.id = :clientId")
+    LocalDateTime findLastAppointmentDateByClientId(@Param("clientId") Long clientId);
+    
     @Query("SELECT a FROM Appointment a WHERE a.employee.id = :employeeId AND a.scheduledAt >= :startOfDay AND a.scheduledAt < :endOfDay AND a.scheduledAt IS NOT NULL AND a.status NOT IN ('CANCELLED', 'DECLINED')")
     List<Appointment> findActiveAppointmentsByEmployeeAndDate(
             @Param("employeeId") Long employeeId, 

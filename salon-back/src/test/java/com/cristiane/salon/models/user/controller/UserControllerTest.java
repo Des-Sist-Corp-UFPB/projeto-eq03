@@ -61,13 +61,13 @@ class UserControllerTest extends BaseControllerTest {
     @WithMockUser(roles = "ADMIN")
     void findAllReturnsUsers() throws Exception {
         UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", null, "ROLE_ADMIN", true, LocalDateTime.now());
-        when(userService.findAll(any())).thenReturn(List.of(response));
+        org.springframework.data.domain.Page<UserResponse> page = new org.springframework.data.domain.PageImpl<>(List.of(response));
+        when(userService.findAllUsers(any(), any())).thenReturn(page);
 
         mvc.perform(get("/v1/users")
-                .param("includeInactive", "true")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Alice"));
+                .andExpect(jsonPath("$.content[0].name").value("Alice"));
     }
 
     @Test
