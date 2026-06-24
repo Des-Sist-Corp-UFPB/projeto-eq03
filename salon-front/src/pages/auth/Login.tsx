@@ -65,8 +65,8 @@ export const Login = () => {
         destination = '/';
       }
 
-      // 2. Atualizar o contexto com os tokens
-      login(accessToken, refreshToken);
+      // 2. Atualizar o contexto com os tokens (aguarda o /auth/me)
+      await login(accessToken, refreshToken);
 
       // 3. Navegar para a rota calculada — sem flicker, sem hard reload
       navigate(destination, { replace: true });

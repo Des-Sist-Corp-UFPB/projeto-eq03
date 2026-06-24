@@ -7,6 +7,7 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { CustomerLayout } from './layouts/CustomerLayout';
 import { SysadminLayout } from './layouts/SysadminLayout';
 import { FeatureFlags } from './pages/sysadmin/FeatureFlags';
+import { Rbac } from './pages/sysadmin/Rbac';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
@@ -211,6 +212,14 @@ export const Router = () => {
           element={
             <ProtectedRoute allowedRoles={['SYSADMIN']}>
               <AuditLog />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sysadmin/rbac"
+          element={
+            <ProtectedRoute allowedRoles={['SYSADMIN']}>
+              <Rbac />
             </ProtectedRoute>
           }
         />
