@@ -183,10 +183,10 @@ describe('AdminAppointments Component', () => {
     expect(paymentStatusSelect).toHaveValue('PENDING');
 
     await act(async () => {
-      fireEvent.change(paymentStatusSelect, { target: { value: 'PAID' } });
+      fireEvent.change(paymentStatusSelect, { target: { value: 'MANUAL' } });
     });
 
-    expect(appointmentsApi.updatePaymentStatus).toHaveBeenCalledWith(1, 'PAID');
+    expect(appointmentsApi.updatePaymentStatus).toHaveBeenCalledWith(1, 'MANUAL');
   });
 
   it('triggers generatePix when clicking Pagar com PIX', async () => {
@@ -194,7 +194,8 @@ describe('AdminAppointments Component', () => {
       renderAdminAppointments();
     });
 
-    const payBtn = screen.getByRole('button', { name: 'Pagar com PIX' });
+    const payBtns = screen.getAllByRole('button', { name: 'Pagar com PIX' });
+    const payBtn = payBtns[1]; // Elksandro (CONFIRMED) is sorted after Joao (REQUESTED)
     expect(payBtn).toBeInTheDocument();
 
     await act(async () => {

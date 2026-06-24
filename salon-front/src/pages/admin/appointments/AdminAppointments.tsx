@@ -14,6 +14,16 @@ import { usersApi } from '../users/services/users';
 import type { UserData } from '../users/services/users';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import {
+  canCancel,
+  getCancelBlockReason,
+  canChangeStatus,
+  getStatusChangeBlockReason,
+  getValidStatusOptions,
+  canChangePaymentStatus,
+  getPaymentStatusChangeBlockReason,
+  canGeneratePix
+} from '../../../utils/appointmentRules';
 
 const selectCls = 'input-premium';
 const labelCls = 'label-premium';
@@ -371,40 +381,55 @@ export const AdminAppointments = () => {
 
           <div className="flex flex-col gap-2 mt-1">
             <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/status`}>
-              {item.status !== 'CANCELLED' &&
-                item.status !== 'DONE' &&
-                item.status !== 'DECLINED' &&
-                item.status !== 'REQUESTED' && (
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Agendamento</span>
-                    <select
-                      value={item.status}
-                      onChange={(e) => handleStatusChange(item.id, e.target.value)}
-                      className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all cursor-pointer"
-                      style={{ width: '150px' }}
-                    >
-                      <option value="PENDING">Pendente</option>
-                      <option value="CONFIRMED">Confirmado</option>
-                      <option value="DONE">Concluído</option>
-                    </select>
-                  </div>
-                )}
+              {item.status !== 'REQUESTED' && (
+                <div className="flex flex-col gap-0.5">
+                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Agendamento</span>
+                  <select
+                    value={item.status}
+                    disabled={!canChangeStatus(item)}
+                    title={getStatusChangeBlockReason(item) || undefined}
+                    onChange={(e) => handleStatusChange(item.id, e.target.value)}
+                    className={`text-xs px-2.5 py-1.5 border rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all ${
+                      !canChangeStatus(item)
+                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                        : 'bg-gray-50 border-gray-200 cursor-pointer'
+                    }`}
+                    style={{ width: '150px' }}
+                  >
+                    {!getValidStatusOptions(item).some(opt => opt.value === item.status) && (
+                      <option value={item.status}>
+                        {item.status === 'CANCELLED' ? 'Cancelado' : item.status === 'DECLINED' ? 'Recusado' : item.status}
+                      </option>
+                    )}
+                    {getValidStatusOptions(item).map((opt) => (
+                      <option key={opt.value} value={opt.value}>
+                        {opt.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
             </PermissionGate>
 
             <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/payment-status`}>
-              {item.status !== 'CANCELLED' && item.status !== 'DECLINED' && (
+              {item.paymentStatus !== 'PAID' && (
                 <div className="flex flex-col gap-0.5">
                   <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Status Pagamento</span>
                   <select
                     value={item.paymentStatus || 'PENDING'}
+                    disabled={!canChangePaymentStatus(item)}
+                    title={getPaymentStatusChangeBlockReason(item) || undefined}
                     onChange={(e) => handlePaymentStatusChange(item.id, e.target.value)}
-                    className="text-xs px-2.5 py-1.5 bg-gray-50 border border-gray-200 rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all cursor-pointer"
+                    className={`text-xs px-2.5 py-1.5 border rounded-lg outline-none focus:ring-1 focus:ring-[#be8a83]/20 focus:border-[#be8a83] transition-all ${
+                      !canChangePaymentStatus(item)
+                        ? 'bg-gray-100 border-gray-200 text-gray-400 cursor-not-allowed opacity-60'
+                        : 'bg-gray-50 border-gray-200 cursor-pointer'
+                    }`}
                     style={{ width: '150px' }}
                   >
                     <option value="PENDING">Pendente</option>
-                    <option value="PAID">Pago</option>
-                    <option value="CANCELLED">Cancelado</option>
                     <option value="MANUAL">Pago Manualmente</option>
+                    <option value="CANCELLED">Cancelado</option>
                   </select>
                 </div>
               )}
@@ -419,47 +444,52 @@ export const AdminAppointments = () => {
       render: (item: AppointmentResponse) => {
         const service = allServices.find((s) => s.id === item.serviceId);
         const price = service ? (service.price ?? null) : null;
+        const cancelDisabled = !canCancel(item);
+        const cancelReason = getCancelBlockReason(item);
 
         return (
           <div className="flex flex-col gap-1.5">
-            {item.status !== 'CANCELLED' &&
-              item.status !== 'DONE' &&
-              item.status !== 'DECLINED' && (
-                <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/cancel`}>
-                  <button
-                    onClick={() => {
-                      setAppointmentToCancel(item.id);
-                      setShowConfirm(true);
-                    }}
-                    className="w-full text-center px-2.5 py-1.5 border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-semibold rounded-lg transition-all whitespace-nowrap cursor-pointer hover:border-rose-300"
-                  >
-                    Cancelar
-                  </button>
-                </PermissionGate>
-              )}
+            <PermissionGate method="PATCH" endpoint={`/v1/appointments/${item.id}/cancel`}>
+              <button
+                onClick={() => {
+                  if (!cancelDisabled) {
+                    setAppointmentToCancel(item.id);
+                    setShowConfirm(true);
+                  }
+                }}
+                disabled={cancelDisabled}
+                title={cancelReason || undefined}
+                className={`w-full text-center px-2.5 py-1.5 border text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
+                  cancelDisabled
+                    ? 'border-gray-200 text-gray-400 bg-gray-50 cursor-not-allowed opacity-60'
+                    : 'border-rose-200 text-rose-600 hover:bg-rose-50 cursor-pointer hover:border-rose-300'
+                }`}
+              >
+                Cancelar
+              </button>
+            </PermissionGate>
 
-            {item.status === 'CONFIRMED' &&
-              (item.paymentStatus === 'PENDING' || !item.paymentStatus) && (
-                <>
-                  {item.pixQrCode ? (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPixModal(item.id, item.serviceName, price, item.pixQrCode)}
-                      className="w-full text-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
-                    >
-                      Ver PIX
-                    </button>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => handleOpenPixModal(item.id, item.serviceName, price, null)}
-                      className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
-                    >
-                      Pagar com PIX
-                    </button>
-                  )}
-                </>
-              )}
+            {canGeneratePix(item) && (
+              <>
+                {item.pixQrCode ? (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPixModal(item.id, item.serviceName, price, item.pixQrCode)}
+                    className="w-full text-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
+                  >
+                    Ver PIX
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleOpenPixModal(item.id, item.serviceName, price, null)}
+                    className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
+                  >
+                    Pagar com PIX
+                  </button>
+                )}
+              </>
+            )}
           </div>
         );
       },
