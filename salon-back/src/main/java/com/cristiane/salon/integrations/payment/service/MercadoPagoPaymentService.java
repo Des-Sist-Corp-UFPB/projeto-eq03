@@ -17,6 +17,7 @@ import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
 import com.mercadopago.resources.payment.Payment;
 
+import com.cristiane.salon.utils.LogMasker;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
@@ -62,7 +63,7 @@ public class MercadoPagoPaymentService {
             // com o motivo da recusa
             log.error("Mercado Pago recusou o pagamento! Status: {} | Detalhes: {}",
                     e.getApiResponse().getStatusCode(),
-                    e.getApiResponse().getContent());
+                    LogMasker.sanitizeJson(e.getApiResponse().getContent()));
 
             throw new BadRequestException("Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.");
         } catch (Exception e) {
