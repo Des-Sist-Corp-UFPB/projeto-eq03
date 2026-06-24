@@ -116,7 +116,7 @@ const renderAdminAppointments = () => {
       email: 'admin@salao.com',
       role: 'ADMIN',
       userId: 1,
-      authorities: [],
+      permissions: [],
       cpf: '12345678909',
     },
     isAuthenticated: true,
