@@ -137,7 +137,8 @@ describe('MyAppointments Component', () => {
       renderMyAppointments();
     });
 
-    const payBtn = screen.getByRole('button', { name: 'Pagar com PIX' });
+    const payBtns = screen.getAllByRole('button', { name: 'Pagar com PIX' });
+    const payBtn = payBtns[1]; // Corte de Cabelo is scheduled at 2026-06-25, so it is sorted after Escova (2026-06-27)
     expect(payBtn).toBeInTheDocument();
 
     await act(async () => {

@@ -6,6 +6,7 @@ import { PixPaymentModal } from '../../components/modal/PixPaymentModal';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { CalendarX } from 'lucide-react';
+import { canCancel, canGeneratePix } from '../../utils/appointmentRules';
 
 export const MyAppointments = () => {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
@@ -288,49 +289,42 @@ export const MyAppointments = () => {
                   </span>
                 </div>
 
-                {(apt.status === 'CONFIRMED' &&
-                  (apt.paymentStatus === 'PENDING' || !apt.paymentStatus)) ||
-                (apt.status !== 'CANCELLED' &&
-                  apt.status !== 'DONE' &&
-                  apt.status !== 'DECLINED') ? (
+                {canGeneratePix(apt) || canCancel(apt) ? (
                   <div className="mt-3 pt-3 border-t border-dashed border-gray-100 flex flex-col gap-2">
-                    {apt.status === 'CONFIRMED' &&
-                      (apt.paymentStatus === 'PENDING' || !apt.paymentStatus) && (
-                        <>
-                          {apt.pixQrCode ? (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPixModal(apt.id, apt.serviceName, apt.pixQrCode)}
-                              className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                            >
-                              Ver QR Code PIX
-                            </button>
-                          ) : (
-                            <button
-                              type="button"
-                              onClick={() => handleOpenPixModal(apt.id, apt.serviceName, null)}
-                              className="w-full py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                            >
-                              Pagar com PIX
-                            </button>
-                          )}
-                        </>
-                      )}
+                    {canGeneratePix(apt) && (
+                      <>
+                        {apt.pixQrCode ? (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPixModal(apt.id, apt.serviceName, apt.pixQrCode)}
+                            className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                          >
+                            Ver QR Code PIX
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleOpenPixModal(apt.id, apt.serviceName, null)}
+                            className="w-full py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                          >
+                            Pagar com PIX
+                          </button>
+                        )}
+                      </>
+                    )}
 
-                    {apt.status !== 'CANCELLED' &&
-                      apt.status !== 'DONE' &&
-                      apt.status !== 'DECLINED' && (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setAppointmentToCancel(apt.id);
-                            setShowConfirm(true);
-                          }}
-                          className="w-full py-2 text-rose-600 border border-dashed border-rose-200 bg-transparent hover:bg-rose-50 hover:border-rose-400 rounded-xl text-xs font-semibold transition-all cursor-pointer"
-                        >
-                          Cancelar Agendamento
-                        </button>
-                      )}
+                    {canCancel(apt) && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setAppointmentToCancel(apt.id);
+                          setShowConfirm(true);
+                        }}
+                        className="w-full py-2 text-rose-600 border border-dashed border-rose-200 bg-transparent hover:bg-rose-50 hover:border-rose-400 rounded-xl text-xs font-semibold transition-all cursor-pointer"
+                      >
+                        Cancelar Agendamento
+                      </button>
+                    )}
                   </div>
                 ) : null}
               </div>
