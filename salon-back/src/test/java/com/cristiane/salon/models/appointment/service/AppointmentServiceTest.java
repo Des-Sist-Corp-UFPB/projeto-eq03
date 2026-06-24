@@ -22,6 +22,9 @@ import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import com.cristiane.salon.models.audit.AuditLogService;
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
+import com.mercadopago.resources.payment.Payment;
+import com.mercadopago.resources.payment.PaymentPointOfInteraction;
+import com.mercadopago.resources.payment.PaymentTransactionData;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -1076,6 +1079,87 @@ class AppointmentServiceTest {
         assertThatThrownBy(() -> appointmentService.updatePaymentStatus(1L, "PAID"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Transição manual para PAGO não permitida para agendamentos pendentes sem um ID de pagamento válido.");
+    }
+
+    @Test
+    void generatePixPayment_whenCpfAlreadyUsedByAnotherUser_shouldGenerateSuccessfully() {
+        // Arrange
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Mock payment response
+        Payment payment = mock(Payment.class);
+        PaymentPointOfInteraction poi = mock(PaymentPointOfInteraction.class);
+        PaymentTransactionData td = mock(PaymentTransactionData.class);
+        when(payment.getPointOfInteraction()).thenReturn(poi);
+        when(poi.getTransactionData()).thenReturn(td);
+        when(td.getQrCode()).thenReturn("mocked_qr_code");
+        when(payment.getId()).thenReturn(12345L);
+
+        when(mercadoPagoPaymentService.createPixPayment(any(), any(), any(), any(), any(), any()))
+                .thenReturn(payment);
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        AppointmentResponse response = appointmentService.generatePixPayment(1L, new GeneratePixRequest(false, "09123456752"));
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.pixQrCode()).isEqualTo("mocked_qr_code");
+        assertThat(clientUser.getCpf()).isEqualTo("09123456752");
+        verify(userRepository).save(clientUser);
+    }
+
+    @Test
+    void generatePixPayment_whenAdminGeneratesForClient_shouldSaveCpfToClientAndUseClientDetails() {
+        // Arrange - authenticated user is admin/staff, clientUser owns the appointment
+        mockAuthenticatedUser(staffUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Mock payment response
+        Payment payment = mock(Payment.class);
+        PaymentPointOfInteraction poi = mock(PaymentPointOfInteraction.class);
+        PaymentTransactionData td = mock(PaymentTransactionData.class);
+        when(payment.getPointOfInteraction()).thenReturn(poi);
+        when(poi.getTransactionData()).thenReturn(td);
+        when(td.getQrCode()).thenReturn("mocked_qr_code");
+        when(payment.getId()).thenReturn(12345L);
+
+        when(mercadoPagoPaymentService.createPixPayment(
+                eq(salonService.getPrice()),
+                anyString(),
+                eq(clientUser.getEmail()), // Payer email should be client's
+                eq(clientUser.getName()),  // Payer name should be client's
+                eq("09123456752"),
+                eq(1L)
+        )).thenReturn(payment);
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        AppointmentResponse response = appointmentService.generatePixPayment(1L, new GeneratePixRequest(false, "09123456752"));
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(clientUser.getCpf()).isEqualTo("09123456752");
+        assertThat(staffUser.getCpf()).isNull(); // Should NOT set on admin
+        verify(userRepository).save(clientUser);
+        verify(userRepository, never()).save(staffUser);
     }
 }
 
