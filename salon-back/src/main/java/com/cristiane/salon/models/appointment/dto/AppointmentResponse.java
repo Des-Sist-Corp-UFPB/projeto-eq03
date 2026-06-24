@@ -19,7 +19,9 @@ public record AppointmentResponse(
         String status,
         String paymentStatus,
         Long paymentId,
-        String pixQrCode
+        String pixQrCode,
+        Boolean clientHasSavedCpf,
+        String clientCpfMasked
 ) {
     public AppointmentResponse(
             Long id,
@@ -35,10 +37,42 @@ public record AppointmentResponse(
             String status
     ) {
         this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
-                scheduledAt, preferredDate, clientNotes, status, null, null, null);
+                scheduledAt, preferredDate, clientNotes, status, null, null, null, false, "");
+    }
+
+    public AppointmentResponse(
+            Long id,
+            Long clientId,
+            String clientName,
+            Long employeeId,
+            String employeeName,
+            Long serviceId,
+            String serviceName,
+            LocalDateTime scheduledAt,
+            LocalDate preferredDate,
+            String clientNotes,
+            String status,
+            String paymentStatus,
+            Long paymentId,
+            String pixQrCode
+    ) {
+        this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
+                scheduledAt, preferredDate, clientNotes, status, paymentStatus, paymentId, pixQrCode, false, "");
     }
 
     public static AppointmentResponse fromEntity(Appointment appointment) {
+        String rawCpf = appointment.getClient().getCpf();
+        boolean hasSavedCpf = rawCpf != null && !rawCpf.isBlank();
+        String maskedCpf = "";
+        if (hasSavedCpf) {
+            String clean = rawCpf.replaceAll("\\D", "");
+            if (clean.length() == 11) {
+                maskedCpf = "***.***." + clean.substring(6, 9) + "-";
+            } else {
+                maskedCpf = rawCpf;
+            }
+        }
+
         return new AppointmentResponse(
                 appointment.getId(),
                 appointment.getClient().getId(),
@@ -53,7 +87,9 @@ public record AppointmentResponse(
                 appointment.getStatus().name(),
                 appointment.getPaymentStatus() != null ? appointment.getPaymentStatus().name() : null,
                 appointment.getPaymentId(),
-                appointment.getPixQrCode()
+                appointment.getPixQrCode(),
+                hasSavedCpf,
+                maskedCpf
         );
     }
 }

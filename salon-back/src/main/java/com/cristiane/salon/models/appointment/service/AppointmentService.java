@@ -298,11 +298,6 @@ public class AppointmentService {
 
             // Persist the updated CPF to the database
             User client = appointment.getClient();
-            userRepository.findByCpf(cleanCpf)
-                    .filter(existing -> !existing.getId().equals(client.getId()))
-                    .ifPresent(dup -> {
-                        throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
-                    });
             client.setCpf(cleanCpf);
             userRepository.save(client);
             clientCpf = cleanCpf;

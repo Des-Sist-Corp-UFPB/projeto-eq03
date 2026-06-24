@@ -38,7 +38,7 @@ public class User implements UserDetails {
     @Column(length = 20)
     private String phone;
 
-    @Column(length = 14, unique = true)
+    @Column(length = 14)
     private String cpf;
 
     @Column(nullable = false)
