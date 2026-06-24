@@ -2,9 +2,10 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { X, Copy, Check, QrCode, ArrowRight, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
-import { usersApi } from '../../pages/admin/users/services/users';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { appointmentsApi } from '../../pages/appointments/services/appointments';
+import type { AppointmentResponse } from '../../pages/appointments/services/appointments';
 
 interface PixPaymentModalProps {
   show: boolean;
@@ -14,6 +15,10 @@ interface PixPaymentModalProps {
   serviceName: string;
   price?: number | null;
   isGenerating?: boolean;
+  clientHasSavedCpf?: boolean;
+  clientCpfMasked?: string;
+  appointmentId?: number | null;
+  onPaymentSuccess?: (updatedAppointment: AppointmentResponse) => void;
 }
 
 interface CpfFormData {
@@ -37,16 +42,18 @@ export const PixPaymentModal = ({
   serviceName,
   price,
   isGenerating = false,
+  clientHasSavedCpf = false,
+  clientCpfMasked = '',
+  appointmentId = null,
+  onPaymentSuccess,
 }: PixPaymentModalProps) => {
-  const { updateUserCpf } = useAuth();
+  const { user, updateUserCpf } = useAuth();
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<'cpf' | 'qr'>('cpf');
   const [isSavingCpf, setIsSavingCpf] = useState(false);
   const [cpfError, setCpfError] = useState('');
-
-  const [cpfInfo, setCpfInfo] = useState<{ hasSavedCpf: boolean; cpfMasked: string } | null>(null);
-  const [isLoadingCpfInfo, setIsLoadingCpfInfo] = useState(false);
   const [useSavedCpf, setUseSavedCpf] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const {
     register,
@@ -61,31 +68,53 @@ export const PixPaymentModal = ({
 
   const cpfValue = watch('cpf') || '';
 
-  // Determina o step inicial com base no CPF e carrega as informações do CPF
+  // Determina o step inicial com base no CPF
   useEffect(() => {
     if (show) {
       setCopied(false);
       setCpfError('');
+      setPaymentSuccess(false);
       reset({ cpf: '' });
       if (pixQrCode) {
         setStep('qr');
       } else {
         setStep('cpf');
-        setIsLoadingCpfInfo(true);
-        usersApi.getMyCpfInfo()
-          .then(data => {
-            setCpfInfo(data);
-            setUseSavedCpf(data.hasSavedCpf);
-          })
-          .catch(err => {
-            console.error('Erro ao carregar dados do CPF:', err);
-          })
-          .finally(() => {
-            setIsLoadingCpfInfo(false);
-          });
+        setUseSavedCpf(clientHasSavedCpf);
       }
     }
-  }, [show, pixQrCode, reset]);
+  }, [show, pixQrCode, reset, clientHasSavedCpf]);
+
+  // Short Polling para detecção automática do pagamento
+  useEffect(() => {
+    let intervalId: any;
+
+    if (show && step === 'qr' && pixQrCode && appointmentId && !paymentSuccess) {
+      intervalId = setInterval(async () => {
+        try {
+          const appointment = await appointmentsApi.findById(appointmentId);
+          if (appointment.paymentStatus === 'PAID') {
+            setPaymentSuccess(true);
+            clearInterval(intervalId);
+
+            setTimeout(() => {
+              if (onPaymentSuccess) {
+                onPaymentSuccess(appointment);
+              }
+              onHide();
+            }, 2000);
+          }
+        } catch (err) {
+          console.error('Erro ao verificar status do pagamento:', err);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [show, step, pixQrCode, appointmentId, paymentSuccess, onPaymentSuccess, onHide]);
 
   if (!show) return null;
 
@@ -114,7 +143,7 @@ export const PixPaymentModal = ({
         cpf: useSavedCpf ? undefined : rawCpf,
       });
 
-      if (!useSavedCpf && rawCpf) {
+      if (!useSavedCpf && rawCpf && user?.role === 'CLIENTE') {
         updateUserCpf(rawCpf);
       }
       setStep('qr');
@@ -142,97 +171,102 @@ export const PixPaymentModal = ({
             <div className="flex items-center gap-2">
               <QrCode size={20} className="text-[#be8a83]" />
               <h3 className="text-lg font-semibold font-heading text-[#3b3036]">
-                {step === 'cpf' ? 'Identificação para PIX' : 'Pagamento via PIX'}
+                {paymentSuccess ? 'Pagamento Confirmado' : step === 'cpf' ? 'Identificação para PIX' : 'Pagamento via PIX'}
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={onHide}
-              className="p-1 ml-auto bg-transparent border-0 text-[#7a7074] hover:text-[#be8a83] float-right text-3xl leading-none font-semibold outline-none focus:outline-none transition-colors cursor-pointer"
-            >
-              <X size={20} />
-            </button>
+            {!paymentSuccess && (
+              <button
+                type="button"
+                onClick={onHide}
+                className="p-1 ml-auto bg-transparent border-0 text-[#7a7074] hover:text-[#be8a83] float-right text-3xl leading-none font-semibold outline-none focus:outline-none transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
 
-          {/* ── ETAPA 0: Coleta de CPF (JIT) ── */}
-          {step === 'cpf' && (
+          {/* ── ETAPA DE SUCESSO / ETAPA JIT CPF / ETAPA QR CODE ── */}
+          {paymentSuccess ? (
+            <div className="relative p-6 flex-auto flex flex-col items-center text-center py-10 space-y-4 animate-scale-up">
+              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-sm animate-bounce">
+                <Check size={36} className="text-emerald-500 font-bold" />
+              </div>
+              <h4 className="font-heading text-lg font-bold text-[#3b3036]">
+                Pagamento confirmado com sucesso!
+              </h4>
+              <p className="text-sm text-[#7a7074] leading-relaxed max-w-xs">
+                Obrigado! Seu pagamento foi recebido e o agendamento já está confirmado no sistema.
+              </p>
+            </div>
+          ) : step === 'cpf' ? (
             <form onSubmit={handleSubmit(handleCpfSubmit)}>
               <div className="relative p-6 flex-auto flex flex-col gap-5">
-                {isLoadingCpfInfo ? (
-                  <div className="flex flex-col items-center justify-center py-8 gap-3 text-[#7a7074]">
-                    <Loader2 size={32} className="animate-spin text-[#be8a83]" />
-                    <p className="text-sm font-medium">Buscando dados do seu perfil...</p>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                  <p className="font-semibold mb-1">CPF obrigatório para pagamento via PIX</p>
+                  <p className="text-xs leading-relaxed">
+                    O Banco Central exige o CPF do pagador para transações PIX. Seus dados ficam seguros e são usados apenas para processar o pagamento.
+                  </p>
+                </div>
+
+                {clientHasSavedCpf && (
+                  <div
+                    className="flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-150 rounded-xl hover:bg-gray-100/50 transition-colors cursor-pointer"
+                    onClick={() => setUseSavedCpf(!useSavedCpf)}
+                  >
+                    <input
+                      type="checkbox"
+                      id="use-saved-cpf-checkbox"
+                      checked={useSavedCpf}
+                      onChange={(e) => setUseSavedCpf(e.target.checked)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="w-4 h-4 text-[#be8a83] border-gray-300 rounded focus:ring-[#be8a83] cursor-pointer"
+                    />
+                    <label
+                      htmlFor="use-saved-cpf-checkbox"
+                      className="text-sm text-[#3b3036] font-semibold cursor-pointer select-none"
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      Usar CPF salvo ({clientCpfMasked})
+                    </label>
                   </div>
-                ) : (
-                  <>
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                      <p className="font-semibold mb-1">CPF obrigatório para pagamento via PIX</p>
-                      <p className="text-xs leading-relaxed">
-                        O Banco Central exige o CPF do pagador para transações PIX. Seus dados ficam seguros e são usados apenas para processar o pagamento.
-                      </p>
-                    </div>
-
-                    {cpfInfo?.hasSavedCpf && (
-                      <div
-                        className="flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-150 rounded-xl hover:bg-gray-100/50 transition-colors cursor-pointer"
-                        onClick={() => setUseSavedCpf(!useSavedCpf)}
-                      >
-                        <input
-                          type="checkbox"
-                          id="use-saved-cpf-checkbox"
-                          checked={useSavedCpf}
-                          onChange={(e) => setUseSavedCpf(e.target.checked)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="w-4 h-4 text-[#be8a83] border-gray-300 rounded focus:ring-[#be8a83] cursor-pointer"
-                        />
-                        <label
-                          htmlFor="use-saved-cpf-checkbox"
-                          className="text-sm text-[#3b3036] font-semibold cursor-pointer select-none"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          Usar CPF salvo ({cpfInfo.cpfMasked})
-                        </label>
-                      </div>
-                    )}
-
-                    {!useSavedCpf && (
-                      <div className="space-y-1.5 animate-fade-in">
-                        <label className="label-premium">
-                          CPF <span className="text-rose-500">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          id="pix-cpf-input"
-                          placeholder="000.000.000-00"
-                          value={cpfValue}
-                          {...register('cpf', {
-                            required: !useSavedCpf ? 'CPF é obrigatório para gerar o PIX' : false,
-                            validate: (v) => {
-                              if (useSavedCpf) return true;
-                              const digits = v.replace(/\D/g, '');
-                              return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
-                            },
-                          })}
-                          onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
-                          className={`input-premium ${errors.cpf || cpfError ? 'border-rose-300 focus:border-rose-500' : ''}`}
-                          maxLength={14}
-                          autoFocus
-                        />
-                        {errors.cpf && (
-                          <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
-                        )}
-                        {cpfError && !errors.cpf && (
-                          <span className="text-xs text-rose-500 font-semibold">{cpfError}</span>
-                        )}
-                      </div>
-                    )}
-
-                    <p className="text-xs text-[#7a7074] leading-relaxed">
-                      Você também pode cadastrar seu CPF permanentemente na página{' '}
-                      <span className="text-[#be8a83] font-semibold">Meu Perfil</span> para não precisar informar nas próximas vezes.
-                    </p>
-                  </>
                 )}
+
+                {!useSavedCpf && (
+                  <div className="space-y-1.5 animate-fade-in">
+                    <label className="label-premium">
+                      CPF <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      id="pix-cpf-input"
+                      placeholder="000.000.000-00"
+                      value={cpfValue}
+                      {...register('cpf', {
+                        required: !useSavedCpf ? 'CPF é obrigatório para gerar o PIX' : false,
+                        validate: (v) => {
+                          if (useSavedCpf) return true;
+                          const digits = v.replace(/\D/g, '');
+                          return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
+                        },
+                      })}
+                      onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
+                      className={`input-premium ${errors.cpf || cpfError ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                      maxLength={14}
+                      autoFocus
+                    />
+                    {errors.cpf && (
+                      <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
+                    )}
+                    {cpfError && !errors.cpf && (
+                      <span className="text-xs text-rose-500 font-semibold">{cpfError}</span>
+                    )}
+                  </div>
+                )}
+
+                <p className="text-xs text-[#7a7074] leading-relaxed">
+                  Você também pode cadastrar seu CPF permanentemente na página{' '}
+                  <span className="text-[#be8a83] font-semibold">Meu Perfil</span> para não precisar informar nas próximas vezes.
+                </p>
               </div>
 
               <div className="flex items-center justify-end p-5 border-t border-solid border-[#eae1e1] rounded-b-2xl bg-[#fcf9f9] gap-3">
@@ -245,7 +279,7 @@ export const PixPaymentModal = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingCpf || isLoadingCpfInfo}
+                  disabled={isSavingCpf}
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#be8a83] hover:bg-[#a1706a] text-white shadow-md shadow-[#be8a83]/15 font-semibold text-sm rounded-xl transition-all duration-200 disabled:opacity-50 cursor-pointer"
                 >
                   {isSavingCpf ? (
@@ -257,10 +291,7 @@ export const PixPaymentModal = ({
                 </button>
               </div>
             </form>
-          )}
-
-          {/* ── ETAPA 1: QR Code PIX ── */}
-          {step === 'qr' && (
+          ) : (
             <>
               <div className="relative p-6 flex-auto flex flex-col items-center text-center space-y-6">
                 <div className="space-y-1">
@@ -337,4 +368,3 @@ export const PixPaymentModal = ({
     </div>
   );
 };
-

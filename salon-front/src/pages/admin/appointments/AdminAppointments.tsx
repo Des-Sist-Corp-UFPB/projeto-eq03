@@ -221,6 +221,8 @@ export const AdminAppointments = () => {
                   ...apt,
                   paymentStatus: data.paymentStatus || 'PENDING',
                   pixQrCode: data.pixQrCode,
+                  clientHasSavedCpf: data.clientHasSavedCpf,
+                  clientCpfMasked: data.clientCpfMasked,
                 }
               : apt
           )
@@ -681,6 +683,14 @@ export const AdminAppointments = () => {
         serviceName={currentServiceName}
         price={currentPrice}
         isGenerating={isGeneratingPix}
+        clientHasSavedCpf={appointments.find((apt) => apt.id === currentPixAppointmentId)?.clientHasSavedCpf}
+        clientCpfMasked={appointments.find((apt) => apt.id === currentPixAppointmentId)?.clientCpfMasked}
+        appointmentId={currentPixAppointmentId}
+        onPaymentSuccess={(updatedApt) => {
+          setAppointments((prev) =>
+            prev.map((apt) => (apt.id === updatedApt.id ? updatedApt : apt))
+          );
+        }}
       />
     </>
   );

@@ -26,6 +26,8 @@ export interface AppointmentResponse {
   paymentStatus?: string | null;
   paymentId?: number | null;
   pixQrCode?: string | null;
+  clientHasSavedCpf?: boolean;
+  clientCpfMasked?: string;
 }
 
 interface AppointmentCreatePayload {
@@ -114,6 +116,11 @@ export const appointmentsApi = {
 
   generatePix: async (id: number, payload: GeneratePixRequest) => {
     const { data } = await api.post<AppointmentResponse>(`/appointments/${id}/pix`, payload);
+    return data;
+  },
+
+  findById: async (id: number) => {
+    const { data } = await api.get<AppointmentResponse>(`/appointments/${id}`);
     return data;
   },
 };

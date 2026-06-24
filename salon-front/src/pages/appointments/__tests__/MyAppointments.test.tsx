@@ -8,8 +8,10 @@ vi.mock('../services/appointments', () => ({
     getMyAppointments: vi.fn(),
     cancel: vi.fn(),
     generatePix: vi.fn(),
+    findById: vi.fn(),
   },
 }));
+
 
 vi.mock('../../admin/users/services/users', () => ({
   usersApi: {
@@ -43,6 +45,8 @@ const mockAppointments = [
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
     pixQrCode: null,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
   {
     id: 2,
@@ -56,6 +60,8 @@ const mockAppointments = [
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
     pixQrCode: 'pix-copia-e-cola-code-mock-2',
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
   {
     id: 3,
@@ -69,6 +75,8 @@ const mockAppointments = [
     status: 'PENDING',
     paymentStatus: null,
     pixQrCode: null,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
 ];
 
@@ -89,6 +97,7 @@ describe('MyAppointments Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(appointmentsApi.getMyAppointments).mockResolvedValue(mockAppointments);
+    vi.mocked(appointmentsApi.findById).mockResolvedValue({ id: 1, paymentStatus: 'PENDING' } as any);
     vi.mocked(appointmentsApi.generatePix).mockResolvedValue({
       id: 1,
       clientId: 5,

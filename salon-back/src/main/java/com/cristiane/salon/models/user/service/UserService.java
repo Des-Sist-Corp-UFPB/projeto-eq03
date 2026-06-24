@@ -105,9 +105,6 @@ public class UserService {
             if (!CpfValidator.isValid(cleanCpf)) {
                 throw new BadRequestException("CPF inválido. Por favor, insira um CPF válido.");
             }
-            if (userRepository.findByCpf(cleanCpf).filter(u -> !u.getId().equals(id)).isPresent()) {
-                throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
-            }
             user.setCpf(cleanCpf);
         }
         if (request.password() != null && !request.password().isBlank()) {
@@ -170,12 +167,6 @@ public class UserService {
         if (!CpfValidator.isValid(cleanCpf)) {
             throw new BadRequestException("CPF inválido. Por favor, insira um CPF válido.");
         }
-
-        userRepository.findByCpf(cleanCpf)
-                .filter(existing -> !existing.getId().equals(user.getId()))
-                .ifPresent(dup -> {
-                    throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
-                });
 
         user.setCpf(cleanCpf);
         User saved = userRepository.save(user);

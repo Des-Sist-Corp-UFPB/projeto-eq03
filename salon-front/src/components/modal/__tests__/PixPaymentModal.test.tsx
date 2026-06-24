@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, act, render } from '@testing-library/react';
 import { PixPaymentModal } from '../PixPaymentModal';
+import { appointmentsApi } from '../../../pages/appointments/services/appointments';
 
 vi.mock('../../../hooks/useAuth', () => ({
   useAuth: () => ({
@@ -15,13 +16,9 @@ vi.mock('../../../hooks/useAuth', () => ({
   }),
 }));
 
-vi.mock('../../../pages/admin/users/services/users', () => ({
-  usersApi: {
-    getMyCpfInfo: vi.fn().mockResolvedValue({
-      hasSavedCpf: true,
-      cpfMasked: '***.***.***-09',
-    }),
-    updateMyCpf: vi.fn().mockResolvedValue({}),
+vi.mock('../../../pages/appointments/services/appointments', () => ({
+  appointmentsApi: {
+    findById: vi.fn(),
   },
 }));
 
@@ -33,6 +30,8 @@ describe('PixPaymentModal Component', () => {
     pixQrCode: '00020101021226870014br.gov.bcb.pix2565qr.mercadopago.com/pix/v2/foo-bar-id',
     serviceName: 'Corte de Cabelo Feminino',
     price: 85.5,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.***-09',
   };
 
   beforeEach(() => {
@@ -113,13 +112,6 @@ describe('PixPaymentModal Component', () => {
     vi.useRealTimers();
   });
 
-  it('renders loading profile indicator when show is true and pixQrCode is not yet generated', async () => {
-    render(<PixPaymentModal {...defaultProps} pixQrCode={null} />);
-
-    expect(screen.getByText('Identificação para PIX')).toBeInTheDocument();
-    expect(screen.getByText('Buscando dados do seu perfil...')).toBeInTheDocument();
-  });
-
   it('renders checkbox and allows submitting with saved CPF', async () => {
     const onGeneratePixMock = vi.fn().mockResolvedValue(undefined);
     render(
@@ -130,8 +122,8 @@ describe('PixPaymentModal Component', () => {
       />
     );
 
-    // Wait for getMyCpfInfo to resolve and render checkbox
-    const checkbox = await screen.findByRole('checkbox', { name: /Usar CPF salvo/ });
+    // Render checkbox immediately from props
+    const checkbox = screen.getByRole('checkbox', { name: /Usar CPF salvo/ });
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).toBeChecked();
 
@@ -153,8 +145,8 @@ describe('PixPaymentModal Component', () => {
       />
     );
 
-    // Wait for getMyCpfInfo to resolve and render checkbox
-    const checkbox = await screen.findByRole('checkbox', { name: /Usar CPF salvo/ });
+    // Checkbox rendered from props
+    const checkbox = screen.getByRole('checkbox', { name: /Usar CPF salvo/ });
     
     // Uncheck it
     await act(async () => {
@@ -176,5 +168,62 @@ describe('PixPaymentModal Component', () => {
     });
 
     expect(onGeneratePixMock).toHaveBeenCalledWith({ useSavedCpf: false, cpf: '09123456752' });
+  });
+
+  it('starts short polling when step is qr and appointmentId is provided', async () => {
+    vi.useFakeTimers();
+    const findByIdMock = vi.mocked(appointmentsApi.findById).mockResolvedValue({
+      id: 1,
+      paymentStatus: 'PENDING',
+    } as any);
+
+    render(
+      <PixPaymentModal
+        {...defaultProps}
+        appointmentId={1}
+      />
+    );
+
+    // Should poll after interval
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    expect(findByIdMock).toHaveBeenCalledWith(1);
+    vi.useRealTimers();
+  });
+
+  it('stops polling and shows success message when payment status is PAID', async () => {
+    vi.useFakeTimers();
+    const onPaymentSuccessMock = vi.fn();
+    const mockPaidAppointment = {
+      id: 1,
+      paymentStatus: 'PAID',
+    };
+    vi.mocked(appointmentsApi.findById).mockResolvedValue(mockPaidAppointment as any);
+
+    render(
+      <PixPaymentModal
+        {...defaultProps}
+        appointmentId={1}
+        onPaymentSuccess={onPaymentSuccessMock}
+      />
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    // Check that success message is displayed
+    expect(screen.getByText('Pagamento confirmado com sucesso!')).toBeInTheDocument();
+
+    // Advance 2 seconds to wait for modal close
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(onPaymentSuccessMock).toHaveBeenCalledWith(mockPaidAppointment);
+    expect(defaultProps.onHide).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });

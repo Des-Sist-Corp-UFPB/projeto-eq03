@@ -65,6 +65,13 @@ public class AppointmentController {
         return ResponseEntity.ok(appointmentService.findAll());
     }
 
+    @GetMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Busca um agendamento por ID")
+    public ResponseEntity<AppointmentResponse> findById(@PathVariable Long id) {
+        return ResponseEntity.ok(appointmentService.findById(id));
+    }
+
     @PatchMapping("/{id}/cancel")
     @PreAuthorize("isAuthenticated()")
     @Auditable(action = "APPOINTMENT_CANCELLED", entityType = "Appointment", captureArgs = true)

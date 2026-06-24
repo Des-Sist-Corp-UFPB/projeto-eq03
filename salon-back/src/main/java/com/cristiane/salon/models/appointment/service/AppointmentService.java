@@ -246,6 +246,21 @@ public class AppointmentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public AppointmentResponse findById(Long id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        User currentUser = getAuthenticatedUser();
+        boolean isAdmin = isStaff(currentUser);
+
+        if (!isAdmin && !appointment.getClient().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Você não tem permissão para visualizar este agendamento");
+        }
+
+        return AppointmentResponse.fromEntity(appointment);
+    }
+
     @Transactional
     public AppointmentResponse generatePixPayment(Long id, GeneratePixRequest request) {
         Appointment appointment = appointmentRepository.findById(id)
@@ -298,11 +313,6 @@ public class AppointmentService {
 
             // Persist the updated CPF to the database
             User client = appointment.getClient();
-            userRepository.findByCpf(cleanCpf)
-                    .filter(existing -> !existing.getId().equals(client.getId()))
-                    .ifPresent(dup -> {
-                        throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
-                    });
             client.setCpf(cleanCpf);
             userRepository.save(client);
             clientCpf = cleanCpf;
