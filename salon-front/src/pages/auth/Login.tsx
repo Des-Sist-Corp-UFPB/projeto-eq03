@@ -43,10 +43,33 @@ export const Login = () => {
     setErrorMsg('');
     try {
       const response = await api.post('/auth/login', data);
-      login(response.data.accessToken, response.data.refreshToken, true);
+      const { accessToken, refreshToken } = response.data;
 
-      const pending = localStorage.getItem('pending_appointment');
-      navigate(pending ? '/appointment' : '/');
+      // 1. Decodificar o token ANTES de chamar login() para calcular a rota destino.
+      //    Isso elimina o flicker causado por redirecionamentos assíncronos no AuthContext.
+      let destination = '/';
+      try {
+        const { jwtDecode } = await import('jwt-decode');
+        const decoded = jwtDecode<{ role?: string }>(accessToken);
+        const role = decoded.role?.toUpperCase() ?? '';
+
+        if (role === 'ADMIN' || role === 'SYSADMIN') {
+          destination = '/admin/dashboard';
+        } else {
+          // Cliente: verificar se havia um agendamento pendente
+          const pending = localStorage.getItem('pending_appointment');
+          destination = pending ? '/appointment' : '/meus-agendamentos';
+        }
+      } catch {
+        // Fallback seguro se o token não puder ser decodificado
+        destination = '/';
+      }
+
+      // 2. Atualizar o contexto com os tokens
+      login(accessToken, refreshToken);
+
+      // 3. Navegar para a rota calculada — sem flicker, sem hard reload
+      navigate(destination, { replace: true });
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.status === 403) {
         setErrorMsg('E-mail ou senha incorretos.');
@@ -58,6 +81,7 @@ export const Login = () => {
       setIsLoading(false);
     }
   };
+
 
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row bg-white overflow-hidden">

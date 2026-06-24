@@ -279,9 +279,9 @@ public class AppointmentService {
             throw new BadRequestException("Este agendamento já está pago.");
         }
 
-        // Regra 3: Apenas gerar cobrança se o salão já confirmou o horário ou concluiu o serviço
-        if (appointment.getStatus() == AppointmentStatus.REQUESTED || appointment.getStatus() == AppointmentStatus.CANCELLED || appointment.getStatus() == AppointmentStatus.DECLINED) {
-            throw new BadRequestException("Apenas agendamentos confirmados ou concluídos podem gerar PIX de cobrança.");
+        // Regra 3: Não gerar para agendamentos cancelados (terminal state)
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BadRequestException("Não é possível gerar PIX para um agendamento cancelado.");
         }
 
         BigDecimal amount = appointment.getSalonService().getPrice();
@@ -402,11 +402,14 @@ public class AppointmentService {
             throw new UnauthorizedException("Você não tem permissão para cancelar este agendamento");
         }
 
-        // Guard clause for terminal states:
-        if (appointment.getPaymentStatus() == PaymentStatus.PAID ||
-                appointment.getPaymentStatus() == PaymentStatus.CANCELLED ||
-                appointment.getStatus() == AppointmentStatus.CANCELLED) {
+        // Guard clause: estado terminal — já cancelado não pode voltar atrás
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
             throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+        }
+
+        // Guard clause: não é possível cancelar um agendamento com pagamento confirmado sem estorno prévio
+        if (appointment.getPaymentStatus() == PaymentStatus.PAID) {
+            throw new BusinessException("Não é possível cancelar um agendamento que já foi pago. Realize o estorno antes de cancelar.");
         }
 
         if (appointment.getStatus() == AppointmentStatus.DONE) {
@@ -428,10 +431,8 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
 
-        // Guard clause for terminal states:
-        if (appointment.getPaymentStatus() == PaymentStatus.PAID ||
-                appointment.getPaymentStatus() == PaymentStatus.CANCELLED ||
-                appointment.getStatus() == AppointmentStatus.CANCELLED) {
+        // Guard clause: estado terminal — agendamento cancelado não permite mais alterações de status
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
             throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
         }
 
@@ -444,6 +445,15 @@ public class AppointmentService {
                     && appointment.getScheduledAt() == null) {
                 throw new BadRequestException("É necessário ter data e hora definidas neste agendamento");
             }
+
+            // Guard clause desacoplado: bloqueia alterações de status para não-DONE quando o pagamento está finalizado.
+            // Permite DONE mesmo se já pago (ex: concluir serviço após pagamento PIX confirmado).
+            if (status != AppointmentStatus.DONE &&
+                    (appointment.getPaymentStatus() == PaymentStatus.PAID ||
+                     appointment.getPaymentStatus() == PaymentStatus.CANCELLED)) {
+                throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+            }
+
             appointment.setStatus(status);
 
             if (status == AppointmentStatus.DONE) {
@@ -491,10 +501,14 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
 
-        // Guard clause for terminal states:
+        // Guard clause: agendamento cancelado não permite mais alterações de pagamento
+        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+        }
+
+        // Guard clause: status de pagamento em estado terminal
         if (appointment.getPaymentStatus() == PaymentStatus.PAID ||
-                appointment.getPaymentStatus() == PaymentStatus.CANCELLED ||
-                appointment.getStatus() == AppointmentStatus.CANCELLED) {
+                appointment.getPaymentStatus() == PaymentStatus.CANCELLED) {
             throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
         }
 

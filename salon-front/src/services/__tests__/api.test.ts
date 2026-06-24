@@ -8,12 +8,8 @@ describe('api interceptors', () => {
   const originalAdapter = api.defaults.adapter;
 
   beforeEach(() => {
-    const originalLocation = window.location;
-    delete (window as any).location;
-    window.location = {
-      ...originalLocation,
-      href: '',
-    } as any;
+    vi.spyOn(window, 'dispatchEvent');
+    localStorage.clear();
   });
 
   afterEach(() => {
@@ -52,28 +48,48 @@ describe('api interceptors', () => {
       await expect(responseInterceptor.rejected(mockError)).rejects.toEqual(mockError);
     });
 
-    it('should clear localStorage and redirect to /login on 403', async () => {
+    it('should clear localStorage and dispatch auth:logout Event Bus on 403', async () => {
       localStorage.setItem('@Salon:token', 'test-token');
       const mockError = {
         response: { status: 403 },
-        config: {},
+        config: { url: '/appointments' },
       };
 
       await expect(responseInterceptor.rejected(mockError)).rejects.toEqual(mockError);
       expect(localStorage.getItem('@Salon:token')).toBeNull();
-      expect(window.location.href).toBe('/login');
+      // O Event Bus 'auth:logout' deve ser disparado em vez de hard reload (window.location.href)
+      expect(window.dispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'auth:logout' })
+      );
     });
 
-    it('should clear localStorage and redirect to /login on 401 if no refresh token exists', async () => {
+    it('should NOT dispatch auth:logout on 403 if endpoint is /auth/login (login failure)', async () => {
+      localStorage.setItem('@Salon:token', 'test-token');
+      const mockError = {
+        response: { status: 403 },
+        config: { url: '/auth/login' },
+      };
+
+      await expect(responseInterceptor.rejected(mockError)).rejects.toEqual(mockError);
+      // Endpoint de login não deve disparar o evento de logout
+      expect(window.dispatchEvent).not.toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'auth:logout' })
+      );
+    });
+
+    it('should clear localStorage and dispatch auth:logout Event Bus on 401 if no refresh token exists', async () => {
       localStorage.setItem('@Salon:token', 'test-token');
       const mockError = {
         response: { status: 401 },
-        config: { _retry: false },
+        config: { _retry: false, url: '/users' },
       };
 
       await expect(responseInterceptor.rejected(mockError)).rejects.toEqual(mockError);
       expect(localStorage.getItem('@Salon:token')).toBeNull();
-      expect(window.location.href).toBe('/login');
+      // O Event Bus 'auth:logout' deve ser disparado em vez de hard reload
+      expect(window.dispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'auth:logout' })
+      );
     });
 
     it('should request new token and retry request on 401 success', async () => {
@@ -131,7 +147,7 @@ describe('api interceptors', () => {
       expect(mockAdapter).toHaveBeenCalledTimes(3); // /users (401) -> /auth/refresh -> /users (200)
     });
 
-    it('should clear localStorage and redirect to /login if refresh fails', async () => {
+    it('should clear localStorage and dispatch auth:logout Event Bus if refresh fails', async () => {
       console.log('--- START TEST 401 failure ---');
       localStorage.setItem('@Salon:refreshToken', 'invalid-refresh-token');
       localStorage.setItem('@Salon:token', 'old-access-token');
@@ -164,7 +180,10 @@ describe('api interceptors', () => {
       console.log('api.get(/users) rejected as expected');
       expect(localStorage.getItem('@Salon:token')).toBeNull();
       expect(localStorage.getItem('@Salon:refreshToken')).toBeNull();
-      expect(window.location.href).toBe('/login');
+      // O Event Bus 'auth:logout' deve ser disparado (em vez de hard reload)
+      expect(window.dispatchEvent).toHaveBeenCalledWith(
+        expect.objectContaining({ type: 'auth:logout' })
+      );
     });
 
     it('should queue multiple requests and resolve them when token refresh succeeds', async () => {

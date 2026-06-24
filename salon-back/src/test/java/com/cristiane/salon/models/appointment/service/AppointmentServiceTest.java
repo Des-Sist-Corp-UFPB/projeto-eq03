@@ -733,6 +733,25 @@ class AppointmentServiceTest {
         verify(emailService).sendCancellationNotification(apt);
     }
 
+    @Test
+    void cancel_whenPaymentIsPaid_shouldThrowBusinessException() {
+        // Não é possível cancelar um agendamento com pagamento confirmado sem estorno prévio
+        mockAuthenticatedUser(staffUser);
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+        apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PAID);
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.cancel(1L))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("estorno");
+    }
+
+
+
     // --- updateStatus tests ---
 
     @Test
@@ -986,21 +1005,77 @@ class AppointmentServiceTest {
     }
 
     @Test
-    void generatePixPayment_whenStatusIsRequested_shouldThrowBadRequestException() {
-        // Arrange
+    void generatePixPayment_whenStatusIsRequested_shouldThrowOnCpfNotFoundInsteadOfStatusBlock() {
+        // REQUESTED não bloqueia mais a geração de PIX (nova regra desacoplada).
+        // O bloqueio agora ocorre na verificação de CPF, já que clientUser não tem CPF configurado.
         mockAuthenticatedUser(clientUser);
 
         Appointment apt = new Appointment();
         apt.setId(1L);
         apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
         apt.setStatus(AppointmentStatus.REQUESTED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert: não lança mais por causa do status, mas pelo CPF ausente
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("CPF é obrigatório");
+    }
+
+
+    @Test
+    void generatePixPayment_whenStatusIsDone_shouldSucceedToAllowPaymentAfterService() {
+        // Arrange: DONE agora permite gerar PIX (cliente paga após serviço concluído)
+        clientUser.setCpf("09123456752");
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.DONE);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        Payment payment = mock(Payment.class);
+        PaymentPointOfInteraction poi = mock(PaymentPointOfInteraction.class);
+        PaymentTransactionData td = mock(PaymentTransactionData.class);
+        when(payment.getPointOfInteraction()).thenReturn(poi);
+        when(poi.getTransactionData()).thenReturn(td);
+        when(td.getQrCode()).thenReturn("mocked_qr_done");
+        when(payment.getId()).thenReturn(77L);
+        when(mercadoPagoPaymentService.createPixPayment(any(), any(), any(), any(), any(), any()))
+                .thenReturn(payment);
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        AppointmentResponse response = appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null));
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.pixQrCode()).isEqualTo("mocked_qr_done");
+    }
+
+    @Test
+    void generatePixPayment_whenStatusIsCancelled_shouldThrowBadRequestException() {
+        // Arrange: CANCELLED bloqueia geração de PIX
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setStatus(AppointmentStatus.CANCELLED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessageContaining("confirmados ou concluídos");
+                .hasMessageContaining("cancelado");
     }
 
     @Test
@@ -1024,6 +1099,7 @@ class AppointmentServiceTest {
                 .hasMessageContaining("não possui um valor configurado");
     }
 
+
     @Test
     void generatePixPayment_whenInvalidCpfPassed_shouldThrowBadRequestException() {
         // Arrange
@@ -1045,8 +1121,32 @@ class AppointmentServiceTest {
     }
 
     @Test
-    void updateStatus_whenAppointmentIsPaid_shouldThrowBusinessException() {
-        // Arrange
+    void updateStatus_whenAppointmentIsPaid_transitionToDone_shouldSucceed() {
+        // A nova regra: DONE pode ser atingido mesmo quando o pagamento está PAID
+        // Ex: serviço concluído após o pagamento PIX ter sido confirmado
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setScheduledAt(LocalDateTime.now().plusDays(1));
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+        apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PAID);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cashFlowRepository.findAll()).thenReturn(new ArrayList<>());
+
+        // Act
+        AppointmentResponse result = appointmentService.updateStatus(1L, "DONE");
+
+        // Assert: DONE é permitido mesmo com pagamento PAID
+        assertThat(result.status()).isEqualTo(AppointmentStatus.DONE.name());
+    }
+
+    @Test
+    void updateStatus_whenAppointmentIsPaid_transitionToNonDone_shouldThrowBusinessException() {
+        // CONFIRMED → CANCELLED é bloqueado quando o pagamento está PAID
         Appointment apt = new Appointment();
         apt.setId(1L);
         apt.setClient(clientUser);
@@ -1056,10 +1156,11 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
-        assertThatThrownBy(() -> appointmentService.updateStatus(1L, "DONE"))
+        assertThatThrownBy(() -> appointmentService.updateStatus(1L, "CANCELLED"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessage("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
     }
+
 
     @Test
     void updatePaymentStatus_whenManualPaidTransitionWithoutPaymentId_shouldThrowBusinessException() {
