@@ -7,6 +7,7 @@ import {
   X,
   Users,
   UserCheck,
+  UserCog,
   Scissors,
   Package,
   Calendar,
@@ -56,7 +57,8 @@ export const AdminLayout = () => {
 
   const menuItems = [
     { to: '/admin/reports', label: 'Relatórios', icon: FileBarChart },
-    { to: '/admin/users', label: 'Clientes', icon: Users },
+    { to: '/admin/clients', label: 'Clientes', icon: Users },
+    { to: '/admin/users', label: 'Equipe', icon: UserCog },
     { to: '/admin/employees', label: 'Funcionárias', icon: UserCheck },
     { to: '/admin/services', label: 'Serviços', icon: Scissors },
     { to: '/admin/products', label: 'Produtos', icon: Package },

@@ -6,18 +6,21 @@ import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
 import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
+import com.cristiane.salon.models.user.dto.UserFilter;
 import com.cristiane.salon.models.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/v1/users")
@@ -29,15 +32,11 @@ public class UserController {
 
     @GetMapping
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
-    @Operation(summary = "Lista todos os usuários (Admin/Gerente)")
-    public ResponseEntity<List<UserResponse>> findAll(
-            @RequestParam(name = "includeInactive", required = false, defaultValue = "false") Boolean includeInactive) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        boolean isAdmin = auth != null && auth.getAuthorities().stream()
-                .anyMatch(a -> a.getAuthority().equals("ROLE_ADMIN") || a.getAuthority().equals("ROLE_SYSADMIN"));
-        
-        boolean actualIncludeInactive = Boolean.TRUE.equals(includeInactive) && isAdmin;
-        return ResponseEntity.ok(userService.findAll(actualIncludeInactive));
+    @Operation(summary = "Lista todos os usuários internos com filtros e paginação (Admin/Gerente)")
+    public ResponseEntity<Page<UserResponse>> findAll(
+            @Valid UserFilter filter,
+            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(userService.findAllUsers(filter, pageable));
     }
 
     @PostMapping

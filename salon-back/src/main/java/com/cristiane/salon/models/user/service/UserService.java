@@ -6,18 +6,28 @@ import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
+import com.cristiane.salon.models.user.dto.ClientFilter;
+import com.cristiane.salon.models.user.dto.UserFilter;
+import com.cristiane.salon.models.user.dto.ClientDetailsResponse;
 import com.cristiane.salon.models.user.entity.Role;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.RoleRepository;
 import com.cristiane.salon.models.user.repository.UserRepository;
+import com.cristiane.salon.models.user.specification.UserSpecifications;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
+import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
+import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
@@ -31,6 +41,7 @@ public class UserService {
     private final RoleRepository roleRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmployeeRepository employeeRepository;
+    private final AppointmentRepository appointmentRepository;
 
     @Transactional(readOnly = true)
     public List<UserResponse> findAll(Boolean includeInactive) {
@@ -191,5 +202,57 @@ public class UserService {
             }
         }
         return new UserCpfInfoResponse(hasSavedCpf, cpfMasked);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> findAllClients(ClientFilter filter, Pageable pageable) {
+        return userRepository.findAll(UserSpecifications.filterClients(filter), pageable)
+                .map(UserResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<UserResponse> findAllUsers(UserFilter filter, Pageable pageable) {
+        return userRepository.findAll(UserSpecifications.filterUsers(filter), pageable)
+                .map(UserResponse::fromEntity);
+    }
+
+    @Transactional(readOnly = true)
+    public ClientDetailsResponse findClientDetailsById(Long id) {
+        User client = userRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Cliente não encontrado"));
+
+        if (!"CLIENTE".equals(client.getRoleName())) {
+            throw new BadRequestException("O usuário informado não é um cliente");
+        }
+
+        Long totalAppointments = appointmentRepository.countByClientId(id);
+        LocalDateTime lastAppointmentDate = appointmentRepository.findLastAppointmentDateByClientId(id);
+
+        List<Appointment> appointments = appointmentRepository.findByClientId(id);
+        List<AppointmentResponse> appointmentResponses = appointments.stream()
+                .sorted((a1, a2) -> {
+                    LocalDateTime d1 = a1.getScheduledAt() != null ? a1.getScheduledAt() : a1.getCreatedAt();
+                    LocalDateTime d2 = a2.getScheduledAt() != null ? a2.getScheduledAt() : a2.getCreatedAt();
+                    if (d1 == null && d2 == null) return 0;
+                    if (d1 == null) return 1;
+                    if (d2 == null) return -1;
+                    return d2.compareTo(d1);
+                })
+                .map(AppointmentResponse::fromEntity)
+                .collect(Collectors.toList());
+
+        return new ClientDetailsResponse(
+                client.getId(),
+                client.getName(),
+                client.getEmail(),
+                client.getPhone(),
+                client.getCpf(),
+                client.getRoleName(),
+                client.getActive(),
+                client.getCreatedAt(),
+                totalAppointments,
+                lastAppointmentDate,
+                appointmentResponses
+        );
     }
 }
