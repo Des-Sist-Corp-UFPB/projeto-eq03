@@ -43,6 +43,8 @@ const mockAppointments = [
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
     pixQrCode: null,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
   {
     id: 2,
@@ -56,6 +58,8 @@ const mockAppointments = [
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
     pixQrCode: 'pix-copia-e-cola-code-mock-2',
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
   {
     id: 3,
@@ -69,6 +73,8 @@ const mockAppointments = [
     status: 'PENDING',
     paymentStatus: null,
     pixQrCode: null,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
 ];
 

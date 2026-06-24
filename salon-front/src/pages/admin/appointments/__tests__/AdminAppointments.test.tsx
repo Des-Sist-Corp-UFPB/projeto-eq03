@@ -67,6 +67,8 @@ const mockAppointments = [
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
     pixQrCode: null,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
   {
     id: 2,
@@ -81,6 +83,8 @@ const mockAppointments = [
     status: 'REQUESTED',
     paymentStatus: null,
     pixQrCode: null,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.123-45',
   },
 ];
 

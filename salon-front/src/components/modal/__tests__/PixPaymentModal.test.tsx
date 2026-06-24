@@ -15,16 +15,6 @@ vi.mock('../../../hooks/useAuth', () => ({
   }),
 }));
 
-vi.mock('../../../pages/admin/users/services/users', () => ({
-  usersApi: {
-    getMyCpfInfo: vi.fn().mockResolvedValue({
-      hasSavedCpf: true,
-      cpfMasked: '***.***.***-09',
-    }),
-    updateMyCpf: vi.fn().mockResolvedValue({}),
-  },
-}));
-
 describe('PixPaymentModal Component', () => {
   const defaultProps = {
     show: true,
@@ -33,6 +23,8 @@ describe('PixPaymentModal Component', () => {
     pixQrCode: '00020101021226870014br.gov.bcb.pix2565qr.mercadopago.com/pix/v2/foo-bar-id',
     serviceName: 'Corte de Cabelo Feminino',
     price: 85.5,
+    clientHasSavedCpf: true,
+    clientCpfMasked: '***.***.***-09',
   };
 
   beforeEach(() => {
@@ -113,13 +105,6 @@ describe('PixPaymentModal Component', () => {
     vi.useRealTimers();
   });
 
-  it('renders loading profile indicator when show is true and pixQrCode is not yet generated', async () => {
-    render(<PixPaymentModal {...defaultProps} pixQrCode={null} />);
-
-    expect(screen.getByText('Identificação para PIX')).toBeInTheDocument();
-    expect(screen.getByText('Buscando dados do seu perfil...')).toBeInTheDocument();
-  });
-
   it('renders checkbox and allows submitting with saved CPF', async () => {
     const onGeneratePixMock = vi.fn().mockResolvedValue(undefined);
     render(
@@ -130,8 +115,8 @@ describe('PixPaymentModal Component', () => {
       />
     );
 
-    // Wait for getMyCpfInfo to resolve and render checkbox
-    const checkbox = await screen.findByRole('checkbox', { name: /Usar CPF salvo/ });
+    // Render checkbox immediately from props
+    const checkbox = screen.getByRole('checkbox', { name: /Usar CPF salvo/ });
     expect(checkbox).toBeInTheDocument();
     expect(checkbox).toBeChecked();
 
@@ -153,8 +138,8 @@ describe('PixPaymentModal Component', () => {
       />
     );
 
-    // Wait for getMyCpfInfo to resolve and render checkbox
-    const checkbox = await screen.findByRole('checkbox', { name: /Usar CPF salvo/ });
+    // Checkbox rendered from props
+    const checkbox = screen.getByRole('checkbox', { name: /Usar CPF salvo/ });
     
     // Uncheck it
     await act(async () => {
