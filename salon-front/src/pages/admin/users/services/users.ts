@@ -34,6 +34,11 @@ export interface UpdateCpfRequest {
   cpf: string;
 }
 
+export interface UserCpfInfoResponse {
+  hasSavedCpf: boolean;
+  cpfMasked: string;
+}
+
 export const usersApi = {
   findAll: async (includeInactive?: boolean) => {
     const { data } = await api.get<UserData[]>('/users', {
@@ -68,6 +73,11 @@ export const usersApi = {
 
   updateMyCpf: async (cpf: string) => {
     const { data } = await api.patch<UserData>('/users/me/cpf', { cpf });
+    return data;
+  },
+
+  getMyCpfInfo: async () => {
+    const { data } = await api.get<UserCpfInfoResponse>('/users/me/cpf-info');
     return data;
   },
 };
