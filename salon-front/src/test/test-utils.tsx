@@ -10,8 +10,8 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'queries'> {
   route?: string;
   user?: UserContextData | null;
   isAuthenticated?: boolean;
-  login?: (accessToken: string, refreshToken: string, redirect?: boolean) => void;
-  logout?: () => void;
+  login?: (accessToken: string, refreshToken: string, redirect?: boolean) => Promise<void>;
+  logout?: () => Promise<void>;
   updateUserCpf?: (cpf: string) => void;
   isLoading?: boolean;
 }
@@ -22,8 +22,8 @@ const customRender = (
     route = '/',
     user = null,
     isAuthenticated = false,
-    login = () => {},
-    logout = () => {},
+    login = vi.fn().mockResolvedValue(undefined),
+    logout = vi.fn().mockResolvedValue(undefined),
     updateUserCpf = vi.fn(),
     isLoading = false,
     ...renderOptions
@@ -33,7 +33,9 @@ const customRender = (
 
   const Wrapper = ({ children }: { children: ReactNode }) => {
     return (
-      <AuthContext.Provider value={{ user, isAuthenticated, login, logout, updateUserCpf, isLoading }}>
+      <AuthContext.Provider
+        value={{ user, isAuthenticated, login, logout, updateUserCpf, isLoading }}
+      >
         <BrowserRouter>{children}</BrowserRouter>
       </AuthContext.Provider>
     );
