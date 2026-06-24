@@ -3,6 +3,8 @@ package com.cristiane.salon.models.appointment.service;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
+import com.cristiane.salon.exception.BusinessException;
+import com.cristiane.salon.models.appointment.dto.GeneratePixRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.entity.Appointment;
@@ -671,7 +673,7 @@ class AppointmentServiceTest {
     }
 
     @Test
-    void cancel_whenStatusIsCancelled_shouldThrowBadRequestException() {
+    void cancel_whenStatusIsCancelled_shouldThrowBusinessException() {
         // Arrange
         mockAuthenticatedUser(clientUser);
         Appointment apt = new Appointment();
@@ -682,8 +684,8 @@ class AppointmentServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.cancel(1L))
-                .isInstanceOf(BadRequestException.class)
-                .hasMessage("Este agendamento já está cancelado");
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
     }
 
     @Test
@@ -933,7 +935,7 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
-        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("CPF é obrigatório para gerar o PIX");
     }
@@ -954,7 +956,7 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
-        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Este agendamento já está pago.");
     }
@@ -975,7 +977,7 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
-        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Você não tem permissão para gerar pagamento para este agendamento");
     }
@@ -993,7 +995,7 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
-        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("confirmados ou concluídos");
     }
@@ -1014,9 +1016,66 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
         // Act & Assert
-        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L))
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("não possui um valor configurado");
+    }
+
+    @Test
+    void generatePixPayment_whenInvalidCpfPassed_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(false, "11111111111")))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("CPF inválido. Por favor, insira um CPF válido.");
+    }
+
+    @Test
+    void updateStatus_whenAppointmentIsPaid_shouldThrowBusinessException() {
+        // Arrange
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+        apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PAID);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.updateStatus(1L, "DONE"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessage("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+    }
+
+    @Test
+    void updatePaymentStatus_whenManualPaidTransitionWithoutPaymentId_shouldThrowBusinessException() {
+        // Arrange
+        mockAuthenticatedUser(staffUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+        apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PENDING);
+        apt.setPaymentId(null); // No payment ID
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.updatePaymentStatus(1L, "PAID"))
+                .isInstanceOf(BusinessException.class)
+                .hasMessageContaining("Transição manual para PAGO não permitida para agendamentos pendentes sem um ID de pagamento válido.");
     }
 }
 
