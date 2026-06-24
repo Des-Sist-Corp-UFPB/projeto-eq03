@@ -37,7 +37,8 @@ export const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const onSubmit = async (data: LoginFormData) => {
+  const onSubmit = async (data: LoginFormData, e?: React.BaseSyntheticEvent) => {
+    e?.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
     try {
@@ -46,9 +47,13 @@ export const Login = () => {
 
       const pending = localStorage.getItem('pending_appointment');
       navigate(pending ? '/appointment' : '/');
-    } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao realizar login. Tente novamente.');
-      setErrorMsg(msg);
+    } catch (err: any) {
+      if (err.response?.status === 401 || err.response?.status === 403) {
+        setErrorMsg('E-mail ou senha incorretos.');
+      } else {
+        const msg = getApiErrorMessage(err, 'Erro ao realizar login. Tente novamente.');
+        setErrorMsg(msg);
+      }
     } finally {
       setIsLoading(false);
     }
