@@ -88,6 +88,8 @@ export const MyAppointments = () => {
                   ...apt,
                   paymentStatus: data.paymentStatus || 'PENDING',
                   pixQrCode: data.pixQrCode,
+                  clientHasSavedCpf: data.clientHasSavedCpf,
+                  clientCpfMasked: data.clientCpfMasked,
                 }
               : apt
           )
@@ -355,6 +357,8 @@ export const MyAppointments = () => {
         pixQrCode={currentPixCode}
         serviceName={currentServiceName}
         isGenerating={isGeneratingPix}
+        clientHasSavedCpf={appointments.find((apt) => apt.id === currentPixAppointmentId)?.clientHasSavedCpf}
+        clientCpfMasked={appointments.find((apt) => apt.id === currentPixAppointmentId)?.clientCpfMasked}
       />
     </div>
   );

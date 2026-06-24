@@ -26,6 +26,8 @@ export interface AppointmentResponse {
   paymentStatus?: string | null;
   paymentId?: number | null;
   pixQrCode?: string | null;
+  clientHasSavedCpf?: boolean;
+  clientCpfMasked?: string;
 }
 
 interface AppointmentCreatePayload {
