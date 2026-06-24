@@ -37,6 +37,11 @@ vi.mock('../../employees/services/employees', () => ({
 vi.mock('../../users/services/users', () => ({
   usersApi: {
     findAll: vi.fn(),
+    getMyCpfInfo: vi.fn().mockResolvedValue({
+      hasSavedCpf: true,
+      cpfMasked: '***.***.123-45',
+    }),
+    updateMyCpf: vi.fn().mockResolvedValue({}),
   },
 }));
 
@@ -190,7 +195,15 @@ describe('AdminAppointments Component', () => {
       fireEvent.click(payBtn);
     });
 
-    expect(appointmentsApi.generatePix).toHaveBeenCalledWith(1);
+    // Wait for the modal CPF/Identification step to load
+    const generateBtn = await screen.findByRole('button', { name: 'Gerar PIX' });
+    expect(generateBtn).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(generateBtn);
+    });
+
+    expect(appointmentsApi.generatePix).toHaveBeenCalledWith(1, { useSavedCpf: true });
     
     // Check if the modal opens
     expect(screen.getByText('Pagamento via PIX')).toBeInTheDocument();
