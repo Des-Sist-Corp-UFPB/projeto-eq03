@@ -5,12 +5,9 @@ import {
   ChevronUp,
   CheckCircle2,
   XCircle,
-  Plus,
-  Minus,
   AlertCircle,
   RefreshCw,
   Lock,
-  Unlock,
 } from 'lucide-react';
 import { rbacService, type RoleWithPermissions, type PermissionItem } from '../../services/rbac';
 import { getApiErrorMessage } from '../../utils/apiError';
@@ -62,7 +59,11 @@ export const Rbac = () => {
   const toggleRole = (roleId: number) => {
     setExpandedRoles((prev) => {
       const next = new Set(prev);
-      next.has(roleId) ? next.delete(roleId) : next.add(roleId);
+      if (next.has(roleId)) {
+        next.delete(roleId);
+      } else {
+        next.add(roleId);
+      }
       return next;
     });
   };
