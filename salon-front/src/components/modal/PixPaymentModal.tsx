@@ -4,6 +4,8 @@ import { X, Copy, Check, QrCode, ArrowRight, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { appointmentsApi } from '../../pages/appointments/services/appointments';
+import type { AppointmentResponse } from '../../pages/appointments/services/appointments';
 
 interface PixPaymentModalProps {
   show: boolean;
@@ -15,6 +17,8 @@ interface PixPaymentModalProps {
   isGenerating?: boolean;
   clientHasSavedCpf?: boolean;
   clientCpfMasked?: string;
+  appointmentId?: number | null;
+  onPaymentSuccess?: (updatedAppointment: AppointmentResponse) => void;
 }
 
 interface CpfFormData {
@@ -40,14 +44,16 @@ export const PixPaymentModal = ({
   isGenerating = false,
   clientHasSavedCpf = false,
   clientCpfMasked = '',
+  appointmentId = null,
+  onPaymentSuccess,
 }: PixPaymentModalProps) => {
   const { user, updateUserCpf } = useAuth();
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<'cpf' | 'qr'>('cpf');
   const [isSavingCpf, setIsSavingCpf] = useState(false);
   const [cpfError, setCpfError] = useState('');
-
   const [useSavedCpf, setUseSavedCpf] = useState(false);
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
 
   const {
     register,
@@ -67,6 +73,7 @@ export const PixPaymentModal = ({
     if (show) {
       setCopied(false);
       setCpfError('');
+      setPaymentSuccess(false);
       reset({ cpf: '' });
       if (pixQrCode) {
         setStep('qr');
@@ -76,6 +83,38 @@ export const PixPaymentModal = ({
       }
     }
   }, [show, pixQrCode, reset, clientHasSavedCpf]);
+
+  // Short Polling para detecção automática do pagamento
+  useEffect(() => {
+    let intervalId: any;
+
+    if (show && step === 'qr' && pixQrCode && appointmentId && !paymentSuccess) {
+      intervalId = setInterval(async () => {
+        try {
+          const appointment = await appointmentsApi.findById(appointmentId);
+          if (appointment.paymentStatus === 'PAID') {
+            setPaymentSuccess(true);
+            clearInterval(intervalId);
+
+            setTimeout(() => {
+              if (onPaymentSuccess) {
+                onPaymentSuccess(appointment);
+              }
+              onHide();
+            }, 2000);
+          }
+        } catch (err) {
+          console.error('Erro ao verificar status do pagamento:', err);
+        }
+      }, 3000);
+    }
+
+    return () => {
+      if (intervalId) {
+        clearInterval(intervalId);
+      }
+    };
+  }, [show, step, pixQrCode, appointmentId, paymentSuccess, onPaymentSuccess, onHide]);
 
   if (!show) return null;
 
@@ -132,20 +171,34 @@ export const PixPaymentModal = ({
             <div className="flex items-center gap-2">
               <QrCode size={20} className="text-[#be8a83]" />
               <h3 className="text-lg font-semibold font-heading text-[#3b3036]">
-                {step === 'cpf' ? 'Identificação para PIX' : 'Pagamento via PIX'}
+                {paymentSuccess ? 'Pagamento Confirmado' : step === 'cpf' ? 'Identificação para PIX' : 'Pagamento via PIX'}
               </h3>
             </div>
-            <button
-              type="button"
-              onClick={onHide}
-              className="p-1 ml-auto bg-transparent border-0 text-[#7a7074] hover:text-[#be8a83] float-right text-3xl leading-none font-semibold outline-none focus:outline-none transition-colors cursor-pointer"
-            >
-              <X size={20} />
-            </button>
+            {!paymentSuccess && (
+              <button
+                type="button"
+                onClick={onHide}
+                className="p-1 ml-auto bg-transparent border-0 text-[#7a7074] hover:text-[#be8a83] float-right text-3xl leading-none font-semibold outline-none focus:outline-none transition-colors cursor-pointer"
+              >
+                <X size={20} />
+              </button>
+            )}
           </div>
 
-          {/* ── ETAPA 0: Coleta de CPF (JIT) ── */}
-          {step === 'cpf' && (
+          {/* ── ETAPA DE SUCESSO / ETAPA JIT CPF / ETAPA QR CODE ── */}
+          {paymentSuccess ? (
+            <div className="relative p-6 flex-auto flex flex-col items-center text-center py-10 space-y-4 animate-scale-up">
+              <div className="w-16 h-16 bg-emerald-50 rounded-full flex items-center justify-center border border-emerald-100 shadow-sm animate-bounce">
+                <Check size={36} className="text-emerald-500 font-bold" />
+              </div>
+              <h4 className="font-heading text-lg font-bold text-[#3b3036]">
+                Pagamento confirmado com sucesso!
+              </h4>
+              <p className="text-sm text-[#7a7074] leading-relaxed max-w-xs">
+                Obrigado! Seu pagamento foi recebido e o agendamento já está confirmado no sistema.
+              </p>
+            </div>
+          ) : step === 'cpf' ? (
             <form onSubmit={handleSubmit(handleCpfSubmit)}>
               <div className="relative p-6 flex-auto flex flex-col gap-5">
                 <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
@@ -238,10 +291,7 @@ export const PixPaymentModal = ({
                 </button>
               </div>
             </form>
-          )}
-
-          {/* ── ETAPA 1: QR Code PIX ── */}
-          {step === 'qr' && (
+          ) : (
             <>
               <div className="relative p-6 flex-auto flex flex-col items-center text-center space-y-6">
                 <div className="space-y-1">
@@ -318,4 +368,3 @@ export const PixPaymentModal = ({
     </div>
   );
 };
-

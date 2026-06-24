@@ -8,8 +8,10 @@ vi.mock('../services/appointments', () => ({
     getMyAppointments: vi.fn(),
     cancel: vi.fn(),
     generatePix: vi.fn(),
+    findById: vi.fn(),
   },
 }));
+
 
 vi.mock('../../admin/users/services/users', () => ({
   usersApi: {
@@ -95,6 +97,7 @@ describe('MyAppointments Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     vi.mocked(appointmentsApi.getMyAppointments).mockResolvedValue(mockAppointments);
+    vi.mocked(appointmentsApi.findById).mockResolvedValue({ id: 1, paymentStatus: 'PENDING' } as any);
     vi.mocked(appointmentsApi.generatePix).mockResolvedValue({
       id: 1,
       clientId: 5,

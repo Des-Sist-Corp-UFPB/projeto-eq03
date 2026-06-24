@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { screen, fireEvent, act, render } from '@testing-library/react';
 import { PixPaymentModal } from '../PixPaymentModal';
+import { appointmentsApi } from '../../../pages/appointments/services/appointments';
 
 vi.mock('../../../hooks/useAuth', () => ({
   useAuth: () => ({
@@ -13,6 +14,12 @@ vi.mock('../../../hooks/useAuth', () => ({
     },
     updateUserCpf: vi.fn(),
   }),
+}));
+
+vi.mock('../../../pages/appointments/services/appointments', () => ({
+  appointmentsApi: {
+    findById: vi.fn(),
+  },
 }));
 
 describe('PixPaymentModal Component', () => {
@@ -161,5 +168,62 @@ describe('PixPaymentModal Component', () => {
     });
 
     expect(onGeneratePixMock).toHaveBeenCalledWith({ useSavedCpf: false, cpf: '09123456752' });
+  });
+
+  it('starts short polling when step is qr and appointmentId is provided', async () => {
+    vi.useFakeTimers();
+    const findByIdMock = vi.mocked(appointmentsApi.findById).mockResolvedValue({
+      id: 1,
+      paymentStatus: 'PENDING',
+    } as any);
+
+    render(
+      <PixPaymentModal
+        {...defaultProps}
+        appointmentId={1}
+      />
+    );
+
+    // Should poll after interval
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    expect(findByIdMock).toHaveBeenCalledWith(1);
+    vi.useRealTimers();
+  });
+
+  it('stops polling and shows success message when payment status is PAID', async () => {
+    vi.useFakeTimers();
+    const onPaymentSuccessMock = vi.fn();
+    const mockPaidAppointment = {
+      id: 1,
+      paymentStatus: 'PAID',
+    };
+    vi.mocked(appointmentsApi.findById).mockResolvedValue(mockPaidAppointment as any);
+
+    render(
+      <PixPaymentModal
+        {...defaultProps}
+        appointmentId={1}
+        onPaymentSuccess={onPaymentSuccessMock}
+      />
+    );
+
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(3000);
+    });
+
+    // Check that success message is displayed
+    expect(screen.getByText('Pagamento confirmado com sucesso!')).toBeInTheDocument();
+
+    // Advance 2 seconds to wait for modal close
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(2000);
+    });
+
+    expect(onPaymentSuccessMock).toHaveBeenCalledWith(mockPaidAppointment);
+    expect(defaultProps.onHide).toHaveBeenCalled();
+    vi.useRealTimers();
   });
 });

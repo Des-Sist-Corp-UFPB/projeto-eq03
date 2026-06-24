@@ -359,6 +359,12 @@ export const MyAppointments = () => {
         isGenerating={isGeneratingPix}
         clientHasSavedCpf={appointments.find((apt) => apt.id === currentPixAppointmentId)?.clientHasSavedCpf}
         clientCpfMasked={appointments.find((apt) => apt.id === currentPixAppointmentId)?.clientCpfMasked}
+        appointmentId={currentPixAppointmentId}
+        onPaymentSuccess={(updatedApt) => {
+          setAppointments((prev) =>
+            prev.map((apt) => (apt.id === updatedApt.id ? updatedApt : apt))
+          );
+        }}
       />
     </div>
   );

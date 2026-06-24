@@ -118,4 +118,9 @@ export const appointmentsApi = {
     const { data } = await api.post<AppointmentResponse>(`/appointments/${id}/pix`, payload);
     return data;
   },
+
+  findById: async (id: number) => {
+    const { data } = await api.get<AppointmentResponse>(`/appointments/${id}`);
+    return data;
+  },
 };

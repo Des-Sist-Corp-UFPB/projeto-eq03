@@ -19,6 +19,7 @@ vi.mock('../../../appointments/services/appointments', () => ({
     updateStatus: vi.fn(),
     updatePaymentStatus: vi.fn(),
     generatePix: vi.fn(),
+    findById: vi.fn(),
   },
 }));
 
@@ -122,6 +123,7 @@ describe('AdminAppointments Component', () => {
     vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServices);
     vi.mocked(employeesApi.findAll).mockResolvedValue(mockEmployees);
     vi.mocked(usersApi.findAll).mockResolvedValue(mockUsers);
+    vi.mocked(appointmentsApi.findById).mockResolvedValue({ id: 1, paymentStatus: 'PENDING' } as any);
     
     vi.mocked(appointmentsApi.generatePix).mockResolvedValue({
       id: 1,
