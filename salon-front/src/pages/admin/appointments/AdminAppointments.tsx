@@ -10,8 +10,8 @@ import { salonServicesApi } from '../../services/services/services';
 import type { SalonServiceData } from '../../services/services/services';
 import { employeesApi } from '../employees/services/employees';
 import type { EmployeeData } from '../employees/services/employees';
-import { usersApi } from '../users/services/users';
 import type { UserData } from '../users/services/users';
+import { clientsApi } from '../clients/services/clients';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import {
@@ -106,12 +106,12 @@ export const AdminAppointments = () => {
 
   const loadFormData = async () => {
     try {
-      const [usersData, servicesData, employeesData] = await Promise.all([
-        usersApi.findAll(),
+      const [clientsResponse, servicesData, employeesData] = await Promise.all([
+        clientsApi.findAll({ active: true }, 0, 1000),
         salonServicesApi.findAll(),
         employeesApi.findAll(),
       ]);
-      setClients(usersData.filter((u) => u.role === 'CLIENTE'));
+      setClients(clientsResponse.content);
       setServices(servicesData.filter((s) => s.active));
       setAllServices(servicesData);
       setEmployees(employeesData);
