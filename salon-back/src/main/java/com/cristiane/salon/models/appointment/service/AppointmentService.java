@@ -246,6 +246,21 @@ public class AppointmentService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public AppointmentResponse findById(Long id) {
+        Appointment appointment = appointmentRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        User currentUser = getAuthenticatedUser();
+        boolean isAdmin = isStaff(currentUser);
+
+        if (!isAdmin && !appointment.getClient().getId().equals(currentUser.getId())) {
+            throw new UnauthorizedException("Você não tem permissão para visualizar este agendamento");
+        }
+
+        return AppointmentResponse.fromEntity(appointment);
+    }
+
     @Transactional
     public AppointmentResponse generatePixPayment(Long id, GeneratePixRequest request) {
         Appointment appointment = appointmentRepository.findById(id)

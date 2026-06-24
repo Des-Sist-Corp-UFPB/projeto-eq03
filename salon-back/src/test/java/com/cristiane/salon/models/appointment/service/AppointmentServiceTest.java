@@ -1161,5 +1161,77 @@ class AppointmentServiceTest {
         verify(userRepository).save(clientUser);
         verify(userRepository, never()).save(staffUser);
     }
+
+    @Test
+    void findById_whenAppointmentNotFound_shouldThrowResourceNotFoundException() {
+        // Arrange
+        when(appointmentRepository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.findById(99L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Agendamento não encontrado");
+    }
+
+    @Test
+    void findById_whenUserNotOwnerAndNotAdmin_shouldThrowUnauthorizedException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser); // ID 10
+        User otherClient = new User();
+        otherClient.setId(99L);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(otherClient); // Owned by ID 99
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.findById(1L))
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Você não tem permissão para visualizar este agendamento");
+    }
+
+    @Test
+    void findById_whenUserIsOwner_shouldReturnAppointment() {
+        // Arrange
+        mockAuthenticatedUser(clientUser); // ID 10
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act
+        AppointmentResponse response = appointmentService.findById(1L);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(1L);
+    }
+
+    @Test
+    void findById_whenUserIsAdminButNotOwner_shouldReturnAppointment() {
+        // Arrange
+        mockAuthenticatedUser(staffUser); // Admin
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        // Act
+        AppointmentResponse response = appointmentService.findById(1L);
+
+        // Assert
+        assertThat(response).isNotNull();
+        assertThat(response.id()).isEqualTo(1L);
+    }
 }
 

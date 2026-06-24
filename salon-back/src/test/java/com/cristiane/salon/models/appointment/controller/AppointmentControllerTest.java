@@ -168,4 +168,19 @@ class AppointmentControllerTest extends BaseControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paymentStatus").value("PAID"));
     }
+
+    @Test
+    @WithMockUser
+    void findByIdReturns200() throws Exception {
+        AppointmentResponse response = new AppointmentResponse(
+                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
+        );
+        when(appointmentService.findById(1L)).thenReturn(response);
+
+        mvc.perform(get("/v1/appointments/1")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.clientName").value("Client"));
+    }
 }
