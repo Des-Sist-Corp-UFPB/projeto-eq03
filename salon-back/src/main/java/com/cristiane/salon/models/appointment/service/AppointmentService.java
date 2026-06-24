@@ -3,6 +3,9 @@ package com.cristiane.salon.models.appointment.service;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
+import com.cristiane.salon.exception.BusinessException;
+import com.cristiane.salon.models.appointment.dto.GeneratePixRequest;
+import com.cristiane.salon.utils.CpfValidator;
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
@@ -244,7 +247,7 @@ public class AppointmentService {
     }
 
     @Transactional
-    public AppointmentResponse generatePixPayment(Long id) {
+    public AppointmentResponse generatePixPayment(Long id, GeneratePixRequest request) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
 
@@ -271,10 +274,38 @@ public class AppointmentService {
             throw new BadRequestException("Este serviço não possui um valor configurado para cobrança.");
         }
 
-        // Verifica se o cliente possui CPF cadastrado (obrigatório para PIX)
-        String clientCpf = appointment.getClient().getCpf();
-        if (clientCpf == null || clientCpf.isBlank()) {
-            throw new BadRequestException("CPF é obrigatório para gerar o PIX. Por favor, cadastre seu CPF antes de continuar.");
+        // Idempotency: Check if there's already a pending PIX payment
+        if (appointment.getPaymentStatus() == PaymentStatus.PENDING &&
+                appointment.getPixQrCode() != null &&
+                appointment.getPaymentId() != null) {
+            return AppointmentResponse.fromEntity(appointment);
+        }
+
+        String clientCpf;
+        if (request != null && Boolean.TRUE.equals(request.useSavedCpf())) {
+            clientCpf = appointment.getClient().getCpf();
+            if (clientCpf == null || clientCpf.isBlank()) {
+                throw new BadRequestException("CPF é obrigatório para gerar o PIX. Por favor, cadastre seu CPF antes de continuar.");
+            }
+        } else {
+            if (request == null || request.cpf() == null || request.cpf().isBlank()) {
+                throw new BadRequestException("CPF é obrigatório para gerar o PIX. Por favor, cadastre seu CPF antes de continuar.");
+            }
+            String cleanCpf = request.cpf().replaceAll("\\D", "");
+            if (!CpfValidator.isValid(cleanCpf)) {
+                throw new BadRequestException("CPF inválido. Por favor, insira um CPF válido.");
+            }
+
+            // Persist the updated CPF to the database
+            User client = appointment.getClient();
+            userRepository.findByCpf(cleanCpf)
+                    .filter(existing -> !existing.getId().equals(client.getId()))
+                    .ifPresent(dup -> {
+                        throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
+                    });
+            client.setCpf(cleanCpf);
+            userRepository.save(client);
+            clientCpf = cleanCpf;
         }
 
         // Gera a cobrança na API do Mercado Pago com dados reais do cliente
@@ -283,7 +314,6 @@ public class AppointmentService {
         String payerName = appointment.getClient().getName();
 
         Payment payment = mercadoPagoPaymentService.createPixPayment(amount, description, payerEmail, payerName, clientCpf, appointment.getId());
-
 
         // Extrai o "Copia e Cola" de dentro da resposta complexa da API
         String qrCodeCopiaECola = payment.getPointOfInteraction().getTransactionData().getQrCode();
@@ -362,16 +392,19 @@ public class AppointmentService {
             throw new UnauthorizedException("Você não tem permissão para cancelar este agendamento");
         }
 
+        // Guard clause for terminal states:
+        if (appointment.getPaymentStatus() == PaymentStatus.PAID ||
+                appointment.getPaymentStatus() == PaymentStatus.CANCELLED ||
+                appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+        }
+
         if (appointment.getStatus() == AppointmentStatus.DONE) {
             throw new BadRequestException("Não é possível cancelar um agendamento já concluído");
         }
 
         if (appointment.getStatus() == AppointmentStatus.DECLINED) {
             throw new BadRequestException("Esta solicitação já foi recusada");
-        }
-
-        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
-            throw new BadRequestException("Este agendamento já está cancelado");
         }
 
         appointment.setStatus(AppointmentStatus.CANCELLED);
@@ -384,6 +417,13 @@ public class AppointmentService {
     public AppointmentResponse updateStatus(Long id, String statusStr) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+
+        // Guard clause for terminal states:
+        if (appointment.getPaymentStatus() == PaymentStatus.PAID ||
+                appointment.getPaymentStatus() == PaymentStatus.CANCELLED ||
+                appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+        }
 
         try {
             AppointmentStatus status = AppointmentStatus.valueOf(statusStr.toUpperCase());
@@ -441,8 +481,24 @@ public class AppointmentService {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
 
+        // Guard clause for terminal states:
+        if (appointment.getPaymentStatus() == PaymentStatus.PAID ||
+                appointment.getPaymentStatus() == PaymentStatus.CANCELLED ||
+                appointment.getStatus() == AppointmentStatus.CANCELLED) {
+            throw new BusinessException("Agendamentos pagos ou cancelados não podem ter seu status alterado.");
+        }
+
         try {
             PaymentStatus paymentStatus = PaymentStatus.valueOf(paymentStatusStr.toUpperCase());
+
+            // Apenas o Webhook do Mercado Pago tem permissão de sistema para transitar um agendamento de PENDING para PAID.
+            // O endpoint manual do admin não deve permitir essa transição sem um ID de pagamento válido.
+            if (paymentStatus == PaymentStatus.PAID && appointment.getPaymentStatus() == PaymentStatus.PENDING) {
+                if (appointment.getPaymentId() == null) {
+                    throw new BusinessException("Transição manual para PAGO não permitida para agendamentos pendentes sem um ID de pagamento válido.");
+                }
+            }
+
             appointment.setPaymentStatus(paymentStatus);
 
             if (paymentStatus == PaymentStatus.PAID) {

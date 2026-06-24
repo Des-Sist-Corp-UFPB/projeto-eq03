@@ -165,6 +165,11 @@ class MercadoPagoWebhookIntegrationTest {
         appointment.setPaymentId(987654321L);
         appointment.setPixQrCode("mocked_pix_copia_e_cola_code");
         appointment = appointmentRepository.save(appointment);
+
+        when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenAnswer(invocation -> {
+            String sig = invocation.getArgument(0);
+            return "valid_sig_test".equals(sig);
+        });
     }
 
     @Test
@@ -274,7 +279,7 @@ class MercadoPagoWebhookIntegrationTest {
         List<CashFlow> cashFlows = cashFlowRepository.findAll();
         assertThat(cashFlows).isEmpty();
 
-        verifyNoInteractions(mercadoPagoPaymentService);
+        verify(mercadoPagoPaymentService, never()).getPayment(anyLong());
         verifyNoInteractions(emailService);
     }
 

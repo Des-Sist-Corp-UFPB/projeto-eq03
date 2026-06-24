@@ -9,7 +9,7 @@ import { getApiErrorMessage } from '../../utils/apiError';
 interface PixPaymentModalProps {
   show: boolean;
   onHide: () => void;
-  onGeneratePix: () => Promise<void>;
+  onGeneratePix: (payload: { useSavedCpf: boolean; cpf?: string }) => Promise<void>;
   pixQrCode: string | null;
   serviceName: string;
   price?: number | null;
@@ -38,40 +38,54 @@ export const PixPaymentModal = ({
   price,
   isGenerating = false,
 }: PixPaymentModalProps) => {
-  const { user, updateUserCpf } = useAuth();
+  const { updateUserCpf } = useAuth();
   const [copied, setCopied] = useState(false);
   const [step, setStep] = useState<'cpf' | 'qr'>('cpf');
   const [isSavingCpf, setIsSavingCpf] = useState(false);
   const [cpfError, setCpfError] = useState('');
+
+  const [cpfInfo, setCpfInfo] = useState<{ hasSavedCpf: boolean; cpfMasked: string } | null>(null);
+  const [isLoadingCpfInfo, setIsLoadingCpfInfo] = useState(false);
+  const [useSavedCpf, setUseSavedCpf] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    reset,
     formState: { errors },
-  } = useForm<CpfFormData>();
+  } = useForm<CpfFormData>({
+    defaultValues: { cpf: '' }
+  });
 
   const cpfValue = watch('cpf') || '';
 
-  // Determina o step inicial com base no CPF do usuário em contexto
+  // Determina o step inicial com base no CPF e carrega as informações do CPF
   useEffect(() => {
     if (show) {
-      if (user?.cpf) {
+      setCopied(false);
+      setCpfError('');
+      reset({ cpf: '' });
+      if (pixQrCode) {
         setStep('qr');
       } else {
         setStep('cpf');
+        setIsLoadingCpfInfo(true);
+        usersApi.getMyCpfInfo()
+          .then(data => {
+            setCpfInfo(data);
+            setUseSavedCpf(data.hasSavedCpf);
+          })
+          .catch(err => {
+            console.error('Erro ao carregar dados do CPF:', err);
+          })
+          .finally(() => {
+            setIsLoadingCpfInfo(false);
+          });
       }
-      setCpfError('');
     }
-  }, [show, user?.cpf]);
-
-  // Quando chegamos na etapa 'qr' e não há QR Code ainda, dispara a geração
-  useEffect(() => {
-    if (show && step === 'qr' && !pixQrCode && !isGenerating) {
-      onGeneratePix();
-    }
-  }, [show, step, pixQrCode, isGenerating, onGeneratePix]);
+  }, [show, pixQrCode, reset]);
 
   if (!show) return null;
 
@@ -87,16 +101,25 @@ export const PixPaymentModal = ({
   };
 
   const handleCpfSubmit = async (data: CpfFormData) => {
-    const rawCpf = data.cpf.replace(/\D/g, '');
+    const rawCpf = data.cpf ? data.cpf.replace(/\D/g, '') : '';
+    if (!useSavedCpf && !rawCpf) {
+      setCpfError('CPF é obrigatório para gerar o PIX');
+      return;
+    }
     setIsSavingCpf(true);
     setCpfError('');
     try {
-      await usersApi.updateMyCpf(rawCpf);
-      // Atualiza o estado em memória sem recarregar a página
-      updateUserCpf(rawCpf);
+      await onGeneratePix({
+        useSavedCpf,
+        cpf: useSavedCpf ? undefined : rawCpf,
+      });
+
+      if (!useSavedCpf && rawCpf) {
+        updateUserCpf(rawCpf);
+      }
       setStep('qr');
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao salvar CPF. Tente novamente.');
+      const msg = getApiErrorMessage(err, 'Erro ao gerar PIX. Tente novamente.');
       setCpfError(msg);
     } finally {
       setIsSavingCpf(false);
@@ -135,46 +158,81 @@ export const PixPaymentModal = ({
           {step === 'cpf' && (
             <form onSubmit={handleSubmit(handleCpfSubmit)}>
               <div className="relative p-6 flex-auto flex flex-col gap-5">
-                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
-                  <p className="font-semibold mb-1">CPF obrigatório para pagamento via PIX</p>
-                  <p className="text-xs leading-relaxed">
-                    O Banco Central exige o CPF do pagador para transações PIX. Seus dados ficam seguros e são usados apenas para processar o pagamento.
-                  </p>
-                </div>
+                {isLoadingCpfInfo ? (
+                  <div className="flex flex-col items-center justify-center py-8 gap-3 text-[#7a7074]">
+                    <Loader2 size={32} className="animate-spin text-[#be8a83]" />
+                    <p className="text-sm font-medium">Buscando dados do seu perfil...</p>
+                  </div>
+                ) : (
+                  <>
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800">
+                      <p className="font-semibold mb-1">CPF obrigatório para pagamento via PIX</p>
+                      <p className="text-xs leading-relaxed">
+                        O Banco Central exige o CPF do pagador para transações PIX. Seus dados ficam seguros e são usados apenas para processar o pagamento.
+                      </p>
+                    </div>
 
-                <div className="space-y-1.5">
-                  <label className="label-premium">
-                    CPF <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    id="pix-cpf-input"
-                    placeholder="000.000.000-00"
-                    value={cpfValue}
-                    {...register('cpf', {
-                      required: 'CPF é obrigatório para gerar o PIX',
-                      validate: (v) => {
-                        const digits = v.replace(/\D/g, '');
-                        return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
-                      },
-                    })}
-                    onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
-                    className={`input-premium ${errors.cpf || cpfError ? 'border-rose-300 focus:border-rose-500' : ''}`}
-                    maxLength={14}
-                    autoFocus
-                  />
-                  {errors.cpf && (
-                    <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
-                  )}
-                  {cpfError && !errors.cpf && (
-                    <span className="text-xs text-rose-500 font-semibold">{cpfError}</span>
-                  )}
-                </div>
+                    {cpfInfo?.hasSavedCpf && (
+                      <div
+                        className="flex items-center gap-3 p-3.5 bg-gray-50 border border-gray-150 rounded-xl hover:bg-gray-100/50 transition-colors cursor-pointer"
+                        onClick={() => setUseSavedCpf(!useSavedCpf)}
+                      >
+                        <input
+                          type="checkbox"
+                          id="use-saved-cpf-checkbox"
+                          checked={useSavedCpf}
+                          onChange={(e) => setUseSavedCpf(e.target.checked)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="w-4 h-4 text-[#be8a83] border-gray-300 rounded focus:ring-[#be8a83] cursor-pointer"
+                        />
+                        <label
+                          htmlFor="use-saved-cpf-checkbox"
+                          className="text-sm text-[#3b3036] font-semibold cursor-pointer select-none"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          Usar CPF salvo ({cpfInfo.cpfMasked})
+                        </label>
+                      </div>
+                    )}
 
-                <p className="text-xs text-[#7a7074] leading-relaxed">
-                  Você também pode cadastrar seu CPF permanentemente na página{' '}
-                  <span className="text-[#be8a83] font-semibold">Meu Perfil</span> para não precisar informar nas próximas vezes.
-                </p>
+                    {!useSavedCpf && (
+                      <div className="space-y-1.5 animate-fade-in">
+                        <label className="label-premium">
+                          CPF <span className="text-rose-500">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          id="pix-cpf-input"
+                          placeholder="000.000.000-00"
+                          value={cpfValue}
+                          {...register('cpf', {
+                            required: !useSavedCpf ? 'CPF é obrigatório para gerar o PIX' : false,
+                            validate: (v) => {
+                              if (useSavedCpf) return true;
+                              const digits = v.replace(/\D/g, '');
+                              return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
+                            },
+                          })}
+                          onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
+                          className={`input-premium ${errors.cpf || cpfError ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                          maxLength={14}
+                          autoFocus
+                        />
+                        {errors.cpf && (
+                          <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
+                        )}
+                        {cpfError && !errors.cpf && (
+                          <span className="text-xs text-rose-500 font-semibold">{cpfError}</span>
+                        )}
+                      </div>
+                    )}
+
+                    <p className="text-xs text-[#7a7074] leading-relaxed">
+                      Você também pode cadastrar seu CPF permanentemente na página{' '}
+                      <span className="text-[#be8a83] font-semibold">Meu Perfil</span> para não precisar informar nas próximas vezes.
+                    </p>
+                  </>
+                )}
               </div>
 
               <div className="flex items-center justify-end p-5 border-t border-solid border-[#eae1e1] rounded-b-2xl bg-[#fcf9f9] gap-3">
@@ -187,7 +245,7 @@ export const PixPaymentModal = ({
                 </button>
                 <button
                   type="submit"
-                  disabled={isSavingCpf}
+                  disabled={isSavingCpf || isLoadingCpfInfo}
                   className="flex items-center gap-2 px-5 py-2.5 bg-[#be8a83] hover:bg-[#a1706a] text-white shadow-md shadow-[#be8a83]/15 font-semibold text-sm rounded-xl transition-all duration-200 disabled:opacity-50 cursor-pointer"
                 >
                   {isSavingCpf ? (
@@ -195,7 +253,7 @@ export const PixPaymentModal = ({
                   ) : (
                     <ArrowRight size={16} />
                   )}
-                  {isSavingCpf ? 'Salvando...' : 'Continuar'}
+                  {isSavingCpf ? 'Gerando PIX...' : 'Gerar PIX'}
                 </button>
               </div>
             </form>

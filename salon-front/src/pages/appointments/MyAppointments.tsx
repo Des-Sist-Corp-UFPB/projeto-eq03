@@ -74,11 +74,11 @@ export const MyAppointments = () => {
     setShowPixModal(true);
   };
 
-  const handleGeneratePix = async () => {
+  const handleGeneratePix = async (payload: { useSavedCpf: boolean; cpf?: string }) => {
     if (!currentPixAppointmentId) return;
     setIsGeneratingPix(true);
     try {
-      const data = await appointmentsApi.generatePix(currentPixAppointmentId);
+      const data = await appointmentsApi.generatePix(currentPixAppointmentId, payload);
       if (data.pixQrCode) {
         setCurrentPixCode(data.pixQrCode);
         setAppointments((prev) =>
@@ -98,6 +98,7 @@ export const MyAppointments = () => {
     } catch (error) {
       const msg = getApiErrorMessage(error, 'Erro ao gerar pagamento via PIX');
       await showError(msg);
+      throw error;
     } finally {
       setIsGeneratingPix(false);
     }

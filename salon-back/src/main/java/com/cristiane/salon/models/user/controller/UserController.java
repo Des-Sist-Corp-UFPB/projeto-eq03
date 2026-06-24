@@ -5,6 +5,7 @@ import com.cristiane.salon.models.user.dto.UpdateCpfRequest;
 import com.cristiane.salon.models.user.dto.UserCreateRequest;
 import com.cristiane.salon.models.user.dto.UserResponse;
 import com.cristiane.salon.models.user.dto.UserUpdateRequest;
+import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
 import com.cristiane.salon.models.user.service.UserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -83,5 +84,11 @@ public class UserController {
     @Operation(summary = "Atualiza o CPF do próprio usuário autenticado (JIT no pagamento PIX)")
     public ResponseEntity<UserResponse> updateMyCpf(@Valid @RequestBody UpdateCpfRequest request) {
         return ResponseEntity.ok(userService.updateMyCpf(request.cpf()));
+    }
+
+    @GetMapping("/me/cpf-info")
+    @Operation(summary = "Busca informações sobre o CPF salvo do usuário autenticado")
+    public ResponseEntity<UserCpfInfoResponse> getMyCpfInfo() {
+        return ResponseEntity.ok(userService.getMyCpfInfo());
     }
 }

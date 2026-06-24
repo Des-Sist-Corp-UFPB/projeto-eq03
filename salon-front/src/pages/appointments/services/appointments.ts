@@ -57,6 +57,11 @@ function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreateP
   return body;
 }
 
+export interface GeneratePixRequest {
+  useSavedCpf: boolean;
+  cpf?: string;
+}
+
 export const appointmentsApi = {
   create: async (request: AppointmentRequestBody) => {
     const { data } = await api.post<AppointmentResponse>(
@@ -107,8 +112,8 @@ export const appointmentsApi = {
     return data;
   },
 
-  generatePix: async (id: number) => {
-    const { data } = await api.post<AppointmentResponse>(`/appointments/${id}/pix`);
+  generatePix: async (id: number, payload: GeneratePixRequest) => {
+    const { data } = await api.post<AppointmentResponse>(`/appointments/${id}/pix`, payload);
     return data;
   },
 };

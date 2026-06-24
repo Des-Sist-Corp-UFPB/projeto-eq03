@@ -15,6 +15,16 @@ vi.mock('../../../hooks/useAuth', () => ({
   }),
 }));
 
+vi.mock('../../../pages/admin/users/services/users', () => ({
+  usersApi: {
+    getMyCpfInfo: vi.fn().mockResolvedValue({
+      hasSavedCpf: true,
+      cpfMasked: '***.***.***-09',
+    }),
+    updateMyCpf: vi.fn().mockResolvedValue({}),
+  },
+}));
+
 describe('PixPaymentModal Component', () => {
   const defaultProps = {
     show: true,
@@ -101,5 +111,70 @@ describe('PixPaymentModal Component', () => {
 
     expect(screen.getByText('Copiar código')).toBeInTheDocument();
     vi.useRealTimers();
+  });
+
+  it('renders loading profile indicator when show is true and pixQrCode is not yet generated', async () => {
+    render(<PixPaymentModal {...defaultProps} pixQrCode={null} />);
+
+    expect(screen.getByText('Identificação para PIX')).toBeInTheDocument();
+    expect(screen.getByText('Buscando dados do seu perfil...')).toBeInTheDocument();
+  });
+
+  it('renders checkbox and allows submitting with saved CPF', async () => {
+    const onGeneratePixMock = vi.fn().mockResolvedValue(undefined);
+    render(
+      <PixPaymentModal
+        {...defaultProps}
+        pixQrCode={null}
+        onGeneratePix={onGeneratePixMock}
+      />
+    );
+
+    // Wait for getMyCpfInfo to resolve and render checkbox
+    const checkbox = await screen.findByRole('checkbox', { name: /Usar CPF salvo/ });
+    expect(checkbox).toBeInTheDocument();
+    expect(checkbox).toBeChecked();
+
+    const generateBtn = screen.getByRole('button', { name: 'Gerar PIX' });
+    await act(async () => {
+      fireEvent.click(generateBtn);
+    });
+
+    expect(onGeneratePixMock).toHaveBeenCalledWith({ useSavedCpf: true, cpf: undefined });
+  });
+
+  it('allows unchecking saved CPF and typing a new CPF', async () => {
+    const onGeneratePixMock = vi.fn().mockResolvedValue(undefined);
+    render(
+      <PixPaymentModal
+        {...defaultProps}
+        pixQrCode={null}
+        onGeneratePix={onGeneratePixMock}
+      />
+    );
+
+    // Wait for getMyCpfInfo to resolve and render checkbox
+    const checkbox = await screen.findByRole('checkbox', { name: /Usar CPF salvo/ });
+    
+    // Uncheck it
+    await act(async () => {
+      fireEvent.click(checkbox);
+    });
+    expect(checkbox).not.toBeChecked();
+
+    // Now CPF input should be visible
+    const cpfInput = screen.getByPlaceholderText('000.000.000-00');
+    expect(cpfInput).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.change(cpfInput, { target: { value: '09123456752' } }); // valid CPF
+    });
+
+    const generateBtn = screen.getByRole('button', { name: 'Gerar PIX' });
+    await act(async () => {
+      fireEvent.click(generateBtn);
+    });
+
+    expect(onGeneratePixMock).toHaveBeenCalledWith({ useSavedCpf: false, cpf: '09123456752' });
   });
 });

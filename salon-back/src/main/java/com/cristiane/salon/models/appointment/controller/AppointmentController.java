@@ -4,6 +4,7 @@ import com.cristiane.salon.annotation.Auditable;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.dto.ConfirmAppointmentRequest;
+import com.cristiane.salon.models.appointment.dto.GeneratePixRequest;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -92,7 +93,9 @@ public class AppointmentController {
     @PreAuthorize("isAuthenticated()") // Permite cliente e admin, pois a validação real de dono da reserva é feita lá no Service
     @Auditable(action = "PIX_GENERATED", entityType = "Appointment", captureArgs = true)
     @Operation(summary = "Gera a chave PIX (Copia e Cola) para um agendamento")
-    public ResponseEntity<AppointmentResponse> generatePix(@PathVariable Long id) {
-        return ResponseEntity.ok(appointmentService.generatePixPayment(id));
+    public ResponseEntity<AppointmentResponse> generatePix(
+            @PathVariable Long id,
+            @Valid @RequestBody GeneratePixRequest request) {
+        return ResponseEntity.ok(appointmentService.generatePixPayment(id, request));
     }
 }
