@@ -11,6 +11,10 @@ import java.util.List;
 
 public class UserSpecifications {
 
+    private UserSpecifications() {
+        throw new IllegalStateException("Utility class");
+    }
+
     public static Specification<User> filterClients(ClientFilter filter) {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();

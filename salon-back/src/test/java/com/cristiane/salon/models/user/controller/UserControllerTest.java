@@ -4,6 +4,7 @@ import com.cristiane.salon.controllers.BaseControllerTest;
 
 import com.cristiane.salon.models.user.controller.UserController;
 import com.cristiane.salon.models.user.dto.UserResponse;
+import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
 import com.cristiane.salon.models.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -144,5 +145,18 @@ class UserControllerTest extends BaseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser
+    void getMyCpfInfoReturnsInfo() throws Exception {
+        UserCpfInfoResponse response = new UserCpfInfoResponse(true, "***.***.789-");
+        when(userService.getMyCpfInfo()).thenReturn(response);
+
+        mvc.perform(get("/v1/users/me/cpf-info")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.hasSavedCpf").value(true))
+                .andExpect(jsonPath("$.cpfMasked").value("***.***.789-"));
     }
 }

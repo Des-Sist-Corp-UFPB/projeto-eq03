@@ -15,6 +15,7 @@ import com.cristiane.salon.models.user.repository.UserRepository;
 import com.cristiane.salon.models.user.dto.ClientFilter;
 import com.cristiane.salon.models.user.dto.UserFilter;
 import com.cristiane.salon.models.user.dto.ClientDetailsResponse;
+import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import org.junit.jupiter.api.AfterEach;
@@ -705,5 +706,199 @@ class UserServiceTest {
         assertThat(result.appointments().get(0).id()).isEqualTo(102L);
         assertThat(result.appointments().get(1).id()).isEqualTo(101L);
         assertThat(result.appointments().get(2).id()).isEqualTo(103L);
+    }
+
+    @Test
+    void update_whenEmailChangedSuccessfully_shouldUpdateEmail() {
+        UserUpdateRequest request = new UserUpdateRequest(null, "newemail@example.com", null, null, null, null, null);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(userRepository.findByEmail("newemail@example.com")).thenReturn(Optional.empty());
+        when(userRepository.save(any(User.class))).thenReturn(activeUser);
+
+        UserResponse result = userService.update(10L, request);
+
+        assertThat(activeUser.getEmail()).isEqualTo("newemail@example.com");
+        verify(userRepository).save(activeUser);
+    }
+
+    @Test
+    void update_whenCpfIsValid_shouldUpdateCpf() {
+        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, "123.456.789-09", null, null);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(userRepository.save(any(User.class))).thenReturn(activeUser);
+
+        UserResponse result = userService.update(10L, request);
+
+        assertThat(activeUser.getCpf()).isEqualTo("12345678909");
+        verify(userRepository).save(activeUser);
+    }
+
+    @Test
+    void update_whenCpfIsInvalid_shouldThrowBadRequestException() {
+        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, "12345", null, null);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+
+        assertThatThrownBy(() -> userService.update(10L, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("CPF inválido. Por favor, insira um CPF válido.");
+        verify(userRepository, never()).save(any());
+    }
+
+    @Test
+    void update_whenCpfIsNullAndBlank_shouldNotUpdateCpf() {
+        // CPF null
+        UserUpdateRequest requestNull = new UserUpdateRequest(null, null, null, null, null, null, null);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(userRepository.save(any(User.class))).thenReturn(activeUser);
+
+        userService.update(10L, requestNull);
+        assertThat(activeUser.getCpf()).isNull();
+
+        // CPF blank
+        UserUpdateRequest requestBlank = new UserUpdateRequest(null, null, null, null, "   ", null, null);
+        userService.update(10L, requestBlank);
+        assertThat(activeUser.getCpf()).isNull();
+    }
+
+    @Test
+    void update_whenClientRoleSaved_shouldNotCreateEmployee() {
+        UserUpdateRequest request = new UserUpdateRequest(null, null, null, null, null, null, 1L);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(roleRepository.findById(1L)).thenReturn(Optional.of(clientRole));
+        when(userRepository.save(any(User.class))).thenReturn(activeUser);
+
+        userService.update(10L, request);
+
+        verify(employeeRepository, never()).save(any());
+    }
+
+    @Test
+    void updateMyCpf_whenCpfIsNull_shouldThrowBadRequestException() {
+        mockAuthenticatedUser(activeUser);
+
+        assertThatThrownBy(() -> userService.updateMyCpf(null))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("CPF é obrigatório.");
+    }
+
+    @Test
+    void updateMyCpf_whenCpfIsBlank_shouldThrowBadRequestException() {
+        mockAuthenticatedUser(activeUser);
+
+        assertThatThrownBy(() -> userService.updateMyCpf("  "))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("CPF é obrigatório.");
+    }
+
+    @Test
+    void getMyCpfInfo_whenUserNotAuthenticated_shouldThrowUnauthorizedException() {
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("unknown@ghost.com");
+        SecurityContext secCtx = mock(SecurityContext.class);
+        when(secCtx.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(secCtx);
+        when(userRepository.findByEmail("unknown@ghost.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getMyCpfInfo())
+                .isInstanceOf(UnauthorizedException.class)
+                .hasMessage("Usuário não autenticado");
+    }
+
+    @Test
+    void getMyCpfInfo_whenUserHasNoCpf_shouldReturnHasSavedCpfFalse() {
+        activeUser.setCpf(null);
+        mockAuthenticatedUser(activeUser);
+
+        UserCpfInfoResponse info = userService.getMyCpfInfo();
+
+        assertThat(info.hasSavedCpf()).isFalse();
+        assertThat(info.cpfMasked()).isEmpty();
+    }
+
+    @Test
+    void getMyCpfInfo_whenUserHasValid11DigitCpf_shouldReturnCpfMasked() {
+        activeUser.setCpf("12345678909");
+        mockAuthenticatedUser(activeUser);
+
+        UserCpfInfoResponse info = userService.getMyCpfInfo();
+
+        assertThat(info.hasSavedCpf()).isTrue();
+        assertThat(info.cpfMasked()).isEqualTo("***.***.789-");
+    }
+
+    @Test
+    void getMyCpfInfo_whenUserHasNon11DigitCpf_shouldReturnUnchangedCpf() {
+        activeUser.setCpf("12345");
+        mockAuthenticatedUser(activeUser);
+
+        UserCpfInfoResponse info = userService.getMyCpfInfo();
+
+        assertThat(info.hasSavedCpf()).isTrue();
+        assertThat(info.cpfMasked()).isEqualTo("12345");
+    }
+
+    @Test
+    void findClientDetailsById_allAppointmentComparatorBranches() {
+        activeUser.setRole(clientRole);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(appointmentRepository.countByClientId(10L)).thenReturn(5L);
+        when(appointmentRepository.findLastAppointmentDateByClientId(10L)).thenReturn(null);
+
+        Appointment appNull1 = new Appointment();
+        appNull1.setId(201L);
+        appNull1.setClient(activeUser);
+        appNull1.setEmployee(new Employee());
+        appNull1.getEmployee().setUser(activeUser);
+        appNull1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        appNull1.getSalonService().setName("Service");
+        appNull1.setScheduledAt(null);
+        appNull1.setCreatedAt(null);
+
+        Appointment appNull2 = new Appointment();
+        appNull2.setId(202L);
+        appNull2.setClient(activeUser);
+        appNull2.setEmployee(new Employee());
+        appNull2.getEmployee().setUser(activeUser);
+        appNull2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        appNull2.getSalonService().setName("Service");
+        appNull2.setScheduledAt(null);
+        appNull2.setCreatedAt(null);
+
+        Appointment appDate1 = new Appointment();
+        appDate1.setId(203L);
+        appDate1.setClient(activeUser);
+        appDate1.setEmployee(new Employee());
+        appDate1.getEmployee().setUser(activeUser);
+        appDate1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        appDate1.getSalonService().setName("Service");
+        appDate1.setScheduledAt(LocalDateTime.of(2026, 6, 24, 10, 0));
+
+        Appointment appDate2 = new Appointment();
+        appDate2.setId(204L);
+        appDate2.setClient(activeUser);
+        appDate2.setEmployee(new Employee());
+        appDate2.getEmployee().setUser(activeUser);
+        appDate2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        appDate2.getSalonService().setName("Service");
+        appDate2.setScheduledAt(LocalDateTime.of(2026, 6, 25, 10, 0));
+
+        Appointment appDate3 = new Appointment();
+        appDate3.setId(205L);
+        appDate3.setClient(activeUser);
+        appDate3.setEmployee(new Employee());
+        appDate3.getEmployee().setUser(activeUser);
+        appDate3.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        appDate3.getSalonService().setName("Service");
+        appDate3.setScheduledAt(LocalDateTime.of(2026, 6, 24, 10, 0));
+
+        when(appointmentRepository.findByClientId(10L)).thenReturn(List.of(appNull1, appNull2, appDate1, appDate2, appDate3));
+
+        ClientDetailsResponse result = userService.findClientDetailsById(10L);
+        assertThat(result.appointments()).hasSize(5);
+        assertThat(result.appointments().get(0).id()).isEqualTo(204L);
+        assertThat(result.appointments().get(1).id()).isIn(203L, 205L);
+        assertThat(result.appointments().get(2).id()).isIn(203L, 205L);
+        assertThat(result.appointments().get(3).id()).isIn(201L, 202L);
+        assertThat(result.appointments().get(4).id()).isIn(201L, 202L);
     }
 }
