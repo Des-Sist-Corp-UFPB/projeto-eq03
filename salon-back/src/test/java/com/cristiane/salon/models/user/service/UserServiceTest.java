@@ -474,14 +474,14 @@ class UserServiceTest {
     void updateMyCpf_whenSuccess_shouldSaveCpfForAuthenticatedUser() {
         // Arrange
         mockAuthenticatedUser(activeUser);
-        when(userRepository.findByCpf("12345678901")).thenReturn(Optional.empty());
+        when(userRepository.findByCpf("09123456752")).thenReturn(Optional.empty());
         when(userRepository.save(any(User.class))).thenReturn(activeUser);
 
         // Act
-        UserResponse result = userService.updateMyCpf("12345678901");
+        UserResponse result = userService.updateMyCpf("09123456752");
 
         // Assert
-        assertThat(activeUser.getCpf()).isEqualTo("12345678901");
+        assertThat(activeUser.getCpf()).isEqualTo("09123456752");
         assertThat(result).isNotNull();
         verify(userRepository).save(activeUser);
     }
@@ -493,11 +493,11 @@ class UserServiceTest {
 
         User otherUser = new User();
         otherUser.setId(99L);
-        otherUser.setCpf("12345678901");
-        when(userRepository.findByCpf("12345678901")).thenReturn(Optional.of(otherUser));
+        otherUser.setCpf("09123456752");
+        when(userRepository.findByCpf("09123456752")).thenReturn(Optional.of(otherUser));
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.updateMyCpf("12345678901"))
+        assertThatThrownBy(() -> userService.updateMyCpf("09123456752"))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("Este CPF já está cadastrado em outra conta.");
     }
@@ -505,13 +505,13 @@ class UserServiceTest {
     @Test
     void updateMyCpf_whenSameUserAlreadyHasCpf_shouldUpdateSuccessfully() {
         // Arrange — user 10 already owns this CPF
-        activeUser.setCpf("12345678901");
+        activeUser.setCpf("09123456752");
         mockAuthenticatedUser(activeUser);
-        when(userRepository.findByCpf("12345678901")).thenReturn(Optional.of(activeUser));
+        when(userRepository.findByCpf("09123456752")).thenReturn(Optional.of(activeUser));
         when(userRepository.save(any(User.class))).thenReturn(activeUser);
 
         // Act
-        UserResponse result = userService.updateMyCpf("12345678901");
+        UserResponse result = userService.updateMyCpf("09123456752");
 
         // Assert — should NOT throw, because it's the same user
         assertThat(result).isNotNull();
@@ -529,8 +529,19 @@ class UserServiceTest {
         when(userRepository.findByEmail("unknown@ghost.com")).thenReturn(Optional.empty());
 
         // Act & Assert
-        assertThatThrownBy(() -> userService.updateMyCpf("12345678901"))
+        assertThatThrownBy(() -> userService.updateMyCpf("09123456752"))
                 .isInstanceOf(UnauthorizedException.class)
                 .hasMessage("Usuário não autenticado");
+    }
+
+    @Test
+    void updateMyCpf_whenCpfIsInvalid_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(activeUser);
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.updateMyCpf("11111111111"))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("CPF inválido. Por favor, insira um CPF válido.");
     }
 }

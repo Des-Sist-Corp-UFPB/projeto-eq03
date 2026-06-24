@@ -20,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
+import com.cristiane.salon.utils.CpfValidator;
 
 @Service
 @RequiredArgsConstructor
@@ -99,10 +101,14 @@ public class UserService {
         if (request.name() != null) user.setName(request.name());
         if (request.phone() != null) user.setPhone(request.phone());
         if (request.cpf() != null && !request.cpf().isBlank()) {
-            if (userRepository.findByCpf(request.cpf()).filter(u -> !u.getId().equals(id)).isPresent()) {
+            String cleanCpf = request.cpf().replaceAll("\\D", "");
+            if (!CpfValidator.isValid(cleanCpf)) {
+                throw new BadRequestException("CPF inválido. Por favor, insira um CPF válido.");
+            }
+            if (userRepository.findByCpf(cleanCpf).filter(u -> !u.getId().equals(id)).isPresent()) {
                 throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
             }
-            user.setCpf(request.cpf());
+            user.setCpf(cleanCpf);
         }
         if (request.password() != null && !request.password().isBlank()) {
             user.setPassword(passwordEncoder.encode(request.password()));
@@ -156,14 +162,43 @@ public class UserService {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UnauthorizedException("Usuário não autenticado"));
 
-        userRepository.findByCpf(cpf)
+        if (cpf == null || cpf.isBlank()) {
+            throw new BadRequestException("CPF é obrigatório.");
+        }
+
+        String cleanCpf = cpf.replaceAll("\\D", "");
+        if (!CpfValidator.isValid(cleanCpf)) {
+            throw new BadRequestException("CPF inválido. Por favor, insira um CPF válido.");
+        }
+
+        userRepository.findByCpf(cleanCpf)
                 .filter(existing -> !existing.getId().equals(user.getId()))
                 .ifPresent(dup -> {
                     throw new BadRequestException("Este CPF já está cadastrado em outra conta.");
                 });
 
-        user.setCpf(cpf);
+        user.setCpf(cleanCpf);
         User saved = userRepository.save(user);
         return UserResponse.fromEntity(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public UserCpfInfoResponse getMyCpfInfo() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UnauthorizedException("Usuário não autenticado"));
+
+        String cpf = user.getCpf();
+        boolean hasSavedCpf = cpf != null && !cpf.isBlank();
+        String cpfMasked = "";
+        if (hasSavedCpf) {
+            String clean = cpf.replaceAll("\\D", "");
+            if (clean.length() == 11) {
+                cpfMasked = "***.***." + clean.substring(6, 9) + "-";
+            } else {
+                cpfMasked = cpf;
+            }
+        }
+        return new UserCpfInfoResponse(hasSavedCpf, cpfMasked);
     }
 }
