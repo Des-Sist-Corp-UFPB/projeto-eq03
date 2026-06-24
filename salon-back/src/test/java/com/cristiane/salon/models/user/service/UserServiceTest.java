@@ -12,6 +12,11 @@ import com.cristiane.salon.models.user.entity.Role;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.RoleRepository;
 import com.cristiane.salon.models.user.repository.UserRepository;
+import com.cristiane.salon.models.user.dto.ClientFilter;
+import com.cristiane.salon.models.user.dto.UserFilter;
+import com.cristiane.salon.models.user.dto.ClientDetailsResponse;
+import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -48,6 +53,9 @@ class UserServiceTest {
 
     @Mock
     private EmployeeRepository employeeRepository;
+
+    @Mock
+    private AppointmentRepository appointmentRepository;
 
     @InjectMocks
     private UserService userService;
@@ -525,5 +533,177 @@ class UserServiceTest {
         assertThatThrownBy(() -> userService.updateMyCpf("11111111111"))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessage("CPF inválido. Por favor, insira um CPF válido.");
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void findAllClients_shouldCallUserRepositoryWithSpecification() {
+        // Arrange
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        org.springframework.data.domain.Page<User> page = new org.springframework.data.domain.PageImpl<>(List.of(activeUser));
+        when(userRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable))).thenReturn(page);
+
+        ClientFilter filter = new ClientFilter("Maria", null, null, null, true);
+
+        // Act
+        org.springframework.data.domain.Page<UserResponse> result = userService.findAllClients(filter, pageable);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).name()).isEqualTo("Maria Silva");
+        verify(userRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable));
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void findAllUsers_shouldCallUserRepositoryWithSpecification() {
+        // Arrange
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 10);
+        User staff = new User();
+        staff.setId(14L);
+        staff.setName("Staff Name");
+        staff.setEmail("staff@example.com");
+        staff.setRole(staffRole);
+        staff.setActive(true);
+
+        org.springframework.data.domain.Page<User> page = new org.springframework.data.domain.PageImpl<>(List.of(staff));
+        when(userRepository.findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable))).thenReturn(page);
+
+        UserFilter filter = new UserFilter("Staff", null, null, true, 2L);
+
+        // Act
+        org.springframework.data.domain.Page<UserResponse> result = userService.findAllUsers(filter, pageable);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).name()).isEqualTo("Staff Name");
+        verify(userRepository).findAll(any(org.springframework.data.jpa.domain.Specification.class), eq(pageable));
+    }
+
+    @Test
+    void findClientDetailsById_whenUserDoesNotExist_shouldThrowResourceNotFoundException() {
+        // Arrange
+        when(userRepository.findById(99L)).thenReturn(Optional.empty());
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.findClientDetailsById(99L))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessage("Cliente não encontrado");
+    }
+
+    @Test
+    void findClientDetailsById_whenUserIsNotClient_shouldThrowBadRequestException() {
+        // Arrange
+        User staff = new User();
+        staff.setId(15L);
+        staff.setName("Jane Staff");
+        staff.setRole(staffRole); // FUNCIONARIA
+        when(userRepository.findById(15L)).thenReturn(Optional.of(staff));
+
+        // Act & Assert
+        assertThatThrownBy(() -> userService.findClientDetailsById(15L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("O usuário informado não é um cliente");
+    }
+
+    @Test
+    void findClientDetailsById_whenClientExists_shouldReturnDetailsWithSortedAppointments() {
+        // Arrange
+        activeUser.setRole(clientRole); // CLIENTE
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(appointmentRepository.countByClientId(10L)).thenReturn(2L);
+        
+        LocalDateTime lastDate = LocalDateTime.of(2026, 6, 25, 14, 0);
+        when(appointmentRepository.findLastAppointmentDateByClientId(10L)).thenReturn(lastDate);
+
+        Appointment app1 = new Appointment();
+        app1.setId(101L);
+        app1.setClient(activeUser);
+        app1.setEmployee(new Employee());
+        app1.getEmployee().setUser(activeUser);
+        app1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        app1.getSalonService().setName("Service A");
+        app1.setScheduledAt(LocalDateTime.of(2026, 6, 24, 10, 0));
+        app1.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.CONFIRMED);
+
+        Appointment app2 = new Appointment();
+        app2.setId(102L);
+        app2.setClient(activeUser);
+        app2.setEmployee(new Employee());
+        app2.getEmployee().setUser(activeUser);
+        app2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        app2.getSalonService().setName("Service B");
+        app2.setScheduledAt(LocalDateTime.of(2026, 6, 25, 14, 0)); // Later date
+        app2.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findByClientId(10L)).thenReturn(List.of(app1, app2));
+
+        // Act
+        ClientDetailsResponse result = userService.findClientDetailsById(10L);
+
+        // Assert
+        assertThat(result).isNotNull();
+        assertThat(result.id()).isEqualTo(10L);
+        assertThat(result.totalAppointments()).isEqualTo(2L);
+        assertThat(result.lastAppointmentDate()).isEqualTo(lastDate);
+        assertThat(result.appointments()).hasSize(2);
+        // Sorted desc by scheduledAt: app2 should be first
+        assertThat(result.appointments().get(0).id()).isEqualTo(102L);
+        assertThat(result.appointments().get(1).id()).isEqualTo(101L);
+    }
+
+    @Test
+    void findClientDetailsById_whenAppointmentsHaveNullScheduledAt_shouldSortByCreatedAt() {
+        // Arrange
+        activeUser.setRole(clientRole);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
+        when(appointmentRepository.countByClientId(10L)).thenReturn(3L);
+        when(appointmentRepository.findLastAppointmentDateByClientId(10L)).thenReturn(null);
+
+        Appointment app1 = new Appointment();
+        app1.setId(101L);
+        app1.setClient(activeUser);
+        app1.setEmployee(new Employee());
+        app1.getEmployee().setUser(activeUser);
+        app1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        app1.getSalonService().setName("Service A");
+        app1.setScheduledAt(null);
+        app1.setCreatedAt(LocalDateTime.of(2026, 6, 24, 10, 0));
+        app1.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
+
+        Appointment app2 = new Appointment();
+        app2.setId(102L);
+        app2.setClient(activeUser);
+        app2.setEmployee(new Employee());
+        app2.getEmployee().setUser(activeUser);
+        app2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        app2.getSalonService().setName("Service B");
+        app2.setScheduledAt(null);
+        app2.setCreatedAt(LocalDateTime.of(2026, 6, 25, 14, 0)); // Later createdAt
+        app2.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
+
+        Appointment app3 = new Appointment();
+        app3.setId(103L);
+        app3.setClient(activeUser);
+        app3.setEmployee(new Employee());
+        app3.getEmployee().setUser(activeUser);
+        app3.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
+        app3.getSalonService().setName("Service C");
+        app3.setScheduledAt(null);
+        app3.setCreatedAt(null); // Both scheduledAt and createdAt null
+        app3.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
+
+        when(appointmentRepository.findByClientId(10L)).thenReturn(List.of(app1, app2, app3));
+
+        // Act
+        ClientDetailsResponse result = userService.findClientDetailsById(10L);
+
+        // Assert
+        assertThat(result.appointments()).hasSize(3);
+        assertThat(result.appointments().get(0).id()).isEqualTo(102L);
+        assertThat(result.appointments().get(1).id()).isEqualTo(101L);
+        assertThat(result.appointments().get(2).id()).isEqualTo(103L);
     }
 }
