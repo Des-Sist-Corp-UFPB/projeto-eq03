@@ -13,9 +13,9 @@ O sistema cumpre os requisitos exigidos utilizando padrões modernos de desenvol
 - **Log de Auditoria:**
   - **Backend:** Interceptação de requisições usando a anotação `@Auditable`. Captura IP real, User-Agent e mascara dados sensíveis (senhas, cartões) antes de salvar no banco.
   - **Frontend:** Console administrativo com filtros combinados e leitor de JSON com _syntax highlighting_.
-- **Integração com Serviço Externo (Resend API):**
-  - Envio de e-mails transacionais (confirmações, cancelamentos) com templates em Thymeleaf.
-  - Processamento em segundo plano (`@Async`) usando o novo `RestClient` do Spring.
+- **Integração com Serviços Externos (Resend API & Mercado Pago):**
+  - **E-mails Transacionais (Resend API):** Envio de confirmações e cancelamentos em segundo plano (`@Async`) usando templates Thymeleaf e o `RestClient` do Spring.
+  - **Pagamentos via PIX (Mercado Pago API):** Geração de QR Code e Pix Copia e Cola (Checkout Transparente) com coleta JIT (Just-In-Time) de CPF (validação por Módulo 11) e Webhooks protegidos por assinatura de segurança (`x-signature` via HMAC-SHA256) para conciliação automática.
 - **Testes de Qualidade e Cobertura Comprovável:**
   - **Backend (JaCoCo - ~91%):** Testes unitários/integração com JUnit 5 e Mockito. O Maven está configurado para **barrar o build** se a cobertura cair abaixo de 85%.
   - **Frontend (Vitest - ~99%):** Cobertura quase total de rotas, contextos e UI utilizando React Testing Library.
