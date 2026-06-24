@@ -9,7 +9,7 @@ vi.mock('../../../hooks/useAuth', () => ({
       email: 'client@salao.com',
       role: 'CLIENTE',
       userId: 5,
-      authorities: [],
+      permissions: [],
       cpf: '12345678909',
     },
     updateUserCpf: vi.fn(),

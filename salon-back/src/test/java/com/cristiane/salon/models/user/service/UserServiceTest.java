@@ -901,4 +901,52 @@ class UserServiceTest {
         assertThat(result.appointments().get(3).id()).isIn(201L, 202L);
         assertThat(result.appointments().get(4).id()).isIn(201L, 202L);
     }
+
+    // ---- getMyProfile ----
+
+    @Test
+    void getMyProfile_whenAuthenticated_shouldReturnProfileWithPermissions() {
+        com.cristiane.salon.models.user.entity.Permission perm1 =
+                new com.cristiane.salon.models.user.entity.Permission(1L, "Listar Usuários", "/v1/users", "GET", "Usuário");
+        com.cristiane.salon.models.user.entity.Permission perm2 =
+                new com.cristiane.salon.models.user.entity.Permission(2L, "Criar Usuário", "/v1/users", "POST", "Usuário");
+
+        Role roleWithPerms = new Role(3L, "GERENTE_DE_ATENDIMENTO", new java.util.HashSet<>(java.util.Set.of(perm1, perm2)));
+        activeUser.setRole(roleWithPerms);
+
+        mockAuthenticatedUser(activeUser);
+
+        com.cristiane.salon.models.user.dto.UserProfileResponse profile = userService.getMyProfile();
+
+        assertThat(profile).isNotNull();
+        assertThat(profile.email()).isEqualTo("maria@example.com");
+        assertThat(profile.role()).isEqualTo("GERENTE_DE_ATENDIMENTO");
+        assertThat(profile.permissions()).hasSize(2);
+        assertThat(profile.permissions()).containsExactlyInAnyOrder("GET:/v1/users", "POST:/v1/users");
+    }
+
+    @Test
+    void getMyProfile_whenRoleHasNoPermissions_shouldReturnEmptyPermissions() {
+        clientRole.setPermissions(java.util.Collections.emptySet());
+        activeUser.setRole(clientRole);
+        mockAuthenticatedUser(activeUser);
+
+        com.cristiane.salon.models.user.dto.UserProfileResponse profile = userService.getMyProfile();
+
+        assertThat(profile.permissions()).isEmpty();
+    }
+
+    @Test
+    void getMyProfile_whenUserNotFound_shouldThrowUnauthorizedException() {
+        Authentication auth = mock(Authentication.class);
+        when(auth.getName()).thenReturn("unknown@example.com");
+        SecurityContext secCtx = mock(SecurityContext.class);
+        when(secCtx.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(secCtx);
+
+        when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> userService.getMyProfile())
+                .isInstanceOf(com.cristiane.salon.exception.UnauthorizedException.class);
+    }
 }

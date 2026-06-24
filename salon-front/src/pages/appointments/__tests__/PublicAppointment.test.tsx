@@ -79,7 +79,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 
@@ -175,7 +175,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 
@@ -236,7 +236,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 
@@ -257,7 +257,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 
@@ -317,7 +317,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 
@@ -339,7 +339,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 
@@ -352,7 +352,7 @@ describe('PublicAppointment Wizard Integration', () => {
     await act(async () => {
       customRender(<PublicAppointment />, {
         isAuthenticated: true,
-        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, authorities: [] },
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
       });
     });
 

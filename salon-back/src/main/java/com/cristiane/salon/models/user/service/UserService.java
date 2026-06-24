@@ -9,6 +9,7 @@ import com.cristiane.salon.models.user.dto.UserUpdateRequest;
 import com.cristiane.salon.models.user.dto.ClientFilter;
 import com.cristiane.salon.models.user.dto.UserFilter;
 import com.cristiane.salon.models.user.dto.ClientDetailsResponse;
+import com.cristiane.salon.models.user.dto.UserProfileResponse;
 import com.cristiane.salon.models.user.entity.Role;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.RoleRepository;
@@ -202,6 +203,35 @@ public class UserService {
             }
         }
         return new UserCpfInfoResponse(hasSavedCpf, cpfMasked);
+    }
+
+    /**
+     * Retorna o perfil completo do usuário autenticado, incluindo a lista de permissões
+     * lidas diretamente do banco (não do JWT). Usado pelo endpoint GET /v1/auth/me
+     * para popular o estado de autorização no frontend via CanI.
+     */
+    @Transactional(readOnly = true)
+    public UserProfileResponse getMyProfile() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UnauthorizedException("Usuário não autenticado"));
+
+        List<String> permissions = java.util.Collections.emptyList();
+        if (user.getRole() != null && user.getRole().getPermissions() != null) {
+            permissions = user.getRole().getPermissions().stream()
+                    .map(p -> p.getHttpMethod() + ":" + p.getEndpoint())
+                    .sorted()
+                    .collect(Collectors.toList());
+        }
+
+        return new UserProfileResponse(
+                user.getId(),
+                user.getEmail(),
+                user.getName(),
+                user.getRoleName(),
+                user.getCpf(),
+                permissions
+        );
     }
 
     @Transactional(readOnly = true)

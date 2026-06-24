@@ -7,6 +7,7 @@ import {
   X,
   ToggleLeft,
   ShieldAlert,
+  Shield,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -52,6 +53,7 @@ export const SysadminLayout = () => {
   const menuItems = [
     { to: '/sysadmin/feature-flags', label: 'Feature Flags', icon: ToggleLeft },
     { to: '/sysadmin/audit', label: 'Auditoria', icon: ShieldAlert },
+    { to: '/sysadmin/rbac', label: 'Permissões (RBAC)', icon: Shield },
   ];
 
   const userName = user?.email ? user.email.split('@')[0] : 'Sysadmin';
