@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, act } from '@testing-library/react';
 import { useContext } from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { AuthContext, AuthProvider } from '../AuthContext';
 import { jwtDecode } from 'jwt-decode';
 
@@ -8,7 +9,12 @@ vi.mock('jwt-decode', () => ({
   jwtDecode: vi.fn(),
 }));
 
-const TestComponent = ({ loginParams }: { loginParams?: [string, string, boolean?] }) => {
+// Wrapper para fornecer o contexto de roteamento (necessário para useNavigate no AuthProvider)
+const RouterWrapper = ({ children }: { children: React.ReactNode }) => (
+  <MemoryRouter>{children}</MemoryRouter>
+);
+
+const TestComponent = ({ loginParams }: { loginParams?: [string, string] }) => {
   const { user, isAuthenticated, login, logout, isLoading } = useContext(AuthContext);
 
   if (isLoading) return <div>Loading...</div>;
@@ -42,7 +48,7 @@ const TestComponent = ({ loginParams }: { loginParams?: [string, string, boolean
 
 describe('AuthContext', () => {
   beforeEach(() => {
-    // Mock window.location
+    // Mock window.location para testes que ainda verificam a URL
     const originalLocation = window.location;
     delete (window as any).location;
     window.location = {
@@ -59,9 +65,11 @@ describe('AuthContext', () => {
 
   it('should initialize without user if no token in localStorage', () => {
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
@@ -78,9 +86,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
@@ -96,9 +106,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
@@ -115,9 +127,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     const loginButton = screen.getByTestId('login-btn');
@@ -131,7 +145,7 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('user-email')).toHaveTextContent('client@salao.com');
   });
 
-  it('should redirect sysadmin to sysadmin page on login', async () => {
+  it('should set user state for sysadmin on login (redirection handled by Login.tsx)', async () => {
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'sysadmin@salao.com',
       role: 'SYSADMIN',
@@ -140,9 +154,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     const loginButton = screen.getByTestId('login-btn');
@@ -150,10 +166,12 @@ describe('AuthContext', () => {
       loginButton.click();
     });
 
-    expect(window.location.href).toBe('/sysadmin/feature-flags');
+    // O redirecionamento agora é responsabilidade do Login.tsx, não do AuthContext
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+    expect(screen.getByTestId('user-role')).toHaveTextContent('SYSADMIN');
   });
 
-  it('should redirect admin to admin page on login', async () => {
+  it('should set user state for admin on login (redirection handled by Login.tsx)', async () => {
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'admin@salao.com',
       role: 'ADMIN',
@@ -162,9 +180,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     const loginButton = screen.getByTestId('login-btn');
@@ -172,10 +192,12 @@ describe('AuthContext', () => {
       loginButton.click();
     });
 
-    expect(window.location.href).toBe('/admin/reports');
+    // O redirecionamento agora é responsabilidade do Login.tsx, não do AuthContext
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+    expect(screen.getByTestId('user-role')).toHaveTextContent('ADMIN');
   });
 
-  it('should clear state, localStorage, and redirect on logout', async () => {
+  it('should clear state and localStorage on logout', async () => {
     localStorage.setItem('@Salon:token', 'valid-token');
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'user@salao.com',
@@ -185,9 +207,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
@@ -200,7 +224,6 @@ describe('AuthContext', () => {
     expect(localStorage.getItem('@Salon:token')).toBeNull();
     expect(localStorage.getItem('@Salon:refreshToken')).toBeNull();
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
-    expect(window.location.href).toBe('/login');
   });
 
   it('should default authorities to empty array if not present on mount', () => {
@@ -212,15 +235,17 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     expect(screen.getByTestId('user-authorities')).toHaveTextContent('[]');
   });
 
-  it('should default authorities to empty array if not present on login and respect redirect false', async () => {
+  it('should default authorities to empty array if not present on login', async () => {
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'user@salao.com',
       role: 'CLIENTE',
@@ -228,9 +253,11 @@ describe('AuthContext', () => {
     });
 
     render(
-      <AuthProvider>
-        <TestComponent loginParams={['mockAccessToken', 'mockRefreshToken', false]} />
-      </AuthProvider>
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent loginParams={['mockAccessToken', 'mockRefreshToken']} />
+        </AuthProvider>
+      </RouterWrapper>
     );
 
     const loginButton = screen.getByTestId('login-btn');
@@ -239,7 +266,33 @@ describe('AuthContext', () => {
     });
 
     expect(screen.getByTestId('user-authorities')).toHaveTextContent('[]');
-    expect(window.location.href).not.toBe('/admin/reports');
-    expect(window.location.href).not.toBe('/sysadmin/feature-flags');
+  });
+
+  it('should trigger logout when auth:logout event is dispatched', async () => {
+    localStorage.setItem('@Salon:token', 'valid-token');
+    vi.mocked(jwtDecode).mockReturnValue({
+      sub: 'user@salao.com',
+      role: 'CLIENTE',
+      userId: 10,
+      authorities: [],
+    });
+
+    render(
+      <RouterWrapper>
+        <AuthProvider>
+          <TestComponent />
+        </AuthProvider>
+      </RouterWrapper>
+    );
+
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
+
+    await act(async () => {
+      window.dispatchEvent(new CustomEvent('auth:logout'));
+    });
+
+    expect(localStorage.getItem('@Salon:token')).toBeNull();
+    expect(localStorage.getItem('@Salon:refreshToken')).toBeNull();
+    expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
   });
 });

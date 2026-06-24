@@ -31,6 +31,20 @@ const processQueue = (error: Error | AxiosError | null, token: string | null = n
   failedQueue = [];
 };
 
+/**
+ * Dispara um evento global 'auth:logout' que o AuthContext escuta para realizar
+ * o logout e redirecionamento de forma React-friendly, sem hard reloads.
+ * Apenas é disparado para requisições que não são de autenticação, evitando
+ * conflitos com o próprio fluxo de login.
+ */
+const dispatchLogoutEvent = (config?: CustomAxiosRequestConfig) => {
+  const url = config?.url || '';
+  const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register');
+  if (!isAuthEndpoint) {
+    window.dispatchEvent(new CustomEvent('auth:logout'));
+  }
+};
+
 api.interceptors.request.use(
   (config: CustomAxiosRequestConfig) => {
     if (config._isRefreshRequest || config.url?.includes('/auth/')) {
@@ -80,7 +94,8 @@ api.interceptors.response.use(
         isRefreshing = false;
         localStorage.removeItem('@Salon:token');
         localStorage.removeItem('@Salon:refreshToken');
-        window.location.href = '/login';
+        // React-friendly logout via Event Bus — sem hard reload
+        dispatchLogoutEvent(originalRequest);
         return Promise.reject(error);
       }
 
@@ -108,7 +123,8 @@ api.interceptors.response.use(
         processQueue(err as Error | AxiosError, null);
         localStorage.removeItem('@Salon:token');
         localStorage.removeItem('@Salon:refreshToken');
-        window.location.href = '/login';
+        // React-friendly logout via Event Bus — sem hard reload
+        dispatchLogoutEvent(originalRequest);
         return Promise.reject(err);
       } finally {
         isRefreshing = false;
@@ -118,7 +134,8 @@ api.interceptors.response.use(
     if (error.response?.status === 403) {
       localStorage.removeItem('@Salon:token');
       localStorage.removeItem('@Salon:refreshToken');
-      window.location.href = '/login';
+      // React-friendly logout via Event Bus — sem hard reload
+      dispatchLogoutEvent(originalRequest);
       return Promise.reject(error);
     }
 

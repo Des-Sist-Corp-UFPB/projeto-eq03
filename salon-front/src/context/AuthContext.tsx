@@ -1,5 +1,6 @@
-import { createContext, useState, useEffect, useCallback } from 'react';
+import { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
 import type { JwtPayload, UserContextData } from '../types/auth';
 
@@ -17,6 +18,13 @@ export const AuthContext = createContext<AuthContextType>({} as AuthContextType)
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserContextData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
+
+  // Ref para acessar navigate de forma estável dentro do event listener
+  const navigateRef = useRef(navigate);
+  useEffect(() => {
+    navigateRef.current = navigate;
+  }, [navigate]);
 
   useEffect(() => {
     const token = localStorage.getItem('@Salon:token');
@@ -39,7 +47,30 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  const login = useCallback((accessToken: string, refreshToken: string, redirect = true) => {
+  const logout = useCallback(() => {
+    localStorage.removeItem('@Salon:token');
+    localStorage.removeItem('@Salon:refreshToken');
+    setUser(null);
+    navigateRef.current('/login');
+  }, []);
+
+  /**
+   * Listener do Event Bus 'auth:logout' disparado pelo interceptor do Axios
+   * quando um token expira e o refresh falha. Realiza o logout de forma
+   * React-friendly (sem hard reload, sem window.location.href).
+   */
+  useEffect(() => {
+    const handleAuthLogout = () => {
+      logout();
+    };
+
+    window.addEventListener('auth:logout', handleAuthLogout);
+    return () => {
+      window.removeEventListener('auth:logout', handleAuthLogout);
+    };
+  }, [logout]);
+
+  const login = useCallback((accessToken: string, refreshToken: string) => {
     localStorage.setItem('@Salon:token', accessToken);
     localStorage.setItem('@Salon:refreshToken', refreshToken);
 
@@ -54,22 +85,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     setUser(userData);
-
-    // Redirecionar admin/sysadmin para dashboard/feature-flags automaticamente
-    if (redirect) {
-      if (decoded.role === 'SYSADMIN') {
-        window.location.href = '/sysadmin/feature-flags';
-      } else if (decoded.role === 'ADMIN') {
-        window.location.href = '/admin/reports';
-      }
-    }
-  }, []);
-
-  const logout = useCallback(() => {
-    localStorage.removeItem('@Salon:token');
-    localStorage.removeItem('@Salon:refreshToken');
-    setUser(null);
-    window.location.href = '/login';
   }, []);
 
   /**
@@ -86,4 +101,3 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     </AuthContext.Provider>
   );
 };
-
