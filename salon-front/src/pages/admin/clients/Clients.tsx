@@ -6,92 +6,88 @@ import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
-import { usersApi } from './services/users';
-import type { UserData, UserCreateRequest, UserUpdateRequest, UserFilter } from './services/users';
+import { clientsApi } from './services/clients';
+import type { ClientFilter } from './services/clients';
+import { usersApi } from '../users/services/users';
+import type { UserData, UserCreateRequest, UserUpdateRequest } from '../users/services/users';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import { ClientDrawer } from './components/ClientDrawer';
 
 const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
-export const Users = () => {
+export const Clients = () => {
   const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [showForm, setShowForm] = useState(false);
-  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [editingClient, setEditingClient] = useState<UserData | null>(null);
 
   const [showConfirm, setShowConfirm] = useState(false);
-  const [targetUserId, setTargetUserId] = useState<number | null>(null);
+  const [targetClientId, setTargetClientId] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'restore'>('delete');
+
+  // Drawer states
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
+  const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
   const { register, handleSubmit, reset, setValue } = useForm<
     UserCreateRequest & UserUpdateRequest
   >();
   const { error: showError } = useAlert();
 
-  const handleOpenForm = (user?: UserData) => {
+  const handleOpenForm = (client?: UserData) => {
     reset();
-    if (user) {
-      setEditingUser(user);
-      setValue('name', user.name);
-      setValue('email', user.email);
-      setValue('phone', user.phone);
-      setValue('active', user.active);
-      setValue('roleId', getRoleIdByName(user.role));
+    if (client) {
+      setEditingClient(client);
+      setValue('name', client.name);
+      setValue('email', client.email);
+      setValue('phone', client.phone);
+      setValue('cpf', client.cpf || '');
+      setValue('active', client.active);
+      setValue('roleId', 4); // Client role ID
     } else {
-      setEditingUser(null);
+      setEditingClient(null);
       setValue('active', true);
-      setValue('roleId', 3); // Default to Funcionária (3)
+      setValue('roleId', 4); // Client role ID
     }
     setShowForm(true);
   };
 
-  const getRoleIdByName = (roleName: string) => {
-    switch (roleName) {
-      case 'ADMIN':
-        return 1;
-      case 'GERENTE_DE_ATENDIMENTO':
-        return 2;
-      case 'FUNCIONARIA':
-        return 3;
-      case 'SYSADMIN':
-        return 5;
-      default:
-        return 3;
-    }
-  };
-
   const onSubmit = async (data: UserCreateRequest & UserUpdateRequest) => {
     try {
-      if (editingUser?.id) {
-        await usersApi.update(editingUser.id, data);
+      // Force roleId to be 4 (Cliente)
+      const payload = {
+        ...data,
+        roleId: 4,
+      };
+
+      if (editingClient?.id) {
+        await usersApi.update(editingClient.id, payload);
       } else {
-        await usersApi.create(data as UserCreateRequest);
+        await usersApi.create(payload as UserCreateRequest);
       }
       setShowForm(false);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
-      const msg = getApiErrorMessage(
-        error,
-        'Erro ao salvar usuário. Verifique os dados e tente novamente.'
-      );
+      const msg = getApiErrorMessage(error, 'Erro ao salvar cliente.');
       await showError(msg);
     }
   };
 
   const handleConfirmAction = async () => {
-    if (!targetUserId) return;
+    if (!targetClientId) return;
     try {
       if (confirmAction === 'delete') {
-        await usersApi.delete(targetUserId);
+        await usersApi.delete(targetClientId);
       } else {
-        await usersApi.restore(targetUserId);
+        await usersApi.restore(targetClientId);
       }
       setShowConfirm(false);
       setRefreshTrigger((prev) => prev + 1);
     } catch (error) {
       const fallbackMsg =
-        confirmAction === 'delete' ? 'Erro ao desativar usuário.' : 'Erro ao reativar usuário.';
+        confirmAction === 'delete' ? 'Erro ao desativar cliente.' : 'Erro ao reativar cliente.';
       const msg = getApiErrorMessage(error, fallbackMsg);
       await showError(msg);
     }
@@ -110,10 +106,16 @@ export const Users = () => {
     );
   };
 
+  const handleRowClick = (client: UserData) => {
+    setSelectedClientId(client.id);
+    setIsDrawerOpen(true);
+  };
+
   const columns = [
     { key: 'name', label: 'Nome' },
     { key: 'email', label: 'Email' },
-    { key: 'role', label: 'Papel' },
+    { key: 'phone', label: 'Telefone', render: (item: UserData) => item.phone || 'Não informado' },
+    { key: 'cpf', label: 'CPF', render: (item: UserData) => item.cpf || 'Não informado' },
     {
       key: 'active',
       label: 'Status',
@@ -127,11 +129,11 @@ export const Users = () => {
           <PermissionGate method="PATCH" endpoint={`/v1/users/${item.id}`}>
             <button
               onClick={(e) => {
-                e.stopPropagation();
+                e.stopPropagation(); // Prevents opening the drawer when clicking the button
                 handleOpenForm(item);
               }}
               className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg transition-all cursor-pointer"
-              title="Editar Usuário"
+              title="Editar Cliente"
             >
               <Edit size={15} />
             </button>
@@ -140,13 +142,13 @@ export const Users = () => {
             <PermissionGate method="DELETE" endpoint={`/v1/users/${item.id}`}>
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
-                  setTargetUserId(item.id);
+                  e.stopPropagation(); // Prevents opening the drawer when clicking the button
+                  setTargetClientId(item.id);
                   setConfirmAction('delete');
                   setShowConfirm(true);
                 }}
                 className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 border border-rose-200 dark:border-rose-800 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                title="Desativar Conta"
+                title="Desativar Cliente"
               >
                 <Trash2 size={15} />
                 <span>Desativar</span>
@@ -156,13 +158,13 @@ export const Users = () => {
             <PermissionGate method="PATCH" endpoint={`/v1/users/${item.id}/restore`}>
               <button
                 onClick={(e) => {
-                  e.stopPropagation();
-                  setTargetUserId(item.id);
+                  e.stopPropagation(); // Prevents opening the drawer when clicking the button
+                  setTargetClientId(item.id);
                   setConfirmAction('restore');
                   setShowConfirm(true);
                 }}
                 className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                title="Reativar Conta"
+                title="Reativar Cliente"
               >
                 <RotateCcw size={15} />
                 <span>Reativar</span>
@@ -178,50 +180,41 @@ export const Users = () => {
     { key: 'name', label: 'Nome', type: 'text' },
     { key: 'email', label: 'Email', type: 'text' },
     { key: 'phone', label: 'Telefone', type: 'text' },
-    {
-      key: 'roleId',
-      label: 'Cargo',
-      type: 'select',
-      options: [
-        { value: 1, label: 'Administrador' },
-        { value: 2, label: 'Gerente' },
-        { value: 3, label: 'Funcionária' },
-        { value: 5, label: 'Sysadmin' },
-      ],
-    },
+    { key: 'cpf', label: 'CPF', type: 'text' },
     { key: 'active', label: 'Status', type: 'boolean' },
   ];
 
-  const initialFilters: UserFilter = {
+  const initialFilters: ClientFilter = {
     name: '',
     email: '',
     phone: '',
-    roleId: undefined,
+    cpf: '',
     active: undefined,
   };
 
-  const fetchUsersData = async (filter: UserFilter, page: number, size: number) => {
-    return usersApi.findAll(filter, page, size);
+  const fetchClientsData = async (filter: ClientFilter, page: number, size: number) => {
+    return clientsApi.findAll(filter, page, size);
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036] dark:text-white">
-          Gerenciar Equipe
+          Gerenciar Clientes
         </h2>
         <PermissionGate method="POST" endpoint="/v1/users">
           <button onClick={() => handleOpenForm()} className="btn-premium font-semibold">
-            <Plus size={18} /> Novo Membro da Equipe
+            <Plus size={18} /> Novo Cliente
           </button>
         </PermissionGate>
       </div>
 
       <DataTable
         columns={columns}
-        fetchData={fetchUsersData}
+        fetchData={fetchClientsData}
         filtersConfig={filtersConfig}
         keyExtractor={(item) => item.id}
+        onRowClick={handleRowClick}
         refreshTrigger={refreshTrigger}
         initialFilters={initialFilters}
       />
@@ -229,7 +222,7 @@ export const Users = () => {
       <ModalForm
         show={showForm}
         onHide={() => setShowForm(false)}
-        title={editingUser ? 'Editar Conta da Equipe' : 'Nova Conta da Equipe'}
+        title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
         onSubmit={handleSubmit(onSubmit)}
       >
         <div className="space-y-4">
@@ -242,27 +235,29 @@ export const Users = () => {
             <input type="email" className={inputCls} {...register('email', { required: true })} />
           </div>
           <div>
-            <label className={labelCls}>Cargo (Papel)</label>
-            <select className={inputCls} {...register('roleId', { required: true })}>
-              <option value="3">Funcionária</option>
-              <option value="2">Gerente</option>
-              <option value="1">Administrador</option>
-            </select>
-          </div>
-          <div>
             <label className={labelCls}>Telefone</label>
             <input type="text" className={inputCls} {...register('phone')} />
           </div>
           <div>
-            <label className={labelCls}>
-              {editingUser ? 'Nova Senha (opcional)' : 'Senha *'}
-            </label>
-            <input
-              type="password"
-              className={inputCls}
-              {...register('password', { required: !editingUser })}
-            />
+            <label className={labelCls}>CPF</label>
+            <input type="text" className={inputCls} {...register('cpf')} />
           </div>
+          {!editingClient && (
+            <div>
+              <label className={labelCls}>Senha *</label>
+              <input
+                type="password"
+                className={inputCls}
+                {...register('password', { required: true })}
+              />
+            </div>
+          )}
+          {editingClient && (
+            <div>
+              <label className={labelCls}>Nova Senha (opcional)</label>
+              <input type="password" className={inputCls} {...register('password')} />
+            </div>
+          )}
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" {...register('active')} />
@@ -279,14 +274,20 @@ export const Users = () => {
         show={showConfirm}
         onHide={() => setShowConfirm(false)}
         onConfirm={handleConfirmAction}
-        title={confirmAction === 'delete' ? 'Desativar Conta' : 'Reativar Conta'}
+        title={confirmAction === 'delete' ? 'Desativar Cliente' : 'Reativar Cliente'}
         message={
           confirmAction === 'delete'
-            ? 'Tem certeza que deseja desativar esta conta da equipe? O acesso será bloqueado.'
-            : 'Tem certeza que deseja reativar esta conta da equipe? O acesso será restaurado.'
+            ? 'Tem certeza que deseja desativar este cliente? O acesso dele será bloqueado.'
+            : 'Tem certeza que deseja reativar este cliente? O acesso dele será restaurado.'
         }
         confirmLabel={confirmAction === 'delete' ? 'Desativar' : 'Reativar'}
         variant={confirmAction === 'delete' ? 'danger' : 'primary'}
+      />
+
+      <ClientDrawer
+        isOpen={isDrawerOpen}
+        onClose={() => setIsDrawerOpen(false)}
+        clientId={selectedClientId}
       />
     </div>
   );

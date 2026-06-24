@@ -17,6 +17,7 @@ interface TableProps<T> {
   totalPages?: number;
   onPageChange?: (page: number) => void;
   emptyMessage?: string;
+  onRowClick?: (item: T) => void;
 }
 
 export function Table<T>({
@@ -29,6 +30,7 @@ export function Table<T>({
   totalPages = 1,
   onPageChange,
   emptyMessage = 'Nenhum registro encontrado.',
+  onRowClick,
 }: TableProps<T>) {
   return (
     <div className="w-full bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-[#eae1e1]/80 shadow-sm mb-8 animate-fade-in-up">
@@ -72,14 +74,18 @@ export function Table<T>({
               </tr>
             ) : (
               data.map((item) => (
-                <tr key={keyExtractor(item)} className="group">
+                <tr
+                  key={keyExtractor(item)}
+                  onClick={() => onRowClick && onRowClick(item)}
+                  className={`group ${onRowClick ? 'cursor-pointer' : ''}`}
+                >
                   {columns.map((col, index) => {
                     const isFirst = index === 0;
                     const isLast = index === columns.length - 1;
                     return (
                       <td
                         key={String(col.key) + index}
-                        className={`px-4 py-4 align-middle bg-white/60 border-y border-[#eae1e1] group-hover:bg-[#fcf9f9] transition-all duration-200 ${
+                        className={`px-4 py-4 align-middle bg-white/60 border-y border-[#eae1e1] group-hover:bg-[#fcf9f9]/40 dark:group-hover:bg-white/5 transition-all duration-200 ${
                           isFirst ? 'border-l rounded-l-xl' : ''
                         } ${isLast ? 'border-r rounded-r-xl' : ''}`}
                       >

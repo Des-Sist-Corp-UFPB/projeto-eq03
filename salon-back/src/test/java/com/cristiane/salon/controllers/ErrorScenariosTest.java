@@ -8,6 +8,7 @@ import com.cristiane.salon.models.product.service.ProductService;
 import com.cristiane.salon.models.report.service.ReportService;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
 import com.cristiane.salon.models.user.service.AuthService;
+import com.cristiane.salon.models.user.service.RoleService;
 import com.cristiane.salon.models.user.service.UserService;
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import org.junit.jupiter.api.Test;
@@ -59,6 +60,9 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private MercadoPagoPaymentService mercadoPagoPaymentService;
+
+    @MockitoBean
+    private RoleService roleService;
 
     @Test
     void whenInvalidAppointment_thenReturns400() throws Exception {

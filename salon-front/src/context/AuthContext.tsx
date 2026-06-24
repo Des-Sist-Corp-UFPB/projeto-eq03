@@ -2,18 +2,32 @@ import { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import type { ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { jwtDecode } from 'jwt-decode';
-import type { JwtPayload, UserContextData } from '../types/auth';
+import type { JwtPayload, UserContextData, UserProfileResponse } from '../types/auth';
+import api from '../services/api';
 
 interface AuthContextType {
   user: UserContextData | null;
   isAuthenticated: boolean;
-  login: (accessToken: string, refreshToken: string, redirect?: boolean) => void;
+  login: (accessToken: string, refreshToken: string, redirect?: boolean) => Promise<void>;
   logout: () => void;
   updateUserCpf: (cpf: string) => void;
   isLoading: boolean;
 }
 
 export const AuthContext = createContext<AuthContextType>({} as AuthContextType);
+
+/**
+ * Busca o perfil completo do usuário (com permissões do banco) via GET /v1/auth/me.
+ * Retorna null se não autenticado ou em caso de erro.
+ */
+async function fetchUserProfile(): Promise<UserProfileResponse | null> {
+  try {
+    const { data } = await api.get<UserProfileResponse>('/auth/me');
+    return data;
+  } catch {
+    return null;
+  }
+}
 
 export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<UserContextData | null>(null);
@@ -26,25 +40,49 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     navigateRef.current = navigate;
   }, [navigate]);
 
+  /**
+   * Inicialização: se houver token salvo, decodifica para identidade básica e
+   * faz GET /auth/me para buscar permissões completas do banco de dados.
+   */
   useEffect(() => {
-    const token = localStorage.getItem('@Salon:token');
+    const initAuth = async () => {
+      const token = localStorage.getItem('@Salon:token');
 
-    if (token) {
-      try {
-        const decoded = jwtDecode<JwtPayload>(token);
-        setUser({
-          email: decoded.sub,
-          role: decoded.role,
-          userId: decoded.userId,
-          authorities: decoded.authorities || [],
-          cpf: null,
-        });
-      } catch {
-        localStorage.removeItem('@Salon:token');
-        localStorage.removeItem('@Salon:refreshToken');
+      if (token) {
+        try {
+          const decoded = jwtDecode<JwtPayload>(token);
+
+          // Seta o usuário com identidade básica do token (sem permissões ainda)
+          // para que a navegação de rota (role-based) funcione imediatamente.
+          const baseUser: UserContextData = {
+            email: decoded.sub,
+            role: decoded.role,
+            userId: decoded.userId,
+            permissions: [],
+            cpf: null,
+          };
+          setUser(baseUser);
+
+          // Busca permissões completas do banco de dados de forma assíncrona.
+          const profile = await fetchUserProfile();
+          if (profile) {
+            setUser({
+              email: profile.email,
+              role: profile.role,
+              userId: profile.userId,
+              permissions: profile.permissions,
+              cpf: profile.cpf,
+            });
+          }
+        } catch {
+          localStorage.removeItem('@Salon:token');
+          localStorage.removeItem('@Salon:refreshToken');
+        }
       }
-    }
-    setIsLoading(false);
+      setIsLoading(false);
+    };
+
+    initAuth();
   }, []);
 
   const logout = useCallback(() => {
@@ -70,21 +108,36 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
   }, [logout]);
 
-  const login = useCallback((accessToken: string, refreshToken: string) => {
+  /**
+   * Login: salva tokens, popula identidade básica do JWT e dispara fetch
+   * assíncrono para buscar permissões completas do banco.
+   */
+  const login = useCallback(async (accessToken: string, refreshToken: string) => {
     localStorage.setItem('@Salon:token', accessToken);
     localStorage.setItem('@Salon:refreshToken', refreshToken);
 
     const decoded = jwtDecode<JwtPayload>(accessToken);
 
-    const userData: UserContextData = {
+    // Identidade básica imediata
+    setUser({
       email: decoded.sub,
       role: decoded.role,
       userId: decoded.userId,
-      authorities: decoded.authorities || [],
+      permissions: [],
       cpf: null,
-    };
+    });
 
-    setUser(userData);
+    // Busca permissões completas do banco
+    const profile = await fetchUserProfile();
+    if (profile) {
+      setUser({
+        email: profile.email,
+        role: profile.role,
+        userId: profile.userId,
+        permissions: profile.permissions,
+        cpf: profile.cpf,
+      });
+    }
   }, []);
 
   /**

@@ -7,12 +7,14 @@ import { AdminLayout } from './layouts/AdminLayout';
 import { CustomerLayout } from './layouts/CustomerLayout';
 import { SysadminLayout } from './layouts/SysadminLayout';
 import { FeatureFlags } from './pages/sysadmin/FeatureFlags';
+import { Rbac } from './pages/sysadmin/Rbac';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
 import { AdminServices } from './pages/admin/services/AdminServices';
 import { Products } from './pages/admin/products/Products';
 import { Users } from './pages/admin/users/Users';
+import { Clients } from './pages/admin/clients/Clients';
 import { Employees } from './pages/admin/employees/Employees';
 import { PublicServices } from './pages/services/PublicServices';
 import { PublicHome } from './pages/home/PublicHome';
@@ -131,6 +133,14 @@ export const Router = () => {
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<Navigate to="/admin/reports" replace />} />
         <Route
+          path="/admin/clients"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
+              <Clients />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="/admin/users"
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
@@ -202,6 +212,14 @@ export const Router = () => {
           element={
             <ProtectedRoute allowedRoles={['SYSADMIN']}>
               <AuditLog />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/sysadmin/rbac"
+          element={
+            <ProtectedRoute allowedRoles={['SYSADMIN']}>
+              <Rbac />
             </ProtectedRoute>
           }
         />

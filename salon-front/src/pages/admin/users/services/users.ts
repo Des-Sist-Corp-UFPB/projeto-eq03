@@ -11,6 +11,22 @@ export interface UserData {
   createdAt: string;
 }
 
+export interface UserFilter {
+  name?: string;
+  email?: string;
+  phone?: string;
+  active?: boolean;
+  roleId?: number;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export interface UserUpdateRequest {
   name?: string;
   email?: string;
@@ -40,9 +56,13 @@ export interface UserCpfInfoResponse {
 }
 
 export const usersApi = {
-  findAll: async (includeInactive?: boolean) => {
-    const { data } = await api.get<UserData[]>('/users', {
-      params: includeInactive !== undefined ? { includeInactive } : undefined,
+  findAll: async (filter: UserFilter, page: number, size: number) => {
+    const { data } = await api.get<PageResponse<UserData>>('/users', {
+      params: {
+        ...filter,
+        page,
+        size,
+      },
     });
     return data;
   },

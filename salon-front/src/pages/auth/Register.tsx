@@ -44,8 +44,9 @@ export const Register = () => {
     setErrorMsg('');
     try {
       const response = await api.post('/auth/register', data);
-      login(response.data.accessToken, response.data.refreshToken);
+      await login(response.data.accessToken, response.data.refreshToken);
       navigate('/');
+
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Erro ao realizar cadastro. Tente novamente.');
       setErrorMsg(msg);

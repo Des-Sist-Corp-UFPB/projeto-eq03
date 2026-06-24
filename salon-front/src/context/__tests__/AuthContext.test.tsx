@@ -9,6 +9,24 @@ vi.mock('jwt-decode', () => ({
   jwtDecode: vi.fn(),
 }));
 
+// Mock do api por padrão — retorna perfil genérico; testes específicos podem sobrescrever
+const mockApiGet = vi.fn().mockResolvedValue({
+  data: {
+    userId: 10,
+    email: 'user@salao.com',
+    name: 'Test User',
+    role: 'CLIENTE',
+    cpf: null,
+    permissions: [],
+  },
+});
+
+vi.mock('../../services/api', () => ({
+  default: {
+    get: (...args: any[]) => mockApiGet(...args),
+  },
+}));
+
 // Wrapper para fornecer o contexto de roteamento (necessário para useNavigate no AuthProvider)
 const RouterWrapper = ({ children }: { children: React.ReactNode }) => (
   <MemoryRouter>{children}</MemoryRouter>
@@ -26,7 +44,7 @@ const TestComponent = ({ loginParams }: { loginParams?: [string, string] }) => {
       </span>
       {user && <span data-testid="user-email">{user.email}</span>}
       {user && <span data-testid="user-role">{user.role}</span>}
-      {user && <span data-testid="user-authorities">{JSON.stringify(user.authorities)}</span>}
+      {user && <span data-testid="user-permissions">{JSON.stringify(user.permissions)}</span>}
       <button
         onClick={() => {
           if (loginParams) {
@@ -63,55 +81,60 @@ describe('AuthContext', () => {
     vi.restoreAllMocks();
   });
 
-  it('should initialize without user if no token in localStorage', () => {
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+  it('should initialize without user if no token in localStorage', async () => {
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
     expect(screen.queryByTestId('user-email')).not.toBeInTheDocument();
   });
 
-  it('should restore user on mount if token exists in localStorage', () => {
+  it('should restore user on mount if token exists in localStorage', async () => {
     localStorage.setItem('@Salon:token', 'valid-token');
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'user@salao.com',
       role: 'CLIENTE',
       userId: 10,
-      authorities: ['GET:/v1/users'],
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
     expect(screen.getByTestId('user-email')).toHaveTextContent('user@salao.com');
     expect(screen.getByTestId('user-role')).toHaveTextContent('CLIENTE');
   });
 
-  it('should clear localStorage if token is invalid on mount', () => {
+  it('should clear localStorage if token is invalid on mount', async () => {
     localStorage.setItem('@Salon:token', 'invalid-token');
     localStorage.setItem('@Salon:refreshToken', 'invalid-refresh');
     vi.mocked(jwtDecode).mockImplementation(() => {
       throw new Error('invalid token');
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
     expect(localStorage.getItem('@Salon:token')).toBeNull();
@@ -123,16 +146,20 @@ describe('AuthContext', () => {
       sub: 'client@salao.com',
       role: 'CLIENTE',
       userId: 5,
-      authorities: [],
+    });
+    mockApiGet.mockResolvedValueOnce({
+      data: { userId: 5, email: 'client@salao.com', name: 'Client', role: 'CLIENTE', cpf: null, permissions: [] },
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     const loginButton = screen.getByTestId('login-btn');
     await act(async () => {
@@ -150,16 +177,20 @@ describe('AuthContext', () => {
       sub: 'sysadmin@salao.com',
       role: 'SYSADMIN',
       userId: 1,
-      authorities: [],
+    });
+    mockApiGet.mockResolvedValueOnce({
+      data: { userId: 1, email: 'sysadmin@salao.com', name: 'Sysadmin', role: 'SYSADMIN', cpf: null, permissions: [] },
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     const loginButton = screen.getByTestId('login-btn');
     await act(async () => {
@@ -176,16 +207,20 @@ describe('AuthContext', () => {
       sub: 'admin@salao.com',
       role: 'ADMIN',
       userId: 2,
-      authorities: [],
+    });
+    mockApiGet.mockResolvedValueOnce({
+      data: { userId: 2, email: 'admin@salao.com', name: 'Admin', role: 'ADMIN', cpf: null, permissions: [] },
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     const loginButton = screen.getByTestId('login-btn');
     await act(async () => {
@@ -203,16 +238,17 @@ describe('AuthContext', () => {
       sub: 'user@salao.com',
       role: 'CLIENTE',
       userId: 10,
-      authorities: [],
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
 
@@ -226,7 +262,7 @@ describe('AuthContext', () => {
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Not Authenticated');
   });
 
-  it('should default authorities to empty array if not present on mount', () => {
+  it('should default permissions to empty array before /auth/me responds', async () => {
     localStorage.setItem('@Salon:token', 'valid-token');
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'user@salao.com',
@@ -234,38 +270,43 @@ describe('AuthContext', () => {
       userId: 10,
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
-    expect(screen.getByTestId('user-authorities')).toHaveTextContent('[]');
+    // Após o init completo, as permissões devem estar carregadas (mockadas como [])
+    expect(screen.getByTestId('user-permissions')).toHaveTextContent('[]');
   });
 
-  it('should default authorities to empty array if not present on login', async () => {
+  it('should default permissions to empty array if not present on login', async () => {
     vi.mocked(jwtDecode).mockReturnValue({
       sub: 'user@salao.com',
       role: 'CLIENTE',
       userId: 10,
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent loginParams={['mockAccessToken', 'mockRefreshToken']} />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent loginParams={['mockAccessToken', 'mockRefreshToken']} />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     const loginButton = screen.getByTestId('login-btn');
     await act(async () => {
       loginButton.click();
     });
 
-    expect(screen.getByTestId('user-authorities')).toHaveTextContent('[]');
+    expect(screen.getByTestId('user-permissions')).toHaveTextContent('[]');
   });
 
   it('should trigger logout when auth:logout event is dispatched', async () => {
@@ -274,16 +315,17 @@ describe('AuthContext', () => {
       sub: 'user@salao.com',
       role: 'CLIENTE',
       userId: 10,
-      authorities: [],
     });
 
-    render(
-      <RouterWrapper>
-        <AuthProvider>
-          <TestComponent />
-        </AuthProvider>
-      </RouterWrapper>
-    );
+    await act(async () => {
+      render(
+        <RouterWrapper>
+          <AuthProvider>
+            <TestComponent />
+          </AuthProvider>
+        </RouterWrapper>
+      );
+    });
 
     expect(screen.getByTestId('auth-status')).toHaveTextContent('Authenticated');
 

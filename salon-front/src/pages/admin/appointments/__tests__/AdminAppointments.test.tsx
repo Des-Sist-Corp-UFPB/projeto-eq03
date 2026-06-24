@@ -4,7 +4,7 @@ import { AdminAppointments } from '../AdminAppointments';
 import { appointmentsApi } from '../../../appointments/services/appointments';
 import { salonServicesApi } from '../../../services/services/services';
 import { employeesApi } from '../../employees/services/employees';
-import { usersApi } from '../../users/services/users';
+import { clientsApi } from '../../clients/services/clients';
 
 vi.mock('../../../../hooks/usePermission', () => ({
   usePermission: () => true,
@@ -43,6 +43,13 @@ vi.mock('../../users/services/users', () => ({
       cpfMasked: '***.***.123-45',
     }),
     updateMyCpf: vi.fn().mockResolvedValue({}),
+  },
+}));
+
+vi.mock('../../clients/services/clients', () => ({
+  clientsApi: {
+    findAll: vi.fn(),
+    findById: vi.fn(),
   },
 }));
 
@@ -109,7 +116,7 @@ const renderAdminAppointments = () => {
       email: 'admin@salao.com',
       role: 'ADMIN',
       userId: 1,
-      authorities: [],
+      permissions: [],
       cpf: '12345678909',
     },
     isAuthenticated: true,
@@ -122,7 +129,13 @@ describe('AdminAppointments Component', () => {
     vi.mocked(appointmentsApi.findAll).mockResolvedValue(mockAppointments);
     vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServices);
     vi.mocked(employeesApi.findAll).mockResolvedValue(mockEmployees);
-    vi.mocked(usersApi.findAll).mockResolvedValue(mockUsers);
+    vi.mocked(clientsApi.findAll).mockResolvedValue({
+      content: mockUsers.filter((u) => u.role === 'CLIENTE'),
+      totalPages: 1,
+      totalElements: mockUsers.filter((u) => u.role === 'CLIENTE').length,
+      size: 10,
+      number: 0,
+    });
     vi.mocked(appointmentsApi.findById).mockResolvedValue({ id: 1, paymentStatus: 'PENDING' } as any);
     
     vi.mocked(appointmentsApi.generatePix).mockResolvedValue({

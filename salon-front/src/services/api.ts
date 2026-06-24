@@ -47,7 +47,13 @@ const dispatchLogoutEvent = (config?: CustomAxiosRequestConfig) => {
 
 api.interceptors.request.use(
   (config: CustomAxiosRequestConfig) => {
-    if (config._isRefreshRequest || config.url?.includes('/auth/')) {
+    // Pula injeção do token apenas para o próprio request de refresh e endpoints públicos de auth
+    const isPublicAuthEndpoint =
+      config.url?.includes('/auth/login') ||
+      config.url?.includes('/auth/register') ||
+      config.url?.includes('/auth/refresh');
+
+    if (config._isRefreshRequest || isPublicAuthEndpoint) {
       return config;
     }
 

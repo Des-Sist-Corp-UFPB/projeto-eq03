@@ -8,11 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.test.util.ReflectionTestUtils;
-
-import java.util.Collections;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -63,11 +60,9 @@ class JwtServiceTest {
 
     @Test
     void generateAccessToken_shouldNotAddCustomClaims_whenUserIsGenericUserDetails() {
-        // Arrange
+        // Arrange — authorities no longer added to JWT; just verify role/userId are null
         UserDetails userDetails = mock(UserDetails.class);
         when(userDetails.getUsername()).thenReturn("generic@salon.com");
-        org.mockito.Mockito.doReturn(Collections.singletonList(new SimpleGrantedAuthority("ROLE_USER")))
-                .when(userDetails).getAuthorities();
 
         // Act
         String token = jwtService.generateAccessToken(userDetails);

@@ -86,7 +86,7 @@ const renderMyAppointments = () => {
       email: 'client@salao.com',
       role: 'CLIENTE',
       userId: 5,
-      authorities: [],
+      permissions: [],
       cpf: '12345678909',
     },
     isAuthenticated: true,

@@ -8,7 +8,7 @@ export const usePermission = (method: string, endpoint: string) => {
 
   const requestAuthority = `${method.toUpperCase()}:${endpoint}`;
 
-  return user.authorities.some((authority: string) => {
+  return user.permissions.some((authority: string) => {
     if (authority === requestAuthority) return true;
 
     // Support for wildcard endpoints like GET:/v1/users/*
