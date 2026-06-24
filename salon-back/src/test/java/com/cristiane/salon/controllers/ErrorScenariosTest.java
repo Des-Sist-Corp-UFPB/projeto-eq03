@@ -9,6 +9,7 @@ import com.cristiane.salon.models.report.service.ReportService;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
 import com.cristiane.salon.models.user.service.AuthService;
 import com.cristiane.salon.models.user.service.UserService;
+import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -55,6 +56,9 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private FeatureFlagService featureFlagService;
+
+    @MockitoBean
+    private MercadoPagoPaymentService mercadoPagoPaymentService;
 
     @Test
     void whenInvalidAppointment_thenReturns400() throws Exception {

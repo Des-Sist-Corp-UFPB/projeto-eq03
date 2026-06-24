@@ -3,6 +3,7 @@ package com.cristiane.salon.integrations.payment.controller;
 import com.cristiane.salon.controllers.BaseControllerTest;
 
 import com.cristiane.salon.integrations.payment.controller.MercadoPagoWebhookController;
+import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +13,7 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.*;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -26,10 +28,15 @@ class WebhookControllerTest extends BaseControllerTest {
     @MockitoBean
     private AppointmentService appointmentService;
 
+    @MockitoBean
+    private MercadoPagoPaymentService mercadoPagoPaymentService;
+
     @Test
     @WithMockUser
     void receiveNotification_whenNoSignature_returns403() throws Exception {
         String body = "{\"action\":\"payment.created\",\"type\":\"payment\",\"data\":{\"id\":\"123456\"}}";
+
+        when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenReturn(false);
 
         mvc.perform(post("/v1/webhooks/mercadopago")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -43,6 +50,8 @@ class WebhookControllerTest extends BaseControllerTest {
     @WithMockUser
     void receiveNotification_whenInvalidSignature_returns403() throws Exception {
         String body = "{\"action\":\"payment.created\",\"type\":\"payment\",\"data\":{\"id\":\"123456\"}}";
+
+        when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenReturn(false);
 
         mvc.perform(post("/v1/webhooks/mercadopago")
                 .header("x-signature", "invalid_signature")
@@ -60,6 +69,8 @@ class WebhookControllerTest extends BaseControllerTest {
         // Notification of type "merchant_order" instead of "payment"
         String body = "{\"action\":\"created\",\"type\":\"merchant_order\",\"data\":{\"id\":\"123456\"}}";
 
+        when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenReturn(true);
+
         mvc.perform(post("/v1/webhooks/mercadopago")
                 .header("x-signature", "valid_sig_abc")
                 .header("x-request-id", "some-req-id")
@@ -75,6 +86,8 @@ class WebhookControllerTest extends BaseControllerTest {
     void receiveNotification_whenValidSignatureAndPayment_returns200_callsService() throws Exception {
         String body = "{\"action\":\"payment.updated\",\"type\":\"payment\",\"data\":{\"id\":\"987654321\"}}";
 
+        when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenReturn(true);
+
         mvc.perform(post("/v1/webhooks/mercadopago")
                 .header("x-signature", "valid_sig_xyz")
                 .header("x-request-id", "some-req-id")
@@ -89,6 +102,8 @@ class WebhookControllerTest extends BaseControllerTest {
     @WithMockUser
     void receiveNotification_whenJsonMalformed_returns200_doesNotThrow() throws Exception {
         String body = "{ malformed json ";
+
+        when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenReturn(true);
 
         mvc.perform(post("/v1/webhooks/mercadopago")
                 .header("x-signature", "valid_sig_xyz")
