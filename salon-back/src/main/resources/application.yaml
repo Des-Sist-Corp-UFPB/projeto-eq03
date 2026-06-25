@@ -6,6 +6,8 @@ spring:
   output:
     ansi:
       enabled: always
+  jackson:
+    time-zone: America/Recife
 
 mail:
   api-url: ${MAIL_API_URL:https://api.resend.com}
