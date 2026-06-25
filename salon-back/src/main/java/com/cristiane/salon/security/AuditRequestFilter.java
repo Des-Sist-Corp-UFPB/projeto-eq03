@@ -146,6 +146,7 @@ public class AuditRequestFilter extends OncePerRequestFilter {
                         auditStatus,
                         errorMessage
                 );
+                log.info("Audit Logged: User={} | Action={} | EntityType={} | Status={}", userEmail, action, entityType, auditStatus);
             } catch (Exception e) {
                 log.error("Error logging HTTP request to audit log", e);
             }
