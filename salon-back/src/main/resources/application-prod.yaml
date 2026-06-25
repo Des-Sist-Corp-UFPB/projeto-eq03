@@ -36,5 +36,6 @@ springdoc:
 logging:
   level:
     root: INFO
-    com.cristiane.salon: INFO
-    org.springframework.web: INFO
+    com.cristiane.salon: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.security: INFO
