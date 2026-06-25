@@ -39,7 +39,7 @@ class AuthControllerTest extends BaseControllerTest {
         TokenResponse response = new TokenResponse("accessToken", "refreshToken");
         when(authService.login(any())).thenReturn(response);
 
-        String body = "{\"email\":\"a@b.com\",\"password\":\"123456\"}";
+        String body = "{\"email\":\"a@b.com\",\"password\":\"secureP@ss123\"}";
 
         mvc.perform(post("/v1/auth/login")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -63,7 +63,7 @@ class AuthControllerTest extends BaseControllerTest {
         TokenResponse response = new TokenResponse("accessToken", "refreshToken");
         when(authService.register(any())).thenReturn(response);
 
-        String body = "{\"name\":\"Alice\",\"email\":\"alice@b.com\",\"password\":\"123456\"}";
+        String body = "{\"name\":\"Alice\",\"email\":\"alice@b.com\",\"password\":\"secureP@ss123\"}";
 
         mvc.perform(post("/v1/auth/register")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -3,12 +3,13 @@ import { useForm } from 'react-hook-form';
 import { profileApi } from './services/profile';
 import { useAuth } from '../../hooks/useAuth';
 import type { UserUpdateRequest } from '../admin/users/services/users';
-import { Save, User as UserIcon } from 'lucide-react';
+import { Save, User as UserIcon, Eye, EyeOff } from 'lucide-react';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 
 interface ProfileFormData extends UserUpdateRequest {
   cpf?: string;
+  confirmPassword?: string;
 }
 
 // Aplica máscara ###.###.###-## enquanto o usuário digita
@@ -24,12 +25,15 @@ export const Profile = () => {
   const { user } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   const {
     register,
     handleSubmit,
     setValue,
     watch,
+    setError,
     formState: { errors },
   } = useForm<ProfileFormData>();
 
@@ -64,6 +68,7 @@ export const Profile = () => {
     setIsSaving(true);
     try {
       const updateData: UserUpdateRequest = { ...data };
+      delete (updateData as any).confirmPassword;
       if (!updateData.password) {
         delete updateData.password;
       }
@@ -74,9 +79,23 @@ export const Profile = () => {
 
       await profileApi.updateProfile(user.userId, updateData);
       await showSuccess('Perfil atualizado com sucesso!');
-    } catch (error) {
-      const msg = getApiErrorMessage(error, 'Erro ao atualizar perfil.');
-      await showError(msg);
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response.data?.errors) {
+        const fieldErrors = error.response.data.errors;
+        Object.keys(fieldErrors).forEach((field) => {
+          setError(field as any, { type: 'server', message: fieldErrors[field] });
+        });
+      } else if (error.response?.status === 409) {
+        const msg = error.response.data?.message || 'E-mail ou CPF já cadastrado.';
+        if (msg.toLowerCase().includes('cpf')) {
+          setError('cpf', { type: 'server', message: msg });
+        } else {
+          setError('email', { type: 'server', message: msg });
+        }
+      } else {
+        const msg = getApiErrorMessage(error, 'Erro ao atualizar perfil.');
+        await showError(msg);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -131,10 +150,18 @@ export const Profile = () => {
               <label className="label-premium">Telefone</label>
               <input
                 type="tel"
-                {...register('phone')}
+                {...register('phone', {
+                  pattern: {
+                    value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+                    message: 'Formato inválido. Use (XX) XXXXX-XXXX',
+                  },
+                })}
                 placeholder="(11) 99999-9999"
-                className="input-premium"
+                className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
+              {errors.phone && (
+                <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
+              )}
             </div>
           </div>
 
@@ -182,16 +209,59 @@ export const Profile = () => {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-1.5">
               <label className="label-premium">Nova Senha</label>
-              <input
-                type="password"
-                {...register('password', {
-                  minLength: { value: 6, message: 'Mínimo 6 caracteres' },
-                })}
-                placeholder="Deixe em branco para não alterar"
-                className={`input-premium ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Deixe em branco para não alterar"
+                  {...register('password', {
+                    validate: (val) => {
+                      if (!val) return true;
+                      if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+                      if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
+                      return true;
+                    },
+                  })}
+                  className={`input-premium pr-10 ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {errors.password && (
                 <span className="text-xs text-rose-500 font-semibold">{errors.password.message}</span>
+              )}
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="label-premium">Confirmar Nova Senha</label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirme sua nova senha"
+                  {...register('confirmPassword', {
+                    validate: (val, formValues) => {
+                      if (!formValues.password) return true;
+                      if (!val) return 'Confirmação de senha é obrigatória';
+                      if (val !== formValues.password) return 'As senhas não coincidem';
+                      return true;
+                    },
+                  })}
+                  className={`input-premium pr-10 ${errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+              {errors.confirmPassword && (
+                <span className="text-xs text-rose-500 font-semibold">{errors.confirmPassword.message}</span>
               )}
             </div>
           </div>
@@ -211,4 +281,3 @@ export const Profile = () => {
     </div>
   );
 };
-

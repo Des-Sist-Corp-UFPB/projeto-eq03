@@ -122,6 +122,9 @@ class GlobalExceptionHandlerTest {
     void handleConstraintViolation_shouldReturnValidationError() {
         ConstraintViolationException ex = mock(ConstraintViolationException.class);
         ConstraintViolation<?> violation = mock(ConstraintViolation.class);
+        jakarta.validation.Path path = mock(jakarta.validation.Path.class);
+        when(path.toString()).thenReturn("field");
+        when(violation.getPropertyPath()).thenReturn(path);
         when(violation.getMessage()).thenReturn("Constraint violation msg");
         when(ex.getConstraintViolations()).thenReturn(Set.of(violation));
 

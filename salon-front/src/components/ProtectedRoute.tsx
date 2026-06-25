@@ -30,6 +30,10 @@ export const ProtectedRoute = ({ children, allowedRoles }: ProtectedRouteProps) 
     return <Navigate to="/login" replace />;
   }
 
+  if (user.role === 'SYSADMIN') {
+    return <>{children}</>;
+  }
+
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }

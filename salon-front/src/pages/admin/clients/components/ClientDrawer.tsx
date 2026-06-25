@@ -4,6 +4,7 @@ import { clientsApi } from '../services/clients';
 import type { ClientDetailsResponse } from '../services/clients';
 import { getApiErrorMessage } from '../../../../utils/apiError';
 import { useAlert } from '../../../../hooks/useAlert';
+import { maskCPF } from '../../../../utils/formatters';
 
 interface ClientDrawerProps {
   isOpen: boolean;
@@ -100,7 +101,7 @@ export function ClientDrawer({ isOpen, onClose, clientId }: ClientDrawerProps) {
                       CPF
                     </span>
                     <span className="font-medium text-[#2a2528] dark:text-gray-200">
-                      {client.cpf || 'Não informado'}
+                      {maskCPF(client.cpf) || 'Não informado'}
                     </span>
                   </div>
                 </div>

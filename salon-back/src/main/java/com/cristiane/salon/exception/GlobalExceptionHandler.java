@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.LocalDateTime;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
@@ -93,35 +94,59 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ErrorResponse> handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
-        String message = ex.getBindingResult().getFieldErrors().stream()
-                .map(FieldError::getDefaultMessage)
-                .collect(Collectors.joining(", "));
+        Map<String, String> errors = ex.getBindingResult().getFieldErrors().stream()
+                .collect(Collectors.toMap(
+                        FieldError::getField,
+                        fe -> fe.getDefaultMessage() != null ? fe.getDefaultMessage() : "Valor inválido",
+                        (msg1, msg2) -> msg1
+                ));
+
+        String message = errors.values().stream().collect(Collectors.joining(", "));
 
         ErrorResponse error = new ErrorResponse(
                 LocalDateTime.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Erro de Validação",
                 message,
-                request.getRequestURI()
+                request.getRequestURI(),
+                errors
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
     }
 
-        @ExceptionHandler(ConstraintViolationException.class)
-        public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
-        String message = ex.getConstraintViolations().stream()
-            .map(ConstraintViolation::getMessage)
-            .collect(Collectors.joining(", "));
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ErrorResponse> handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+        Map<String, String> errors = ex.getConstraintViolations().stream()
+                .collect(Collectors.toMap(
+                        cv -> cv.getPropertyPath() != null ? cv.getPropertyPath().toString() : "campo",
+                        ConstraintViolation::getMessage,
+                        (msg1, msg2) -> msg1
+                ));
+
+        String message = errors.values().stream().collect(Collectors.joining(", "));
 
         ErrorResponse error = new ErrorResponse(
-            LocalDateTime.now(),
-            HttpStatus.BAD_REQUEST.value(),
-            "Erro de Validação",
-            message,
-            request.getRequestURI()
+                LocalDateTime.now(),
+                HttpStatus.BAD_REQUEST.value(),
+                "Erro de Validação",
+                message,
+                request.getRequestURI(),
+                errors
         );
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);
-        }
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity<ErrorResponse> handleConflictException(ConflictException ex, HttpServletRequest request) {
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.CONFLICT.value(),
+                "Conflito",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);
+    }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
