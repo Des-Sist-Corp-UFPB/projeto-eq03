@@ -44,7 +44,7 @@ class MaskingMessageConverterTest {
         
         PatternLayout layout = new PatternLayout();
         layout.setContext(context);
-        layout.setPattern("%mask(%msg)");
+        layout.setPattern("%mask");
         layout.getInstanceConverterMap().put("mask", MaskingMessageConverter::new);
         layout.start();
 

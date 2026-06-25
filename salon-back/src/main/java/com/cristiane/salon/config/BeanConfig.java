@@ -1,17 +1,12 @@
 package com.cristiane.salon.config;
 
 import com.cristiane.salon.security.SecurityUserDetailsService;
-import com.fasterxml.jackson.core.JsonGenerator;
-import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializerProvider;
-import com.fasterxml.jackson.databind.json.JsonMapper;
-import com.fasterxml.jackson.databind.module.SimpleModule;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
@@ -23,7 +18,6 @@ import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.TimeZone;
 
 @Configuration
 @RequiredArgsConstructor
@@ -48,18 +42,19 @@ public class BeanConfig {
         return new BCryptPasswordEncoder();
     }
 
+    // Jackson 2.x ObjectMapper for legacy components dependency injection
     @Bean
     public ObjectMapper objectMapper() {
-        SimpleModule module = new SimpleModule();
+        ObjectMapper mapper = new ObjectMapper();
+        com.fasterxml.jackson.databind.module.SimpleModule module = new com.fasterxml.jackson.databind.module.SimpleModule();
         
-        // Custom LocalDateTime serializer: assumes database/JVM LocalDateTime is UTC, converts to America/Recife
-        module.addSerializer(LocalDateTime.class, new JsonSerializer<LocalDateTime>() {
+        module.addSerializer(LocalDateTime.class, new com.fasterxml.jackson.databind.JsonSerializer<LocalDateTime>() {
             private static final ZoneId UTC = ZoneId.of("UTC");
             private static final ZoneId RECIFE = ZoneId.of("America/Recife");
             private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
 
             @Override
-            public void serialize(LocalDateTime value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+            public void serialize(LocalDateTime value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws IOException {
                 if (value != null) {
                     ZonedDateTime utcDateTime = value.atZone(UTC);
                     ZonedDateTime recifeDateTime = utcDateTime.withZoneSameInstant(RECIFE);
@@ -68,13 +63,49 @@ public class BeanConfig {
             }
         });
 
-        // Custom Instant serializer: converts Instant to America/Recife and formats
-        module.addSerializer(Instant.class, new JsonSerializer<Instant>() {
+        module.addSerializer(Instant.class, new com.fasterxml.jackson.databind.JsonSerializer<Instant>() {
             private static final ZoneId RECIFE = ZoneId.of("America/Recife");
             private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
 
             @Override
-            public void serialize(Instant value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+            public void serialize(Instant value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws IOException {
+                if (value != null) {
+                    ZonedDateTime recifeDateTime = value.atZone(RECIFE);
+                    gen.writeString(recifeDateTime.format(FORMATTER));
+                }
+            }
+        });
+        
+        mapper.registerModule(module);
+        return mapper;
+    }
+
+    // Jackson 3.x JacksonModule to format java.time classes globally in Spring Boot 4.x
+    @Bean
+    public tools.jackson.databind.JacksonModule customTimeModule() {
+        tools.jackson.databind.module.SimpleModule module = new tools.jackson.databind.module.SimpleModule();
+        
+        module.addSerializer(LocalDateTime.class, new tools.jackson.databind.ValueSerializer<LocalDateTime>() {
+            private static final ZoneId UTC = ZoneId.of("UTC");
+            private static final ZoneId RECIFE = ZoneId.of("America/Recife");
+            private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss");
+
+            @Override
+            public void serialize(LocalDateTime value, tools.jackson.core.JsonGenerator gen, tools.jackson.databind.SerializationContext serializers) {
+                if (value != null) {
+                    ZonedDateTime utcDateTime = value.atZone(UTC);
+                    ZonedDateTime recifeDateTime = utcDateTime.withZoneSameInstant(RECIFE);
+                    gen.writeString(recifeDateTime.toLocalDateTime().format(FORMATTER));
+                }
+            }
+        });
+
+        module.addSerializer(Instant.class, new tools.jackson.databind.ValueSerializer<Instant>() {
+            private static final ZoneId RECIFE = ZoneId.of("America/Recife");
+            private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssXXX");
+
+            @Override
+            public void serialize(Instant value, tools.jackson.core.JsonGenerator gen, tools.jackson.databind.SerializationContext serializers) {
                 if (value != null) {
                     ZonedDateTime recifeDateTime = value.atZone(RECIFE);
                     gen.writeString(recifeDateTime.format(FORMATTER));
@@ -82,10 +113,6 @@ public class BeanConfig {
             }
         });
 
-        return JsonMapper.builder()
-                .findAndAddModules()
-                .defaultTimeZone(TimeZone.getTimeZone("America/Recife"))
-                .addModule(module)
-                .build();
+        return module;
     }
 }
