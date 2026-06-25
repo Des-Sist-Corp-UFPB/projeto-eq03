@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.user.service;
 
 import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ConflictException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.audit.AuditLogService;
@@ -34,7 +35,7 @@ public class AuthService {
     public TokenResponse register(RegisterRequest request) {
         try {
             if (userRepository.findByEmail(request.email()).isPresent()) {
-                throw new BadRequestException("Email já cadastrado");
+                throw new ConflictException("Email já cadastrado");
             }
 
             Role clienteRole = roleRepository.findByName("CLIENTE")

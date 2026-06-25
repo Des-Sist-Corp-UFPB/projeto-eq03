@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.user.service;
 
 import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ConflictException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.employee.entity.Employee;
@@ -181,14 +182,14 @@ class UserServiceTest {
     }
 
     @Test
-    void create_whenEmailAlreadyInUse_shouldThrowBadRequestException() {
+    void create_whenEmailAlreadyInUse_shouldThrowConflictException() {
         // Arrange
         UserCreateRequest request = new UserCreateRequest("New User", "maria@example.com", "password", "123", true, 1L);
         when(userRepository.findByEmail("maria@example.com")).thenReturn(Optional.of(activeUser));
 
         // Act & Assert
         assertThatThrownBy(() -> userService.create(request))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessage("Email já está em uso");
     }
 
@@ -315,7 +316,7 @@ class UserServiceTest {
     }
 
     @Test
-    void update_whenEmailChangedAndAlreadyInUse_shouldThrowBadRequestException() {
+    void update_whenEmailChangedAndAlreadyInUse_shouldThrowConflictException() {
         // Arrange
         UserUpdateRequest request = new UserUpdateRequest(null, "other@example.com", null, null, null, null, null);
         when(userRepository.findById(10L)).thenReturn(Optional.of(activeUser));
@@ -323,7 +324,7 @@ class UserServiceTest {
 
         // Act & Assert
         assertThatThrownBy(() -> userService.update(10L, request))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessage("Email já está em uso por outro usuário");
     }
 

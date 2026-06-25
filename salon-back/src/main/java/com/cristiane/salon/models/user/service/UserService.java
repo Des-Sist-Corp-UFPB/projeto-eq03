@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.user.service;
 
 import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ConflictException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.user.dto.UserCreateRequest;
@@ -67,7 +68,7 @@ public class UserService {
     @Transactional
     public UserResponse create(UserCreateRequest request) {
         if (userRepository.findByEmail(request.email()).isPresent()) {
-            throw new BadRequestException("Email já está em uso");
+            throw new ConflictException("Email já está em uso");
         }
 
         Role role = roleRepository.findById(request.roleId())
@@ -105,7 +106,7 @@ public class UserService {
 
         if (request.email() != null && !request.email().equals(user.getEmail())) {
             if (userRepository.findByEmail(request.email()).isPresent()) {
-                throw new BadRequestException("Email já está em uso por outro usuário");
+                throw new ConflictException("Email já está em uso por outro usuário");
             }
             user.setEmail(request.email());
         }

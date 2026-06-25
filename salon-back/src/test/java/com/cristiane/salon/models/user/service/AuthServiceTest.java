@@ -1,6 +1,6 @@
 package com.cristiane.salon.models.user.service;
 
-import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ConflictException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
 import com.cristiane.salon.models.audit.AuditLogService;
@@ -117,14 +117,14 @@ class AuthServiceTest {
     }
 
     @Test
-    void register_whenEmailAlreadyExists_shouldThrowBadRequestExceptionAndLogFailure() {
+    void register_whenEmailAlreadyExists_shouldThrowConflictExceptionAndLogFailure() {
         // Arrange
         RegisterRequest request = new RegisterRequest("Carlos", "carlos@example.com", "password", "81999999999");
         when(userRepository.findByEmail("carlos@example.com")).thenReturn(Optional.of(activeUser));
 
         // Act & Assert
         assertThatThrownBy(() -> authService.register(request))
-                .isInstanceOf(BadRequestException.class)
+                .isInstanceOf(ConflictException.class)
                 .hasMessage("Email já cadastrado");
 
         verify(userRepository, never()).save(any(User.class));

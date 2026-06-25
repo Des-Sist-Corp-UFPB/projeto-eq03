@@ -40,7 +40,7 @@ export const AdminLayout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role !== 'ADMIN' && user?.role !== 'GERENTE_DE_ATENDIMENTO') {
+  if (user?.role !== 'ADMIN' && user?.role !== 'GERENTE_DE_ATENDIMENTO' && user?.role !== 'SYSADMIN') {
     return <Navigate to="/" replace />;
   }
 
@@ -59,7 +59,7 @@ export const AdminLayout = () => {
     { to: '/admin/reports', label: 'Relatórios', icon: FileBarChart },
     { to: '/admin/clients', label: 'Clientes', icon: Users },
     { to: '/admin/users', label: 'Equipe', icon: UserCog },
-    { to: '/admin/employees', label: 'Funcionárias', icon: UserCheck },
+    { to: '/admin/employees', label: 'Funcionários(as)', icon: UserCheck },
     { to: '/admin/services', label: 'Serviços', icon: Scissors },
     { to: '/admin/products', label: 'Produtos', icon: Package },
     { to: '/admin/appointments', label: 'Agendamentos', icon: Calendar },
@@ -199,7 +199,7 @@ export const AdminLayout = () => {
         <header className="hidden md:flex justify-between items-center px-8 py-4 bg-white/70 backdrop-blur-md border-b border-[#eae1e1]/50 z-30 h-[73px]">
           <div className="flex items-center gap-4">
             <span className="text-xs font-semibold bg-[#be8a83]/10 text-[#be8a83] px-2.5 py-1 rounded-full uppercase tracking-wider">
-              {user?.role === 'ADMIN' ? 'Administrador' : 'Gerente'}
+              {user?.role === 'SYSADMIN' ? 'Sysadmin' : user?.role === 'ADMIN' ? 'Administrador' : 'Gerente'}
             </span>
           </div>
           <div className="flex items-center gap-4">

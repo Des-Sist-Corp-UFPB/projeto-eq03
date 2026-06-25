@@ -55,7 +55,7 @@ export const Employees = () => {
       const data = await employeesApi.findAll();
       setEmployees(data);
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao carregar funcionárias');
+      const msg = getApiErrorMessage(err, 'Erro ao carregar funcionários(as)');
       await showError(msg);
     } finally {
       setIsLoading(false);
@@ -118,7 +118,7 @@ export const Employees = () => {
     } catch (err) {
       const msg = getApiErrorMessage(
         err,
-        'Erro ao salvar funcionária. Verifique se o ID de usuário está correto.'
+        'Erro ao salvar funcionário(a). Verifique se o ID de usuário está correto.'
       );
       await showError(msg);
     }
@@ -131,7 +131,7 @@ export const Employees = () => {
       setShowConfirm(false);
       loadEmployees();
     } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao excluir funcionária.');
+      const msg = getApiErrorMessage(err, 'Erro ao desvincular funcionário(a).');
       await showError(msg);
     }
   };
@@ -219,10 +219,10 @@ export const Employees = () => {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Gerenciar Funcionárias</h2>
+        <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Gerenciar Funcionários(as)</h2>
         <PermissionGate method="POST" endpoint="/v1/employees">
           <button onClick={() => handleOpenForm()} className="btn-premium">
-            <Plus size={18} /> Vincular Funcionária
+            <Plus size={18} /> Vincular Funcionário(a)
           </button>
         </PermissionGate>
       </div>
@@ -230,7 +230,7 @@ export const Employees = () => {
       {isLoading ? (
         <div className="flex items-center gap-2 text-sm text-[#3b3036]/60 py-8">
           <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
-          Carregando funcionárias...
+          Carregando funcionários(as)...
         </div>
       ) : (
         <Table columns={columns} data={employees} keyExtractor={(item) => item.id!} />
@@ -239,7 +239,7 @@ export const Employees = () => {
       <ModalForm
         show={showForm}
         onHide={() => setShowForm(false)}
-        title={editingEmployee ? 'Editar Funcionária' : 'Nova Funcionária'}
+        title={editingEmployee ? 'Editar Funcionário(a)' : 'Novo(a) Funcionário(a)'}
         onSubmit={handleSubmit(onSubmit)}
       >
         <div className="space-y-4">
@@ -252,7 +252,7 @@ export const Employees = () => {
               disabled={!!editingEmployee}
             />
             <p className="text-xs text-gray-400 mt-1">
-              Insira o ID do usuário que será vinculado como funcionária.
+              Insira o ID do usuário que será vinculado como funcionário(a).
             </p>
             {errors.userId && (
               <span className="text-xs text-rose-500 font-semibold">{errors.userId.message}</span>
@@ -372,8 +372,8 @@ export const Employees = () => {
         show={showConfirm}
         onHide={() => setShowConfirm(false)}
         onConfirm={confirmDelete}
-        title="Desvincular Funcionária"
-        message="Tem certeza que deseja remover esta funcionária? O usuário continuará existindo, apenas perderá o vínculo de funcionária."
+        title="Desvincular Funcionário(a)"
+        message="Tem certeza que deseja remover este(a) funcionário(a)? O usuário continuará existindo, apenas perderá o vínculo de funcionário(a)."
       />
 
       {showDetails && selectedEmployee && (
@@ -387,7 +387,7 @@ export const Employees = () => {
               {/* Header */}
               <div className="flex items-center justify-between p-5 border-b border-solid border-[#eae1e1] rounded-t-2xl">
                 <h3 className="text-lg font-semibold font-heading text-[#3b3036]">
-                  Detalhes da Funcionária
+                  Detalhes do(a) Funcionário(a)
                 </h3>
                 <button
                   onClick={() => setShowDetails(false)}

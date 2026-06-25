@@ -39,7 +39,7 @@ class UserControllerTest extends BaseControllerTest {
     void createReturns201_whenValid() throws Exception {
         when(userService.create(any())).thenReturn(null);
 
-        String body = "{\"name\":\"xyz\",\"email\":\"a@b.com\",\"password\":\"123456\",\"roleId\":1}";
+        String body = "{\"name\":\"xyz\",\"email\":\"a@b.com\",\"password\":\"secureP@ss123\",\"roleId\":1}";
 
         mvc.perform(post("/v1/users")
                 .contentType(MediaType.APPLICATION_JSON)

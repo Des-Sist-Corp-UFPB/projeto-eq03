@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Edit, Trash2, Plus, RotateCcw } from 'lucide-react';
+import { Edit, Trash2, Plus, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
@@ -13,8 +13,8 @@ import type { UserData, UserCreateRequest, UserUpdateRequest } from '../users/se
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { ClientDrawer } from './components/ClientDrawer';
+import { maskCPF } from '../../../utils/formatters';
 
-const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
 export const Clients = () => {
@@ -31,9 +31,17 @@ export const Clients = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const { register, handleSubmit, reset, setValue } = useForm<
-    UserCreateRequest & UserUpdateRequest
-  >();
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }>();
   const { error: showError } = useAlert();
 
   const handleOpenForm = (client?: UserData) => {
@@ -54,13 +62,19 @@ export const Clients = () => {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: UserCreateRequest & UserUpdateRequest) => {
+  const onSubmit = async (data: UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }) => {
     try {
       // Force roleId to be 4 (Cliente)
       const payload = {
         ...data,
         roleId: 4,
       };
+
+      delete payload.confirmPassword;
+
+      if (editingClient?.id && !payload.password) {
+        delete payload.password;
+      }
 
       if (editingClient?.id) {
         await usersApi.update(editingClient.id, payload);
@@ -69,9 +83,23 @@ export const Clients = () => {
       }
       setShowForm(false);
       setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      const msg = getApiErrorMessage(error, 'Erro ao salvar cliente.');
-      await showError(msg);
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response.data?.errors) {
+        const fieldErrors = error.response.data.errors;
+        Object.keys(fieldErrors).forEach((field) => {
+          setError(field as any, { type: 'server', message: fieldErrors[field] });
+        });
+      } else if (error.response?.status === 409) {
+        const msg = error.response.data?.message || 'E-mail ou CPF já cadastrado.';
+        if (msg.toLowerCase().includes('cpf')) {
+          setError('cpf', { type: 'server', message: msg });
+        } else {
+          setError('email', { type: 'server', message: msg });
+        }
+      } else {
+        const msg = getApiErrorMessage(error, 'Erro ao salvar cliente.');
+        await showError(msg);
+      }
     }
   };
 
@@ -115,7 +143,7 @@ export const Clients = () => {
     { key: 'name', label: 'Nome' },
     { key: 'email', label: 'Email' },
     { key: 'phone', label: 'Telefone', render: (item: UserData) => item.phone || 'Não informado' },
-    { key: 'cpf', label: 'CPF', render: (item: UserData) => item.cpf || 'Não informado' },
+    { key: 'cpf', label: 'CPF', render: (item: UserData) => maskCPF(item.cpf) || 'Não informado' },
     {
       key: 'active',
       label: 'Status',
@@ -224,40 +252,143 @@ export const Clients = () => {
         onHide={() => setShowForm(false)}
         title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
         onSubmit={handleSubmit(onSubmit)}
+        isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Nome</label>
-            <input type="text" className={inputCls} {...register('name', { required: true })} />
+            <label className={labelCls}>Nome Completo *</label>
+            <input
+              type="text"
+              className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('name', {
+                required: 'Nome é obrigatório',
+                minLength: { value: 3, message: 'Mínimo 3 caracteres' },
+              })}
+            />
+            {errors.name && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
+            )}
           </div>
           <div>
-            <label className={labelCls}>Email</label>
-            <input type="email" className={inputCls} {...register('email', { required: true })} />
+            <label className={labelCls}>Email *</label>
+            <input
+              type="email"
+              className={`input-premium ${errors.email ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('email', {
+                required: 'Email é obrigatório',
+                pattern: {
+                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                  message: 'Formato de e-mail inválido',
+                },
+              })}
+            />
+            {errors.email && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.email.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>Telefone</label>
-            <input type="text" className={inputCls} {...register('phone')} />
+            <input
+              type="text"
+              className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('phone', {
+                pattern: {
+                  value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+                  message: 'Formato inválido. Use (XX) XXXXX-XXXX',
+                },
+              })}
+            />
+            {errors.phone && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>CPF</label>
-            <input type="text" className={inputCls} {...register('cpf')} />
+            <input
+              type="text"
+              className={`input-premium ${errors.cpf ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('cpf', {
+                pattern: {
+                  value: /^$|^\d{11}$/,
+                  message: 'O CPF deve conter exatamente 11 dígitos numéricos',
+                },
+              })}
+            />
+            {errors.cpf && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
+            )}
           </div>
-          {!editingClient && (
-            <div>
-              <label className={labelCls}>Senha *</label>
+          <div>
+            <label className={labelCls}>
+              {editingClient?.id ? 'Nova Senha (opcional)' : 'Senha *'}
+            </label>
+            <div className="relative">
               <input
-                type="password"
-                className={inputCls}
-                {...register('password', { required: true })}
+                type={showPassword ? 'text' : 'password'}
+                className={`input-premium pr-10 ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                placeholder={editingClient?.id ? 'Deixe em branco para manter' : 'Mínimo 8 caracteres com 1 número'}
+                {...register('password', {
+                  validate: (val, formValues) => {
+                    const isEdit = !!editingClient?.id;
+                    const isRequired = !isEdit || !!formValues.confirmPassword;
+                    if (!val) {
+                      return isRequired ? 'Senha é obrigatória' : true;
+                    }
+                    if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+                    if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
+                    return true;
+                  },
+                })}
               />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-          )}
-          {editingClient && (
-            <div>
-              <label className={labelCls}>Nova Senha (opcional)</label>
-              <input type="password" className={inputCls} {...register('password')} />
+            {errors.password && (
+              <span className="text-xs text-rose-500 font-semibold">
+                {errors.password.message}
+              </span>
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>
+              {editingClient?.id ? 'Confirmar Nova Senha (opcional)' : 'Confirmar Senha *'}
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                className={`input-premium pr-10 ${errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                placeholder="Confirme a senha"
+                {...register('confirmPassword', {
+                  validate: (val, formValues) => {
+                    const isEdit = !!editingClient?.id;
+                    const isRequired = !isEdit || !!formValues.password;
+
+                    if (!isRequired) return true;
+                    if (!val) return 'Confirmação de senha é obrigatória';
+                    if (val !== formValues.password) return 'As senhas não coincidem';
+                    return true;
+                  },
+                })}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
             </div>
-          )}
+            {errors.confirmPassword && (
+              <span className="text-xs text-rose-500 font-semibold">
+                {errors.confirmPassword.message}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" {...register('active')} />

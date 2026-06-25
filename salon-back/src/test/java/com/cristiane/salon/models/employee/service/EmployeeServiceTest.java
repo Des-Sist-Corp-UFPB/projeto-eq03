@@ -80,7 +80,7 @@ class EmployeeServiceTest {
     @Test
     void findAllForBooking_shouldReturnBookingList() {
         // Arrange
-        when(employeeRepository.findAll()).thenReturn(List.of(employee));
+        when(employeeRepository.findAllActiveForBooking()).thenReturn(List.of(employee));
 
         // Act
         List<EmployeeBookingResponse> result = employeeService.findAllForBooking();

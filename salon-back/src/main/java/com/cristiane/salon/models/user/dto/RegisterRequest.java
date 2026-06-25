@@ -2,6 +2,7 @@ package com.cristiane.salon.models.user.dto;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
 public record RegisterRequest(
@@ -14,7 +15,8 @@ public record RegisterRequest(
         String email,
 
         @NotBlank(message = "A senha é obrigatória")
-        @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres")
+        @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
+        @Pattern(regexp = "^(?=.*\\d).*$", message = "A senha deve conter pelo menos um número")
         String password,
 
         @Size(max = 20, message = "O telefone não pode exceder 20 caracteres")
