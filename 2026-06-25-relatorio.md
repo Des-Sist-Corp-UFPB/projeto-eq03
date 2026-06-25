@@ -6,7 +6,7 @@
 | **Repositório** | https://github.com/des-sist-corp-ufpb/projeto-eq03 |
 | **Aplicação** | https://eq03.dsc.rodrigor.com |
 | **Período de atividade** | 2026-06-25 → 2026-06-25 |
-| **Total de commits** (sem merges) | 3 |
+| **Total de commits** (sem merges, branch main) | 7 |
 | **Integrantes** | Anna Gabriela De Moura Souza (@AnnaGabrielaMS), Jose Elksandro Do Nascimento Silva (@Elksandro2) |
 
 ---
@@ -165,16 +165,22 @@
 
 ### Resumo
 
-| Usuário | Commits | % commits | Linhas adicionadas | Linhas no código atual | % código atual |
-|---------|---------|-----------|-------------------|----------------------|----------------|
-| Anna Gabriela De Moura Souza (@AnnaGabrielaMS) | 2 | 67% | 46.067 | 32.183 | 100% |
-| Jose Elksandro Do Nascimento Silva (@Elksandro2) | 1 | 33% | 9 | 8 | 0% |
+| Usuário | Commits (main) | Commits (GitHub API) | Linhas adicionadas | Linhas no código atual | % código atual |
+|---------|---------------|---------------------|-------------------|----------------------|----------------|
+| Anna Gabriela De Moura Souza (@AnnaGabrielaMS) | 3 | **73** ⚠️ | 46.075 | 32.189 | 100% |
+| Jose Elksandro Do Nascimento Silva (@Elksandro2) | 3 | **200** ⚠️ | 19 | 8 | 0% |
+| *(sem login GitHub)* | 1 | 14% | — | — | — |
+
+> **⚠️ Divergência entre commits locais e GitHub API:**
+> - **@AnnaGabrielaMS**: 3 commit(s) na branch `main` vs **73** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
+> - **@Elksandro2**: 3 commit(s) na branch `main` vs **200** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
+>
 
 ### Contribuição por Camada
 
 | Camada | Total linhas | Anna Gabriela De Moura Souza (@AnnaGabrielaMS) | Jose Elksandro Do Nascimento Silva (@Elksandro2) |
 |--------|-------------|---------|---------|
-| Controller | 4.083 | 100% | 0% |
+| Controller | 4.086 | 100% | 0% |
 | Frontend | 2.500 | 100% | 0% |
 | Repository | 182 | 100% | 0% |
 | Service | 10.106 | 100% | 0% |
@@ -280,9 +286,9 @@ Baseado em `git blame` nos arquivos de controller e service.
 | `V21__add_client_permissions_and_update_endpoints.sql` | 24 | 100% | 0% |
 | `featureFlags.ts` | 24 | 100% | 0% |
 | `SpaRedirectController.java` | 23 | 100% | 0% |
+| `PingController.java` | 22 | 100% | 0% |
 | `profile.ts` | 22 | 100% | 0% |
 | `SecurityUserDetailsService.java` | 21 | 100% | 0% |
-| `PingController.java` | 19 | 100% | 0% |
 | `V5__flexible_price_and_appointment_request.sql` | 10 | 100% | 0% |
 | `SalonServiceRepository.java` | 9 | 100% | 0% |
 | `V23__update_default_passwords.sql` | 9 | 100% | 0% |
