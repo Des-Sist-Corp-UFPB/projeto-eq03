@@ -6,7 +6,7 @@
 | **Repositório** | https://github.com/des-sist-corp-ufpb/projeto-eq03 |
 | **Aplicação** | https://eq03.dsc.rodrigor.com |
 | **Período de atividade** | 2026-06-25 → 2026-06-25 |
-| **Total de commits** (sem merges, branch main) | 7 |
+| **Total de commits** (sem merges, branch main) | 11 |
 | **Integrantes** | Anna Gabriela De Moura Souza (@AnnaGabrielaMS), Jose Elksandro Do Nascimento Silva (@Elksandro2) |
 
 ---
@@ -149,7 +149,7 @@
 | Aspecto | Status | Observação |
 |---------|--------|-----------|
 | Arquitetura em camadas | ✅ | controller=✅  service=✅  repository=✅ |
-| Testes automatizados | ❌ | 0 arquivo(s) de teste |
+| Testes automatizados | ✅ | 43 Java, 14 JS/TS, 0 Python |
 | Migrations versionadas | ✅ | 23 migration(s) |
 | Logging | ✅ | @Slf4j / LoggerFactory / logging.getLogger detectado |
 | Autenticação / Segurança | ✅ | Spring Security / JWT / decorator detectado |
@@ -167,13 +167,13 @@
 
 | Usuário | Commits (main) | Commits (GitHub API) | Linhas adicionadas | Linhas no código atual | % código atual |
 |---------|---------------|---------------------|-------------------|----------------------|----------------|
-| Anna Gabriela De Moura Souza (@AnnaGabrielaMS) | 3 | **73** ⚠️ | 46.075 | 32.189 | 100% |
-| Jose Elksandro Do Nascimento Silva (@Elksandro2) | 3 | **200** ⚠️ | 19 | 8 | 0% |
-| *(sem login GitHub)* | 1 | 14% | — | — | — |
+| Anna Gabriela De Moura Souza (@AnnaGabrielaMS) | 4 | **75** ⚠️ | 46.078 | 32.161 | 100% |
+| Jose Elksandro Do Nascimento Silva (@Elksandro2) | 5 | **202** ⚠️ | 79 | 63 | 0% |
+| *(sem login GitHub)* | 2 | 18% | — | — | — |
 
 > **⚠️ Divergência entre commits locais e GitHub API:**
-> - **@AnnaGabrielaMS**: 3 commit(s) na branch `main` vs **73** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
-> - **@Elksandro2**: 3 commit(s) na branch `main` vs **200** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
+> - **@AnnaGabrielaMS**: 4 commit(s) na branch `main` vs **75** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
+> - **@Elksandro2**: 5 commit(s) na branch `main` vs **202** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
 >
 
 ### Contribuição por Camada
