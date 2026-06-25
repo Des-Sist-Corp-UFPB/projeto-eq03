@@ -35,5 +35,6 @@ springdoc:
 
 logging:
   level:
-    root: WARN
+    root: INFO
     com.cristiane.salon: INFO
+    org.springframework.web: INFO

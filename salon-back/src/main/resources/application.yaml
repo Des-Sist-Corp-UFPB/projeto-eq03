@@ -20,13 +20,6 @@ logging:
     root: INFO
     com.cristiane.salon: DEBUG
     org.springframework.security: DEBUG
-  pattern:
-    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
-    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
-  file:
-    name: logs/salon.log
-    max-size: 10MB
-    max-history: 10
 
 mercadopago:
   access-token: ${MERCADO_PAGO_ACCESS_TOKEN}
