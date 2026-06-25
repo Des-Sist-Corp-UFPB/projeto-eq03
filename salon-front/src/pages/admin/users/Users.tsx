@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { Edit, Trash2, Plus, RotateCcw } from 'lucide-react';
+import { Edit, Trash2, Plus, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
@@ -23,6 +23,9 @@ export const Users = () => {
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'restore'>('delete');
 
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const {
     register,
     handleSubmit,
@@ -30,7 +33,7 @@ export const Users = () => {
     setValue,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<UserCreateRequest & UserUpdateRequest>();
+  } = useForm<UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }>();
   const { error: showError } = useAlert();
 
   const handleOpenForm = (user?: UserData) => {
@@ -65,11 +68,12 @@ export const Users = () => {
     }
   };
 
-  const onSubmit = async (data: UserCreateRequest & UserUpdateRequest) => {
+  const onSubmit = async (data: UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }) => {
     try {
       // Se a senha estiver vazia (opcional em edição), remove para não validar no backend
       const payload = { ...data };
-      if (editingUser && !payload.password) {
+      delete payload.confirmPassword;
+      if (editingUser?.id && !payload.password) {
         delete payload.password;
       }
 
@@ -133,7 +137,26 @@ export const Users = () => {
   const columns = [
     { key: 'name', label: 'Nome' },
     { key: 'email', label: 'Email' },
-    { key: 'role', label: 'Cargo', render: (item: UserData) => item.role.replace(/_/g, ' ') },
+    {
+      key: 'role',
+      label: 'Cargo',
+      render: (item: UserData) => {
+        switch (item.role) {
+          case 'ADMIN':
+            return 'Administrador(a)';
+          case 'GERENTE_DE_ATENDIMENTO':
+            return 'Gerente';
+          case 'FUNCIONARIA':
+            return 'Funcionário(a)';
+          case 'SYSADMIN':
+            return 'Sysadmin';
+          case 'CLIENTE':
+            return 'Cliente';
+          default:
+            return item.role.replace(/_/g, ' ');
+        }
+      },
+    },
     { key: 'phone', label: 'Telefone', render: (item: UserData) => item.phone || 'Não informado' },
     {
       key: 'active',
@@ -275,9 +298,9 @@ export const Users = () => {
               className={`input-premium ${errors.roleId ? 'border-rose-300 focus:border-rose-500' : ''}`}
               {...register('roleId', { required: 'Cargo é obrigatório' })}
             >
-              <option value="3">Funcionária</option>
+              <option value="3">Funcionário(a)</option>
               <option value="2">Gerente</option>
-              <option value="1">Administrador</option>
+              <option value="1">Administrador(a)</option>
             </select>
             {errors.roleId && (
               <span className="text-xs text-rose-500 font-semibold">{errors.roleId.message}</span>
@@ -301,25 +324,72 @@ export const Users = () => {
           </div>
           <div>
             <label className={labelCls}>
-              {editingUser ? 'Nova Senha (opcional)' : 'Senha *'}
+              {editingUser?.id ? 'Nova Senha (opcional)' : 'Senha *'}
             </label>
-            <input
-              type="password"
-              className={`input-premium ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('password', {
-                validate: (val) => {
-                  if (!val) {
-                    return editingUser ? true : 'Senha é obrigatória';
-                  }
-                  if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
-                  if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
-                  return true;
-                },
-              })}
-            />
+            <div className="relative">
+              <input
+                type={showPassword ? 'text' : 'password'}
+                className={`input-premium pr-10 ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                placeholder={editingUser?.id ? 'Deixe em branco para manter' : 'Mínimo 8 caracteres com 1 número'}
+                {...register('password', {
+                  validate: (val, formValues) => {
+                    const isEdit = !!editingUser?.id;
+                    const isRequired = !isEdit || !!formValues.confirmPassword;
+                    if (!val) {
+                      return isRequired ? 'Senha é obrigatória' : true;
+                    }
+                    if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+                    if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
+                    return true;
+                  },
+                })}
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+              >
+                {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
             {errors.password && (
               <span className="text-xs text-rose-500 font-semibold">
                 {errors.password.message}
+              </span>
+            )}
+          </div>
+          <div>
+            <label className={labelCls}>
+              {editingUser?.id ? 'Confirmar Nova Senha (opcional)' : 'Confirmar Senha *'}
+            </label>
+            <div className="relative">
+              <input
+                type={showConfirmPassword ? 'text' : 'password'}
+                className={`input-premium pr-10 ${errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''}`}
+                placeholder="Confirme a senha"
+                {...register('confirmPassword', {
+                  validate: (val, formValues) => {
+                    const isEdit = !!editingUser?.id;
+                    const isRequired = !isEdit || !!formValues.password;
+
+                    if (!isRequired) return true;
+                    if (!val) return 'Confirmação de senha é obrigatória';
+                    if (val !== formValues.password) return 'As senhas não coincidem';
+                    return true;
+                  },
+                })}
+              />
+              <button
+                type="button"
+                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+              >
+                {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+              </button>
+            </div>
+            {errors.confirmPassword && (
+              <span className="text-xs text-rose-500 font-semibold">
+                {errors.confirmPassword.message}
               </span>
             )}
           </div>

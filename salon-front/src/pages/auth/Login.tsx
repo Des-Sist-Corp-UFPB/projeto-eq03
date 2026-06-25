@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormData {
   email: string;
@@ -19,6 +19,7 @@ export const Login = () => {
   } = useForm<LoginFormData>();
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -178,14 +179,23 @@ export const Login = () => {
 
             <div className="space-y-1.5">
               <label className="label-premium">Senha</label>
-              <input
-                type="password"
-                placeholder="Sua senha"
-                {...register('password', { required: 'Senha é obrigatória' })}
-                className={`input-premium ${
-                  errors.password ? 'border-rose-300 focus:border-rose-500' : ''
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Sua senha"
+                  {...register('password', { required: 'Senha é obrigatória' })}
+                  className={`input-premium pr-10 ${
+                    errors.password ? 'border-rose-300 focus:border-rose-500' : ''
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {errors.password && (
                 <span className="text-xs text-rose-500 font-semibold">
                   {errors.password.message}

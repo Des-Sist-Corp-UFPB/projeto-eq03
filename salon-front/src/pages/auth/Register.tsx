@@ -4,7 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
-import { AlertCircle, ArrowLeft } from 'lucide-react';
+import { AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface RegisterFormData {
   name: string;
@@ -22,6 +22,8 @@ export const Register = () => {
     formState: { errors, isSubmitting },
   } = useForm<RegisterFormData>();
   const [errorMsg, setErrorMsg] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
@@ -200,21 +202,30 @@ export const Register = () => {
 
             <div className="space-y-1.5">
               <label className="label-premium">Senha *</label>
-              <input
-                type="password"
-                placeholder="Mínimo 8 caracteres com 1 número"
-                {...register('password', {
-                  required: 'Senha é obrigatória',
-                  minLength: { value: 8, message: 'A senha deve ter no mínimo 8 caracteres' },
-                  pattern: {
-                    value: /^(?=.*\d).*$/,
-                    message: 'A senha deve conter pelo menos um número',
-                  },
-                })}
-                className={`input-premium ${
-                  errors.password ? 'border-rose-300 focus:border-rose-500' : ''
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  placeholder="Mínimo 8 caracteres com 1 número"
+                  {...register('password', {
+                    required: 'Senha é obrigatória',
+                    minLength: { value: 8, message: 'A senha deve ter no mínimo 8 caracteres' },
+                    pattern: {
+                      value: /^(?=.*\d).*$/,
+                      message: 'A senha deve conter pelo menos um número',
+                    },
+                  })}
+                  className={`input-premium pr-10 ${
+                    errors.password ? 'border-rose-300 focus:border-rose-500' : ''
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+                >
+                  {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {errors.password && (
                 <span className="text-xs text-rose-500 font-semibold">
                   {errors.password.message}
@@ -224,21 +235,30 @@ export const Register = () => {
 
             <div className="space-y-1.5">
               <label className="label-premium">Confirmar Senha *</label>
-              <input
-                type="password"
-                placeholder="Confirme sua senha"
-                {...register('confirmPassword', {
-                  required: 'Confirmação de senha é obrigatória',
-                  validate: (val, formValues) => {
-                    if (val !== formValues.password) {
-                      return 'As senhas não coincidem';
-                    }
-                  },
-                })}
-                className={`input-premium ${
-                  errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''
-                }`}
-              />
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  placeholder="Confirme sua senha"
+                  {...register('confirmPassword', {
+                    required: 'Confirmação de senha é obrigatória',
+                    validate: (val, formValues) => {
+                      if (val !== formValues.password) {
+                        return 'As senhas não coincidem';
+                      }
+                    },
+                  })}
+                  className={`input-premium pr-10 ${
+                    errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''
+                  }`}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200 focus:outline-none cursor-pointer flex items-center"
+                >
+                  {showConfirmPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
               {errors.confirmPassword && (
                 <span className="text-xs text-rose-500 font-semibold">
                   {errors.confirmPassword.message}
