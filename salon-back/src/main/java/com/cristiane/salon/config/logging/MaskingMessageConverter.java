@@ -1,28 +1,25 @@
 package com.cristiane.salon.config.logging;
 
+import ch.qos.logback.classic.pattern.MessageConverter;
 import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.pattern.CompositeConverter;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public class MaskingMessageConverter extends CompositeConverter<ILoggingEvent> {
+public class MaskingMessageConverter extends MessageConverter {
 
     private static final Pattern EMAIL_PATTERN = Pattern.compile("(?i)\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b");
     private static final Pattern CPF_PATTERN = Pattern.compile("\\b(\\d{3})\\.?(\\d{3})\\.?(\\d{3})-?(\\d{2})\\b");
-    private static final Pattern PHONE_PATTERN = Pattern.compile("(\\b|\\()(\\d{2})\\)?\\s*(9?\\d{4})-?(\\d{4})\\b");
+    private static final Pattern PHONE_PATTERN = Pattern.compile("(\\b|\\()(\\d{2})\\)?[ \\t]*(9?\\d{4})-?(\\d{4})\\b");
     
     // Detects names in contexts like "Cliente: José Silva" or in the JSON format "clientName":"José Silva"
     private static final Pattern CONTEXT_NAME_PATTERN = Pattern.compile(
-            "(?i)(usuário|cliente|profissional|nome|payerName|clientName|employeeName)\\s*(?:logado|do agendamento)?\\s*(?::|=|\"\\s*:\\s*\")\\s*([A-ZÀ-ÿ][a-zà-ÿ]+(?:\\s+[A-ZÀ-ÿ][a-zà-ÿ]+)+)"
+            "(?i)(usuário|cliente|profissional|nome|payerName|clientName|employeeName)[ \\t]*(?:logado|do agendamento)?[ \\t]*(?::|=|\"[ \\t]*:[ \\t]*\")[ \\t]*([A-ZÀ-ÿ][a-zà-ÿ]+(?:[ \\t]+[A-ZÀ-ÿ][a-zà-ÿ]+)+)"
     );
-    private static final Pattern JSON_NAME_PATTERN = Pattern.compile("(?i)\"(clientName|employeeName|payerName|name)\"\\s*:\\s*\"([^\"]+)\"");
+    private static final Pattern JSON_NAME_PATTERN = Pattern.compile("(?i)\"(clientName|employeeName|payerName|name)\"[ \\t]*:[ \\t]*\"([^\"]+)\"");
 
     @Override
-    protected String transform(ILoggingEvent event, String in) {
-        if (in == null || in.isEmpty()) {
-            return in;
-        }
-        return maskMessage(in);
+    public String convert(ILoggingEvent event) {
+        return maskMessage(event.getFormattedMessage());
     }
 
     public String maskMessage(String message) {
@@ -112,7 +109,7 @@ public class MaskingMessageConverter extends CompositeConverter<ILoggingEvent> {
         if (name == null || name.trim().isEmpty()) {
             return name;
         }
-        String[] parts = name.trim().split("\\s+");
+        String[] parts = name.trim().split("[ \\t]+");
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < parts.length; i++) {
             String part = parts[i];
