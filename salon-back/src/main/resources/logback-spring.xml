@@ -1,17 +1,14 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration>
-    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
-    
-    <conversionRule conversionWord="mask" 
-                    class="com.cristiane.salon.config.logging.MaskingMessageConverter" />
+    <conversionRule conversionWord="mask" class="com.cristiane.salon.config.logging.MaskingMessageConverter" />
 
-    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+    <appender name="CUSTOM_CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, America/Recife} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] %-40.40logger{39} : %mask(%msg)%n</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, America/Recife} %-5level %X{PID} --- [%15.15t] %-40.40logger{39} : %mask(%msg)%n</pattern>
         </encoder>
     </appender>
 
     <root level="INFO">
-        <appender-ref ref="CONSOLE" />
+        <appender-ref ref="CUSTOM_CONSOLE" />
     </root>
 </configuration>
