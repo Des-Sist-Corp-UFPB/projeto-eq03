@@ -3,11 +3,11 @@
     <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
     
     <conversionRule conversionWord="mask" 
-                    converterClass="com.cristiane.salon.config.logging.MaskingMessageConverter" />
+                    class="com.cristiane.salon.config.logging.MaskingMessageConverter" />
 
     <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
         <encoder>
-            <pattern>%clr(%d{yyyy-MM-dd HH:mm:ss.SSS, America/Recife}){faint} %clr(${LOG_LEVEL_PATTERN:-%5p}) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %mask(%msg)%n${LOG_EXCEPTION_CONVERSION_WORD:-%rEx}</pattern>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS, America/Recife} ${LOG_LEVEL_PATTERN:-%5p} ${PID:- } --- [%15.15t] %-40.40logger{39} : %mask(%msg)%n</pattern>
         </encoder>
     </appender>
 
