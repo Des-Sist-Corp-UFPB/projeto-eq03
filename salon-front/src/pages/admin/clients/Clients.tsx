@@ -13,6 +13,7 @@ import type { UserData, UserCreateRequest, UserUpdateRequest } from '../users/se
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { ClientDrawer } from './components/ClientDrawer';
+import { maskCPF } from '../../../utils/formatters';
 
 const labelCls = 'label-premium';
 
@@ -142,7 +143,7 @@ export const Clients = () => {
     { key: 'name', label: 'Nome' },
     { key: 'email', label: 'Email' },
     { key: 'phone', label: 'Telefone', render: (item: UserData) => item.phone || 'Não informado' },
-    { key: 'cpf', label: 'CPF', render: (item: UserData) => item.cpf || 'Não informado' },
+    { key: 'cpf', label: 'CPF', render: (item: UserData) => maskCPF(item.cpf) || 'Não informado' },
     {
       key: 'active',
       label: 'Status',

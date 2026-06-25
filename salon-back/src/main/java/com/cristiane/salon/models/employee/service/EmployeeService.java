@@ -34,7 +34,7 @@ public class EmployeeService {
 
     @Transactional(readOnly = true)
     public List<EmployeeBookingResponse> findAllForBooking() {
-        return employeeRepository.findAll().stream()
+        return employeeRepository.findAllActiveForBooking().stream()
                 .map(EmployeeBookingResponse::fromEntity)
                 .collect(Collectors.toList());
     }
