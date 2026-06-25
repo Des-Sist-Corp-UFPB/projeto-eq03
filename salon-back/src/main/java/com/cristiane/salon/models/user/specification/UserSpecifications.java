@@ -62,8 +62,9 @@ public class UserSpecifications {
         return (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Exclude role name 'CLIENTE'
+            // Exclude role name 'CLIENTE' and 'SYSADMIN'
             predicates.add(criteriaBuilder.notEqual(root.join("role").get("name"), "CLIENTE"));
+            predicates.add(criteriaBuilder.notEqual(root.join("role").get("name"), "SYSADMIN"));
 
             if (filter != null) {
                 if (filter.name() != null && !filter.name().isBlank()) {

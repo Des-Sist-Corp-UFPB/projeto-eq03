@@ -11,7 +11,6 @@ import type { UserData, UserCreateRequest, UserUpdateRequest, UserFilter } from 
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
-const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
 export const Users = () => {
@@ -24,9 +23,14 @@ export const Users = () => {
   const [targetUserId, setTargetUserId] = useState<number | null>(null);
   const [confirmAction, setConfirmAction] = useState<'delete' | 'restore'>('delete');
 
-  const { register, handleSubmit, reset, setValue } = useForm<
-    UserCreateRequest & UserUpdateRequest
-  >();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<UserCreateRequest & UserUpdateRequest>();
   const { error: showError } = useAlert();
 
   const handleOpenForm = (user?: UserData) => {
@@ -63,19 +67,35 @@ export const Users = () => {
 
   const onSubmit = async (data: UserCreateRequest & UserUpdateRequest) => {
     try {
+      // Se a senha estiver vazia (opcional em edição), remove para não validar no backend
+      const payload = { ...data };
+      if (editingUser && !payload.password) {
+        delete payload.password;
+      }
+
       if (editingUser?.id) {
-        await usersApi.update(editingUser.id, data);
+        await usersApi.update(editingUser.id, payload);
       } else {
-        await usersApi.create(data as UserCreateRequest);
+        await usersApi.create(payload as UserCreateRequest);
       }
       setShowForm(false);
       setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      const msg = getApiErrorMessage(
-        error,
-        'Erro ao salvar usuário. Verifique os dados e tente novamente.'
-      );
-      await showError(msg);
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response.data?.errors) {
+        const fieldErrors = error.response.data.errors;
+        Object.keys(fieldErrors).forEach((field) => {
+          setError(field as any, { type: 'server', message: fieldErrors[field] });
+        });
+      } else if (error.response?.status === 409) {
+        const msg = error.response.data?.message || 'Email já cadastrado.';
+        setError('email', { type: 'server', message: msg });
+      } else {
+        const msg = getApiErrorMessage(
+          error,
+          'Erro ao salvar usuário. Verifique os dados e tente novamente.'
+        );
+        await showError(msg);
+      }
     }
   };
 
@@ -113,7 +133,8 @@ export const Users = () => {
   const columns = [
     { key: 'name', label: 'Nome' },
     { key: 'email', label: 'Email' },
-    { key: 'role', label: 'Papel' },
+    { key: 'role', label: 'Cargo', render: (item: UserData) => item.role.replace(/_/g, ' ') },
+    { key: 'phone', label: 'Telefone', render: (item: UserData) => item.phone || 'Não informado' },
     {
       key: 'active',
       label: 'Status',
@@ -126,10 +147,7 @@ export const Users = () => {
         <div className="flex gap-2">
           <PermissionGate method="PATCH" endpoint={`/v1/users/${item.id}`}>
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                handleOpenForm(item);
-              }}
+              onClick={() => handleOpenForm(item)}
               className="p-1.5 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/20 border border-indigo-200 dark:border-indigo-800 rounded-lg transition-all cursor-pointer"
               title="Editar Usuário"
             >
@@ -139,14 +157,13 @@ export const Users = () => {
           {item.active ? (
             <PermissionGate method="DELETE" endpoint={`/v1/users/${item.id}`}>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   setTargetUserId(item.id);
                   setConfirmAction('delete');
                   setShowConfirm(true);
                 }}
                 className="p-1.5 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/20 border border-rose-200 dark:border-rose-800 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                title="Desativar Conta"
+                title="Desativar Usuário"
               >
                 <Trash2 size={15} />
                 <span>Desativar</span>
@@ -155,14 +172,13 @@ export const Users = () => {
           ) : (
             <PermissionGate method="PATCH" endpoint={`/v1/users/${item.id}/restore`}>
               <button
-                onClick={(e) => {
-                  e.stopPropagation();
+                onClick={() => {
                   setTargetUserId(item.id);
                   setConfirmAction('restore');
                   setShowConfirm(true);
                 }}
                 className="p-1.5 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800 rounded-lg transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
-                title="Reativar Conta"
+                title="Reativar Usuário"
               >
                 <RotateCcw size={15} />
                 <span>Reativar</span>
@@ -178,17 +194,6 @@ export const Users = () => {
     { key: 'name', label: 'Nome', type: 'text' },
     { key: 'email', label: 'Email', type: 'text' },
     { key: 'phone', label: 'Telefone', type: 'text' },
-    {
-      key: 'roleId',
-      label: 'Cargo',
-      type: 'select',
-      options: [
-        { value: 1, label: 'Administrador' },
-        { value: 2, label: 'Gerente' },
-        { value: 3, label: 'Funcionária' },
-        { value: 5, label: 'Sysadmin' },
-      ],
-    },
     { key: 'active', label: 'Status', type: 'boolean' },
   ];
 
@@ -196,7 +201,6 @@ export const Users = () => {
     name: '',
     email: '',
     phone: '',
-    roleId: undefined,
     active: undefined,
   };
 
@@ -208,11 +212,11 @@ export const Users = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036] dark:text-white">
-          Gerenciar Equipe
+          Equipe Interna
         </h2>
         <PermissionGate method="POST" endpoint="/v1/users">
           <button onClick={() => handleOpenForm()} className="btn-premium font-semibold">
-            <Plus size={18} /> Novo Membro da Equipe
+            <Plus size={18} /> Novo Usuário
           </button>
         </PermissionGate>
       </div>
@@ -231,27 +235,69 @@ export const Users = () => {
         onHide={() => setShowForm(false)}
         title={editingUser ? 'Editar Conta da Equipe' : 'Nova Conta da Equipe'}
         onSubmit={handleSubmit(onSubmit)}
+        isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Nome</label>
-            <input type="text" className={inputCls} {...register('name', { required: true })} />
+            <label className={labelCls}>Nome Completo *</label>
+            <input
+              type="text"
+              className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('name', {
+                required: 'Nome é obrigatório',
+                minLength: { value: 3, message: 'Mínimo 3 caracteres' },
+              })}
+            />
+            {errors.name && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
+            )}
           </div>
           <div>
-            <label className={labelCls}>Email</label>
-            <input type="email" className={inputCls} {...register('email', { required: true })} />
+            <label className={labelCls}>Email *</label>
+            <input
+              type="email"
+              className={`input-premium ${errors.email ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('email', {
+                required: 'Email é obrigatório',
+                pattern: {
+                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                  message: 'Formato de e-mail inválido',
+                },
+              })}
+            />
+            {errors.email && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.email.message}</span>
+            )}
           </div>
           <div>
-            <label className={labelCls}>Cargo (Papel)</label>
-            <select className={inputCls} {...register('roleId', { required: true })}>
+            <label className={labelCls}>Cargo (Papel) *</label>
+            <select
+              className={`input-premium ${errors.roleId ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('roleId', { required: 'Cargo é obrigatório' })}
+            >
               <option value="3">Funcionária</option>
               <option value="2">Gerente</option>
               <option value="1">Administrador</option>
             </select>
+            {errors.roleId && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.roleId.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>Telefone</label>
-            <input type="text" className={inputCls} {...register('phone')} />
+            <input
+              type="text"
+              className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('phone', {
+                pattern: {
+                  value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+                  message: 'Formato inválido. Use (XX) XXXXX-XXXX',
+                },
+              })}
+            />
+            {errors.phone && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>
@@ -259,9 +305,23 @@ export const Users = () => {
             </label>
             <input
               type="password"
-              className={inputCls}
-              {...register('password', { required: !editingUser })}
+              className={`input-premium ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('password', {
+                validate: (val) => {
+                  if (!val) {
+                    return editingUser ? true : 'Senha é obrigatória';
+                  }
+                  if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+                  if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
+                  return true;
+                },
+              })}
             />
+            {errors.password && (
+              <span className="text-xs text-rose-500 font-semibold">
+                {errors.password.message}
+              </span>
+            )}
           </div>
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">

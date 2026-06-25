@@ -11,7 +11,7 @@ interface CustomRenderOptions extends Omit<RenderOptions, 'queries'> {
   user?: UserContextData | null;
   isAuthenticated?: boolean;
   login?: (accessToken: string, refreshToken: string, redirect?: boolean) => Promise<void>;
-  logout?: () => Promise<void>;
+  logout?: () => void;
   updateUserCpf?: (cpf: string) => void;
   isLoading?: boolean;
 }
@@ -22,8 +22,8 @@ const customRender = (
     route = '/',
     user = null,
     isAuthenticated = false,
-    login = vi.fn().mockResolvedValue(undefined),
-    logout = vi.fn().mockResolvedValue(undefined),
+    login = async () => {},
+    logout = () => {},
     updateUserCpf = vi.fn(),
     isLoading = false,
     ...renderOptions

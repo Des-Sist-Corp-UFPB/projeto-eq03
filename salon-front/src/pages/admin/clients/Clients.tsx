@@ -14,7 +14,6 @@ import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { ClientDrawer } from './components/ClientDrawer';
 
-const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
 export const Clients = () => {
@@ -31,9 +30,14 @@ export const Clients = () => {
   const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
 
-  const { register, handleSubmit, reset, setValue } = useForm<
-    UserCreateRequest & UserUpdateRequest
-  >();
+  const {
+    register,
+    handleSubmit,
+    reset,
+    setValue,
+    setError,
+    formState: { errors, isSubmitting },
+  } = useForm<UserCreateRequest & UserUpdateRequest>();
   const { error: showError } = useAlert();
 
   const handleOpenForm = (client?: UserData) => {
@@ -62,6 +66,10 @@ export const Clients = () => {
         roleId: 4,
       };
 
+      if (editingClient && !payload.password) {
+        delete payload.password;
+      }
+
       if (editingClient?.id) {
         await usersApi.update(editingClient.id, payload);
       } else {
@@ -69,9 +77,23 @@ export const Clients = () => {
       }
       setShowForm(false);
       setRefreshTrigger((prev) => prev + 1);
-    } catch (error) {
-      const msg = getApiErrorMessage(error, 'Erro ao salvar cliente.');
-      await showError(msg);
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response.data?.errors) {
+        const fieldErrors = error.response.data.errors;
+        Object.keys(fieldErrors).forEach((field) => {
+          setError(field as any, { type: 'server', message: fieldErrors[field] });
+        });
+      } else if (error.response?.status === 409) {
+        const msg = error.response.data?.message || 'E-mail ou CPF já cadastrado.';
+        if (msg.toLowerCase().includes('cpf')) {
+          setError('cpf', { type: 'server', message: msg });
+        } else {
+          setError('email', { type: 'server', message: msg });
+        }
+      } else {
+        const msg = getApiErrorMessage(error, 'Erro ao salvar cliente.');
+        await showError(msg);
+      }
     }
   };
 
@@ -224,40 +246,96 @@ export const Clients = () => {
         onHide={() => setShowForm(false)}
         title={editingClient ? 'Editar Cliente' : 'Novo Cliente'}
         onSubmit={handleSubmit(onSubmit)}
+        isSubmitting={isSubmitting}
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Nome</label>
-            <input type="text" className={inputCls} {...register('name', { required: true })} />
+            <label className={labelCls}>Nome Completo *</label>
+            <input
+              type="text"
+              className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('name', {
+                required: 'Nome é obrigatório',
+                minLength: { value: 3, message: 'Mínimo 3 caracteres' },
+              })}
+            />
+            {errors.name && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
+            )}
           </div>
           <div>
-            <label className={labelCls}>Email</label>
-            <input type="email" className={inputCls} {...register('email', { required: true })} />
+            <label className={labelCls}>Email *</label>
+            <input
+              type="email"
+              className={`input-premium ${errors.email ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('email', {
+                required: 'Email é obrigatório',
+                pattern: {
+                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
+                  message: 'Formato de e-mail inválido',
+                },
+              })}
+            />
+            {errors.email && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.email.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>Telefone</label>
-            <input type="text" className={inputCls} {...register('phone')} />
+            <input
+              type="text"
+              className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('phone', {
+                pattern: {
+                  value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+                  message: 'Formato inválido. Use (XX) XXXXX-XXXX',
+                },
+              })}
+            />
+            {errors.phone && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
+            )}
           </div>
           <div>
             <label className={labelCls}>CPF</label>
-            <input type="text" className={inputCls} {...register('cpf')} />
+            <input
+              type="text"
+              className={`input-premium ${errors.cpf ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('cpf', {
+                pattern: {
+                  value: /^$|^\d{11}$/,
+                  message: 'O CPF deve conter exatamente 11 dígitos numéricos',
+                },
+              })}
+            />
+            {errors.cpf && (
+              <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
+            )}
           </div>
-          {!editingClient && (
-            <div>
-              <label className={labelCls}>Senha *</label>
-              <input
-                type="password"
-                className={inputCls}
-                {...register('password', { required: true })}
-              />
-            </div>
-          )}
-          {editingClient && (
-            <div>
-              <label className={labelCls}>Nova Senha (opcional)</label>
-              <input type="password" className={inputCls} {...register('password')} />
-            </div>
-          )}
+          <div>
+            <label className={labelCls}>
+              {editingClient ? 'Nova Senha (opcional)' : 'Senha *'}
+            </label>
+            <input
+              type="password"
+              className={`input-premium ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
+              {...register('password', {
+                validate: (val) => {
+                  if (!val) {
+                    return editingClient ? true : 'Senha é obrigatória';
+                  }
+                  if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+                  if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
+                  return true;
+                },
+              })}
+            />
+            {errors.password && (
+              <span className="text-xs text-rose-500 font-semibold">
+                {errors.password.message}
+              </span>
+            )}
+          </div>
           <div className="flex items-center gap-3">
             <label className="relative inline-flex items-center cursor-pointer">
               <input type="checkbox" className="sr-only peer" {...register('active')} />

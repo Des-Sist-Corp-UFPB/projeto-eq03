@@ -30,6 +30,7 @@ export const Profile = () => {
     handleSubmit,
     setValue,
     watch,
+    setError,
     formState: { errors },
   } = useForm<ProfileFormData>();
 
@@ -74,9 +75,23 @@ export const Profile = () => {
 
       await profileApi.updateProfile(user.userId, updateData);
       await showSuccess('Perfil atualizado com sucesso!');
-    } catch (error) {
-      const msg = getApiErrorMessage(error, 'Erro ao atualizar perfil.');
-      await showError(msg);
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response.data?.errors) {
+        const fieldErrors = error.response.data.errors;
+        Object.keys(fieldErrors).forEach((field) => {
+          setError(field as any, { type: 'server', message: fieldErrors[field] });
+        });
+      } else if (error.response?.status === 409) {
+        const msg = error.response.data?.message || 'E-mail ou CPF já cadastrado.';
+        if (msg.toLowerCase().includes('cpf')) {
+          setError('cpf', { type: 'server', message: msg });
+        } else {
+          setError('email', { type: 'server', message: msg });
+        }
+      } else {
+        const msg = getApiErrorMessage(error, 'Erro ao atualizar perfil.');
+        await showError(msg);
+      }
     } finally {
       setIsSaving(false);
     }
@@ -131,10 +146,18 @@ export const Profile = () => {
               <label className="label-premium">Telefone</label>
               <input
                 type="tel"
-                {...register('phone')}
+                {...register('phone', {
+                  pattern: {
+                    value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
+                    message: 'Formato inválido. Use (XX) XXXXX-XXXX',
+                  },
+                })}
                 placeholder="(11) 99999-9999"
-                className="input-premium"
+                className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
+              {errors.phone && (
+                <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
+              )}
             </div>
           </div>
 
@@ -185,7 +208,12 @@ export const Profile = () => {
               <input
                 type="password"
                 {...register('password', {
-                  minLength: { value: 6, message: 'Mínimo 6 caracteres' },
+                  validate: (val) => {
+                    if (!val) return true;
+                    if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
+                    if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
+                    return true;
+                  },
                 })}
                 placeholder="Deixe em branco para não alterar"
                 className={`input-premium ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
@@ -211,4 +239,3 @@ export const Profile = () => {
     </div>
   );
 };
-

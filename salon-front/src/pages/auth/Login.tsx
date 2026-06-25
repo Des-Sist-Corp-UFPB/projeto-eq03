@@ -52,8 +52,9 @@ export const Login = () => {
         const { jwtDecode } = await import('jwt-decode');
         const decoded = jwtDecode<{ role?: string }>(accessToken);
         const role = decoded.role?.toUpperCase() ?? '';
-
-        if (role === 'ADMIN' || role === 'SYSADMIN') {
+        if (role === 'SYSADMIN') {
+          destination = '/sysadmin/rbac';
+        } else if (role === 'ADMIN') {
           destination = '/admin/dashboard';
         } else {
           // Cliente: verificar se havia um agendamento pendente

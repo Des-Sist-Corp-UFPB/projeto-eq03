@@ -11,7 +11,8 @@ public record UserUpdateRequest(
         @Email(message = "O formato do email é inválido")
         String email,
 
-        @Size(min = 6, message = "A senha deve ter no mínimo 6 caracteres")
+        @Size(min = 8, message = "A senha deve ter no mínimo 8 caracteres")
+        @Pattern(regexp = "^(?=.*\\d).*$", message = "A senha deve conter pelo menos um número")
         String password,
 
         @Size(max = 20, message = "O telefone não pode exceder 20 caracteres")
