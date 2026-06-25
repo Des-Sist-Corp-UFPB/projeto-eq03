@@ -6,7 +6,7 @@
 | **Repositório** | https://github.com/des-sist-corp-ufpb/projeto-eq03 |
 | **Aplicação** | https://eq03.dsc.rodrigor.com |
 | **Período de atividade** | 2026-06-25 → 2026-06-25 |
-| **Total de commits** (sem merges, branch main) | 11 |
+| **Total de commits** (sem merges, branch main) | 12 |
 | **Integrantes** | Anna Gabriela De Moura Souza (@AnnaGabrielaMS), Jose Elksandro Do Nascimento Silva (@Elksandro2) |
 
 ---
@@ -169,7 +169,7 @@
 |---------|---------------|---------------------|-------------------|----------------------|----------------|
 | Anna Gabriela De Moura Souza (@AnnaGabrielaMS) | 4 | **75** ⚠️ | 46.078 | 32.161 | 100% |
 | Jose Elksandro Do Nascimento Silva (@Elksandro2) | 5 | **202** ⚠️ | 79 | 63 | 0% |
-| *(sem login GitHub)* | 2 | 18% | — | — | — |
+| *(sem login GitHub)* | 3 | 25% | — | — | — |
 
 > **⚠️ Divergência entre commits locais e GitHub API:**
 > - **@AnnaGabrielaMS**: 4 commit(s) na branch `main` vs **75** registrados na API GitHub (commits em branches não mergeadas ou absorvidos via squash-merge sem preservação de autoria).
