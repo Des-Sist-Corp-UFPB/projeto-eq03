@@ -13,8 +13,8 @@ import java.util.regex.Pattern;
 <span class="fc" id="L13">            return email;</span>
         }
 <span class="fc" id="L15">        int atIndex = email.indexOf('@');</span>
-<span class="pc bpc" id="L16" title="1 of 2 branches missed.">        if (atIndex &lt;= 0) {</span>
-<span class="nc" id="L17">            return &quot;***&quot;;</span>
+<span class="fc bfc" id="L16" title="All 2 branches covered.">        if (atIndex &lt;= 0) {</span>
+<span class="fc" id="L17">            return &quot;***&quot;;</span>
         }
 <span class="fc" id="L19">        String local = email.substring(0, atIndex);</span>
 <span class="fc" id="L20">        String domain = email.substring(atIndex);</span>
@@ -36,8 +36,8 @@ import java.util.regex.Pattern;
     }
 
     public static String sanitizeJson(String json) {
-<span class="pc bpc" id="L39" title="2 of 4 branches missed.">        if (json == null || json.trim().isEmpty()) {</span>
-<span class="nc" id="L40">            return json;</span>
+<span class="fc bfc" id="L39" title="All 4 branches covered.">        if (json == null || json.trim().isEmpty()) {</span>
+<span class="fc" id="L40">            return json;</span>
         }
 
         // 1. Mask raw emails (including inside JSON fields) first to prevent double-masking
@@ -48,7 +48,7 @@ import java.util.regex.Pattern;
 <span class="fc" id="L48">        StringBuffer sb = new StringBuffer();</span>
 <span class="fc bfc" id="L49" title="All 2 branches covered.">        while (numberMatcher.find()) {</span>
 <span class="fc" id="L50">            String num = numberMatcher.group(2);</span>
-<span class="pc bpc" id="L51" title="1 of 2 branches missed.">            String masked = num.length() == 11 ? maskCpf(num) : &quot;***&quot;;</span>
+<span class="fc bfc" id="L51" title="All 2 branches covered.">            String masked = num.length() == 11 ? maskCpf(num) : &quot;***&quot;;</span>
 <span class="fc" id="L52">            numberMatcher.appendReplacement(sb, numberMatcher.group(1) + masked + numberMatcher.group(3));</span>
 <span class="fc" id="L53">        }</span>
 <span class="fc" id="L54">        numberMatcher.appendTail(sb);</span>
@@ -61,7 +61,7 @@ import java.util.regex.Pattern;
     }
 
     public static String maskRawEmails(String text) {
-<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (text == null) return null;</span>
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (text == null) return null;</span>
 <span class="fc" id="L65">        Matcher m = EMAIL_PATTERN.matcher(text);</span>
 <span class="fc" id="L66">        StringBuffer sb = new StringBuffer();</span>
 <span class="fc bfc" id="L67" title="All 2 branches covered.">        while (m.find()) {</span>
@@ -72,7 +72,7 @@ import java.util.regex.Pattern;
     }
 
     public static String maskRawCpfs(String text) {
-<span class="pc bpc" id="L75" title="1 of 2 branches missed.">        if (text == null) return null;</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (text == null) return null;</span>
 <span class="fc" id="L76">        Matcher m = CPF_PATTERN.matcher(text);</span>
 <span class="fc" id="L77">        StringBuffer sb = new StringBuffer();</span>
 <span class="pc bpc" id="L78" title="1 of 2 branches missed.">        while (m.find()) {</span>

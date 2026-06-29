@@ -12,13 +12,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
     // e que NÃO começam com /v1 (as rotas da sua API)
     @RequestMapping(value = &quot;{path:[^\\.]*}&quot;)
     public String redirectSpa(HttpServletRequest request) {
-<span class="nc" id="L15">        String uri = request.getRequestURI();</span>
-<span class="nc bnc" id="L16" title="All 6 branches missed.">        if (uri != null &amp;&amp; (uri.startsWith(&quot;/v1/&quot;) || uri.equals(&quot;/v1&quot;))) {</span>
+<span class="fc" id="L15">        String uri = request.getRequestURI();</span>
+<span class="pc bpc" id="L16" title="3 of 6 branches missed.">        if (uri != null &amp;&amp; (uri.startsWith(&quot;/v1/&quot;) || uri.equals(&quot;/v1&quot;))) {</span>
 <span class="nc" id="L17">            throw new ResourceNotFoundException(&quot;Recurso não encontrado&quot;);</span>
         }
         // O &quot;forward:&quot; faz um redirecionamento interno no servidor. 
         // A URL no navegador do usuário continua sendo /dashboard, mas o Spring entrega o index.html do React.
-<span class="nc" id="L21">        return &quot;forward:/index.html&quot;;</span>
+<span class="fc" id="L21">        return &quot;forward:/index.html&quot;;</span>
     }
 }
 </pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

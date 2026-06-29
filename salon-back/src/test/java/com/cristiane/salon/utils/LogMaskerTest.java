@@ -12,6 +12,9 @@ class LogMaskerTest {
         assertThat(LogMasker.maskEmail("a@b.com")).isEqualTo("a***@b.com");
         assertThat(LogMasker.maskEmail("")).isEmpty();
         assertThat(LogMasker.maskEmail(null)).isNull();
+        assertThat(LogMasker.maskEmail("   ")).isEqualTo("   ");
+        assertThat(LogMasker.maskEmail("@b.com")).isEqualTo("***");
+        assertThat(LogMasker.maskEmail("abc.com")).isEqualTo("***");
     }
 
     @Test
@@ -21,6 +24,7 @@ class LogMaskerTest {
         assertThat(LogMasker.maskCpf("123")).isEqualTo("***");
         assertThat(LogMasker.maskCpf("")).isEmpty();
         assertThat(LogMasker.maskCpf(null)).isNull();
+        assertThat(LogMasker.maskCpf("   ")).isEqualTo("   ");
     }
 
     @Test
@@ -29,5 +33,20 @@ class LogMaskerTest {
         String sanitized = LogMasker.sanitizeJson(inputJson);
         assertThat(sanitized).contains("\"email\":\"el***o@salao.com\"");
         assertThat(sanitized).contains("\"number\":\"***.***.***-09\"");
+
+        // Edge cases
+        assertThat(LogMasker.sanitizeJson(null)).isNull();
+        assertThat(LogMasker.sanitizeJson("")).isEmpty();
+        assertThat(LogMasker.sanitizeJson("   ")).isEqualTo("   ");
+
+        // Non-11 length number pattern
+        String otherJson = "{\"number\":\"123456\"}";
+        assertThat(LogMasker.sanitizeJson(otherJson)).contains("\"number\":\"***\"");
+    }
+
+    @Test
+    void shouldMaskRawEmailsAndCpfs() {
+        assertThat(LogMasker.maskRawEmails(null)).isNull();
+        assertThat(LogMasker.maskRawCpfs(null)).isNull();
     }
 }

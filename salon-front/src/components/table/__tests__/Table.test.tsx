@@ -150,4 +150,24 @@ describe('Table Component', () => {
     // Column role should render empty string, so we check that 'Alice' is there and nothing crashes
     expect(screen.getByText('Alice')).toBeInTheDocument();
   });
+
+  it('should call onRowClick when row is clicked', () => {
+    const handleRowClick = vi.fn();
+    render(
+      <Table
+        columns={columns}
+        data={mockData}
+        keyExtractor={(item) => item.id}
+        onRowClick={handleRowClick}
+      />
+    );
+
+    const row = screen.getByText('Alice').closest('tr');
+    expect(row).toHaveClass('cursor-pointer');
+    
+    if (row) {
+      fireEvent.click(row);
+    }
+    expect(handleRowClick).toHaveBeenCalledWith(mockData[0]);
+  });
 });

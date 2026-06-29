@@ -2,8 +2,8 @@
 
 <span class="nc" id="L3">public class CpfValidator {</span>
     public static boolean isValid(String cpf) {
-<span class="pc bpc" id="L5" title="1 of 2 branches missed.">        if (cpf == null) {</span>
-<span class="nc" id="L6">            return false;</span>
+<span class="fc bfc" id="L5" title="All 2 branches covered.">        if (cpf == null) {</span>
+<span class="fc" id="L6">            return false;</span>
         }
 <span class="fc" id="L8">        String clean = cpf.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
 <span class="fc bfc" id="L9" title="All 2 branches covered.">        if (clean.length() != 11) {</span>
@@ -11,11 +11,11 @@
         }
 
         // Rejeita CPFs conhecidos com todos os dígitos iguais
-<span class="pc bpc" id="L14" title="1 of 4 branches missed.">        if (clean.equals(&quot;00000000000&quot;) || clean.equals(&quot;11111111111&quot;) ||</span>
-<span class="pc bpc" id="L15" title="2 of 4 branches missed.">            clean.equals(&quot;22222222222&quot;) || clean.equals(&quot;33333333333&quot;) ||</span>
-<span class="pc bpc" id="L16" title="2 of 4 branches missed.">            clean.equals(&quot;44444444444&quot;) || clean.equals(&quot;55555555555&quot;) ||</span>
-<span class="pc bpc" id="L17" title="2 of 4 branches missed.">            clean.equals(&quot;66666666666&quot;) || clean.equals(&quot;77777777777&quot;) ||</span>
-<span class="pc bpc" id="L18" title="2 of 4 branches missed.">            clean.equals(&quot;88888888888&quot;) || clean.equals(&quot;99999999999&quot;)) {</span>
+<span class="fc bfc" id="L14" title="All 4 branches covered.">        if (clean.equals(&quot;00000000000&quot;) || clean.equals(&quot;11111111111&quot;) ||</span>
+<span class="fc bfc" id="L15" title="All 4 branches covered.">            clean.equals(&quot;22222222222&quot;) || clean.equals(&quot;33333333333&quot;) ||</span>
+<span class="fc bfc" id="L16" title="All 4 branches covered.">            clean.equals(&quot;44444444444&quot;) || clean.equals(&quot;55555555555&quot;) ||</span>
+<span class="fc bfc" id="L17" title="All 4 branches covered.">            clean.equals(&quot;66666666666&quot;) || clean.equals(&quot;77777777777&quot;) ||</span>
+<span class="fc bfc" id="L18" title="All 4 branches covered.">            clean.equals(&quot;88888888888&quot;) || clean.equals(&quot;99999999999&quot;)) {</span>
 <span class="fc" id="L19">            return false;</span>
         }
 
@@ -40,7 +40,7 @@
 <span class="fc" id="L40">            int r2 = 11 - (sum % 11);</span>
 <span class="pc bpc" id="L41" title="2 of 4 branches missed.">            int d2 = (r2 == 10 || r2 == 11) ? 0 : r2;</span>
 
-<span class="pc bpc" id="L43" title="1 of 2 branches missed.">            return d2 == (clean.charAt(10) - '0');</span>
+<span class="fc bfc" id="L43" title="All 2 branches covered.">            return d2 == (clean.charAt(10) - '0');</span>
 <span class="nc" id="L44">        } catch (Exception e) {</span>
 <span class="nc" id="L45">            return false;</span>
         }
