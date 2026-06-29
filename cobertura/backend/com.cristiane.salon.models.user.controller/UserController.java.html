@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>UserController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.user.controller</a> &gt; <span class="el_source">UserController.java</span></div><h1>UserController.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.user.controller;
+
+import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.user.dto.UpdateCpfRequest;
+import com.cristiane.salon.models.user.dto.UserCreateRequest;
+import com.cristiane.salon.models.user.dto.UserResponse;
+import com.cristiane.salon.models.user.dto.UserUpdateRequest;
+import com.cristiane.salon.models.user.dto.UserCpfInfoResponse;
+import com.cristiane.salon.models.user.dto.UserFilter;
+import com.cristiane.salon.models.user.service.UserService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.*;
+
+@RestController
+@RequestMapping(&quot;/v1/users&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;Users&quot;, description = &quot;Endpoints para gerenciamento de usuários&quot;)
+public class UserController {
+
+    private final UserService userService;
+
+    @GetMapping
+    @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(null)&quot;)
+    @Operation(summary = &quot;Lista todos os usuários internos com filtros e paginação (Admin/Gerente)&quot;)
+    public ResponseEntity&lt;Page&lt;UserResponse&gt;&gt; findAll(
+            @Valid UserFilter filter,
+            @PageableDefault(size = 10, sort = &quot;name&quot;, direction = Sort.Direction.ASC) Pageable pageable) {
+<span class="fc" id="L39">        return ResponseEntity.ok(userService.findAllUsers(filter, pageable));</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(null)&quot;)
+    @Auditable(action = &quot;CREATE&quot;, entityType = &quot;USER&quot;, captureArgs = true)
+    @Operation(summary = &quot;Cria um novo usuário (Admin)&quot;)
+    public ResponseEntity&lt;UserResponse&gt; create(@Valid @RequestBody UserCreateRequest request) {
+<span class="fc" id="L47">        return ResponseEntity.ok(userService.create(request));</span>
+    }
+
+    @GetMapping(&quot;/details/id/{id}&quot;)
+    @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(#id)&quot;)
+    @Operation(summary = &quot;Busca um usuário por ID (Dono ou Admin)&quot;)
+    public ResponseEntity&lt;UserResponse&gt; findById(@PathVariable Long id) {
+<span class="fc" id="L54">        return ResponseEntity.ok(userService.findById(id));</span>
+    }
+
+    @PatchMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(#id)&quot;)
+    @Auditable(action = &quot;UPDATE&quot;, entityType = &quot;USER&quot;, captureArgs = true)
+    @Operation(summary = &quot;Atualiza um usuário (Dono ou Admin)&quot;)
+    public ResponseEntity&lt;UserResponse&gt; update(@PathVariable Long id, @Valid @RequestBody UserUpdateRequest request) {
+<span class="fc" id="L62">        return ResponseEntity.ok(userService.update(id, request));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(null)&quot;)
+    @Auditable(action = &quot;DELETE&quot;, entityType = &quot;USER&quot;, captureArgs = true)
+    @Operation(summary = &quot;Remove um usuário (Admin)&quot;)
+    public ResponseEntity&lt;Void&gt; delete(@PathVariable Long id) {
+<span class="fc" id="L70">        userService.delete(id);</span>
+<span class="fc" id="L71">        return ResponseEntity.noContent().build();</span>
+    }
+
+    @PatchMapping(&quot;/{id}/restore&quot;)
+    @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(null)&quot;)
+    @Auditable(action = &quot;RESTORE&quot;, entityType = &quot;USER&quot;, captureArgs = true)
+    @Operation(summary = &quot;Reativa um usuário desativado (Admin)&quot;)
+    public ResponseEntity&lt;UserResponse&gt; restore(@PathVariable Long id) {
+<span class="fc" id="L79">        return ResponseEntity.ok(userService.restore(id));</span>
+    }
+
+    @PatchMapping(&quot;/me/cpf&quot;)
+    @Operation(summary = &quot;Atualiza o CPF do próprio usuário autenticado (JIT no pagamento PIX)&quot;)
+    public ResponseEntity&lt;UserResponse&gt; updateMyCpf(@Valid @RequestBody UpdateCpfRequest request) {
+<span class="fc" id="L85">        return ResponseEntity.ok(userService.updateMyCpf(request.cpf()));</span>
+    }
+
+    @GetMapping(&quot;/me/cpf-info&quot;)
+    @Operation(summary = &quot;Busca informações sobre o CPF salvo do usuário autenticado&quot;)
+    public ResponseEntity&lt;UserCpfInfoResponse&gt; getMyCpfInfo() {
+<span class="fc" id="L91">        return ResponseEntity.ok(userService.getMyCpfInfo());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

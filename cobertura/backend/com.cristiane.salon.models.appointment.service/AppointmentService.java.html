@@ -1,0 +1,556 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AppointmentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.appointment.service</a> &gt; <span class="el_source">AppointmentService.java</span></div><h1>AppointmentService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.appointment.service;
+
+import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.exception.UnauthorizedException;
+import com.cristiane.salon.exception.BusinessException;
+import com.cristiane.salon.models.appointment.dto.GeneratePixRequest;
+import com.cristiane.salon.utils.CpfValidator;
+import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
+import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
+import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
+import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
+import com.cristiane.salon.models.appointment.enums.PaymentStatus;
+import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
+import com.cristiane.salon.models.cashflow.entity.CashFlow;
+import com.cristiane.salon.models.cashflow.enums.CashFlowType;
+import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
+import com.cristiane.salon.models.employee.entity.Employee;
+import com.cristiane.salon.models.employee.repository.EmployeeRepository;
+import com.cristiane.salon.models.service.entity.SalonService;
+import com.cristiane.salon.models.service.repository.SalonServiceRepository;
+import com.cristiane.salon.integrations.email.service.EmailService;
+import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import com.cristiane.salon.models.user.entity.User;
+import com.cristiane.salon.models.user.repository.UserRepository;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.mercadopago.resources.payment.Payment;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
+import java.util.stream.Collectors;
+
+<span class="fc" id="L45">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class AppointmentService {
+
+    private final AppointmentRepository appointmentRepository;
+    private final EmployeeRepository employeeRepository;
+    private final SalonServiceRepository salonServiceRepository;
+    private final UserRepository userRepository;
+    private final CashFlowRepository cashFlowRepository;
+    private final FeatureFlagService featureFlagService;
+    private final EmailService emailService;
+    private final MercadoPagoPaymentService mercadoPagoPaymentService;
+    private final AuditLogService auditLogService;
+
+    private static int blockingMinutes(SalonService service) {
+<span class="pc bpc" id="L61" title="2 of 4 branches missed.">        if (service.getDurationMin() != null &amp;&amp; service.getDurationMin() &gt; 0) {</span>
+<span class="fc" id="L62">            return service.getDurationMin();</span>
+        }
+<span class="nc" id="L64">        return 60;</span>
+    }
+
+    private User getAuthenticatedUser() {
+<span class="fc" id="L68">        String email = SecurityContextHolder.getContext().getAuthentication().getName();</span>
+<span class="fc" id="L69">        return userRepository.findByEmail(email)</span>
+<span class="fc" id="L70">                .orElseThrow(() -&gt; new UnauthorizedException(&quot;Usuário não autenticado&quot;));</span>
+    }
+
+    private boolean isStaff(User user) {
+<span class="fc" id="L74">        String role = user.getRoleName();</span>
+<span class="pc bpc" id="L75" title="1 of 4 branches missed.">        return &quot;ADMIN&quot;.equals(role) || &quot;GERENTE_DE_ATENDIMENTO&quot;.equals(role);</span>
+    }
+
+    private void assertNoScheduleConflict(Long employeeId, LocalDateTime scheduledAt, SalonService service,
+                                         Long ignoreAppointmentId) {
+<span class="fc" id="L80">        List&lt;Appointment&gt; existing = appointmentRepository.findActiveAppointmentsByEmployeeAndDate(</span>
+                employeeId,
+<span class="fc" id="L82">                scheduledAt.toLocalDate().atStartOfDay(),</span>
+<span class="fc" id="L83">                scheduledAt.toLocalDate().atTime(LocalTime.MAX)</span>
+        );
+
+<span class="fc" id="L86">        LocalDateTime requestEnd = scheduledAt.plusMinutes(blockingMinutes(service));</span>
+
+<span class="fc bfc" id="L88" title="All 2 branches covered.">        for (Appointment apt : existing) {</span>
+<span class="pc bpc" id="L89" title="3 of 4 branches missed.">            if (ignoreAppointmentId != null &amp;&amp; apt.getId().equals(ignoreAppointmentId)) {</span>
+<span class="nc" id="L90">                continue;</span>
+            }
+<span class="fc" id="L92">            LocalDateTime aptStart = apt.getScheduledAt();</span>
+<span class="fc" id="L93">            LocalDateTime aptEnd = aptStart.plusMinutes(blockingMinutes(apt.getSalonService()));</span>
+
+<span class="pc bpc" id="L95" title="2 of 4 branches missed.">            boolean overlaps = scheduledAt.isBefore(aptEnd) &amp;&amp; aptStart.isBefore(requestEnd);</span>
+<span class="pc bpc" id="L96" title="1 of 2 branches missed.">            if (overlaps) {</span>
+<span class="fc" id="L97">                throw new BadRequestException(&quot;Este horário já está ocupado para esta profissional&quot;);</span>
+            }
+<span class="nc" id="L99">        }</span>
+<span class="fc" id="L100">    }</span>
+
+    @Transactional
+    public AppointmentResponse create(AppointmentRequest request) {
+<span class="fc" id="L104">        User currentUser = getAuthenticatedUser();</span>
+
+<span class="fc bfc" id="L106" title="All 4 branches covered.">        if (&quot;CLIENTE&quot;.equals(currentUser.getRoleName()) &amp;&amp; !featureFlagService.isEnabled(&quot;ENABLE_CUSTOMER_PORTAL&quot;)) {</span>
+<span class="fc" id="L107">            throw new AccessDeniedException(&quot;O portal do cliente está temporariamente desativado.&quot;);</span>
+        }
+
+<span class="pc bpc" id="L110" title="1 of 4 branches missed.">        boolean staffCreatesForClient = isStaff(currentUser) &amp;&amp; request.clientId() != null;</span>
+
+<span class="fc bfc" id="L112" title="All 4 branches covered.">        if (!staffCreatesForClient &amp;&amp; !featureFlagService.isEnabled(&quot;CLIENT_BOOKING&quot;)) {</span>
+<span class="fc" id="L113">            throw new BadRequestException(&quot;Agendamentos online para clientes estão temporariamente desativados.&quot;);</span>
+        }
+
+        User client;
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        if (staffCreatesForClient) {</span>
+<span class="fc" id="L118">            client = userRepository.findById(request.clientId())</span>
+<span class="fc" id="L119">                    .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Cliente não encontrado&quot;));</span>
+        } else {
+<span class="fc" id="L121">            client = currentUser;</span>
+        }
+
+<span class="fc" id="L124">        Employee employee = employeeRepository.findById(request.employeeId())</span>
+<span class="fc" id="L125">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Profissional não encontrado&quot;));</span>
+
+<span class="fc" id="L127">        SalonService service = salonServiceRepository.findById(request.serviceId())</span>
+<span class="fc" id="L128">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Serviço não encontrado&quot;));</span>
+
+<span class="fc bfc" id="L130" title="All 2 branches covered.">        if (!service.getActive()) {</span>
+<span class="fc" id="L131">            throw new BadRequestException(&quot;Este serviço não está disponível&quot;);</span>
+        }
+
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        if (staffCreatesForClient) {</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">            if (request.scheduledAt() == null) {</span>
+<span class="fc" id="L136">                throw new BadRequestException(&quot;Informe data e hora do agendamento&quot;);</span>
+            }
+<span class="fc bfc" id="L138" title="All 2 branches covered.">            if (request.scheduledAt().isBefore(LocalDateTime.now())) {</span>
+<span class="fc" id="L139">                throw new BadRequestException(&quot;Não é possível agendar no passado&quot;);</span>
+            }
+<span class="fc" id="L141">            assertNoScheduleConflict(employee.getId(), request.scheduledAt(), service, null);</span>
+
+<span class="pc bpc" id="L143" title="1 of 4 branches missed.">            if (request.preferredDate() != null &amp;&amp; request.preferredDate().isBefore(LocalDate.now())) {</span>
+<span class="fc" id="L144">                throw new BadRequestException(&quot;A data preferida deve ser hoje ou uma data futura&quot;);</span>
+            }
+
+<span class="fc" id="L147">            Appointment appointment = new Appointment();</span>
+<span class="fc" id="L148">            appointment.setClient(client);</span>
+<span class="fc" id="L149">            appointment.setEmployee(employee);</span>
+<span class="fc" id="L150">            appointment.setSalonService(service);</span>
+<span class="fc" id="L151">            appointment.setScheduledAt(request.scheduledAt());</span>
+<span class="fc" id="L152">            appointment.setPreferredDate(request.preferredDate());</span>
+<span class="fc" id="L153">            appointment.setClientNotes(request.clientNotes());</span>
+<span class="fc" id="L154">            appointment.setStatus(AppointmentStatus.CONFIRMED);</span>
+
+<span class="fc" id="L156">            Appointment saved = appointmentRepository.save(appointment);</span>
+<span class="fc" id="L157">            emailService.sendConfirmationNotificationToClient(saved);</span>
+<span class="fc" id="L158">            return AppointmentResponse.fromEntity(saved);</span>
+        }
+
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        if (request.scheduledAt() != null) {</span>
+<span class="fc" id="L162">            throw new BadRequestException(&quot;O horário será definido pelo salão após aceitar seu pedido&quot;);</span>
+        }
+
+<span class="fc bfc" id="L165" title="All 4 branches covered.">        if (request.preferredDate() != null &amp;&amp; request.preferredDate().isBefore(LocalDate.now())) {</span>
+<span class="fc" id="L166">            throw new BadRequestException(&quot;A data preferida deve ser hoje ou uma data futura&quot;);</span>
+        }
+
+<span class="fc" id="L169">        String notes = request.clientNotes();</span>
+<span class="pc bpc" id="L170" title="1 of 4 branches missed.">        if (notes != null &amp;&amp; notes.length() &gt; 4000) {</span>
+<span class="fc" id="L171">            throw new BadRequestException(&quot;Observações muito longas (máx. 4000 caracteres)&quot;);</span>
+        }
+
+<span class="fc" id="L174">        Appointment appointment = new Appointment();</span>
+<span class="fc" id="L175">        appointment.setClient(client);</span>
+<span class="fc" id="L176">        appointment.setEmployee(employee);</span>
+<span class="fc" id="L177">        appointment.setSalonService(service);</span>
+<span class="fc" id="L178">        appointment.setPreferredDate(request.preferredDate());</span>
+<span class="fc" id="L179">        appointment.setClientNotes(notes);</span>
+<span class="fc" id="L180">        appointment.setStatus(AppointmentStatus.REQUESTED);</span>
+
+<span class="fc" id="L182">        Appointment saved = appointmentRepository.save(appointment);</span>
+<span class="fc" id="L183">        emailService.sendRequestNotificationToStaff(saved);</span>
+<span class="fc" id="L184">        return AppointmentResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional
+    public AppointmentResponse confirm(Long id, LocalDateTime scheduledAt) {
+<span class="fc bfc" id="L189" title="All 2 branches covered.">        if (!isStaff(getAuthenticatedUser())) {</span>
+<span class="fc" id="L190">            throw new UnauthorizedException(&quot;Apenas a equipe pode confirmar horários&quot;);</span>
+        }
+
+<span class="fc" id="L193">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="fc" id="L194">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        if (appointment.getStatus() != AppointmentStatus.REQUESTED) {</span>
+<span class="fc" id="L197">            throw new BadRequestException(&quot;Apenas solicitações pendentes de confirmação podem ser aprovadas&quot;);</span>
+        }
+
+<span class="fc bfc" id="L200" title="All 2 branches covered.">        if (scheduledAt.isBefore(LocalDateTime.now())) {</span>
+<span class="fc" id="L201">            throw new BadRequestException(&quot;Não é possível confirmar um horário no passado&quot;);</span>
+        }
+
+<span class="fc" id="L204">        assertNoScheduleConflict(appointment.getEmployee().getId(), scheduledAt, appointment.getSalonService(), null);</span>
+
+<span class="fc" id="L206">        appointment.setScheduledAt(scheduledAt);</span>
+<span class="fc" id="L207">        appointment.setStatus(AppointmentStatus.CONFIRMED);</span>
+
+<span class="fc" id="L209">        Appointment saved = appointmentRepository.save(appointment);</span>
+<span class="fc" id="L210">        emailService.sendConfirmationNotificationToClient(saved);</span>
+<span class="fc" id="L211">        return AppointmentResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional
+    public AppointmentResponse decline(Long id) {
+<span class="fc bfc" id="L216" title="All 2 branches covered.">        if (!isStaff(getAuthenticatedUser())) {</span>
+<span class="fc" id="L217">            throw new UnauthorizedException(&quot;Apenas a equipe pode recusar solicitações&quot;);</span>
+        }
+
+<span class="fc" id="L220">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="fc" id="L221">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+<span class="fc bfc" id="L223" title="All 2 branches covered.">        if (appointment.getStatus() != AppointmentStatus.REQUESTED) {</span>
+<span class="fc" id="L224">            throw new BadRequestException(&quot;Apenas solicitações em análise podem ser recusadas&quot;);</span>
+        }
+
+<span class="fc" id="L227">        appointment.setStatus(AppointmentStatus.DECLINED);</span>
+<span class="fc" id="L228">        Appointment saved = appointmentRepository.save(appointment);</span>
+        // Notify client and staff that their request was declined
+<span class="fc" id="L230">        emailService.sendCancellationNotification(saved);</span>
+<span class="fc" id="L231">        return AppointmentResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AppointmentResponse&gt; getMyAppointments() {
+<span class="fc" id="L236">        User client = getAuthenticatedUser();</span>
+<span class="fc" id="L237">        return appointmentRepository.findByClientId(client.getId()).stream()</span>
+<span class="fc" id="L238">                .map(AppointmentResponse::fromEntity)</span>
+<span class="fc" id="L239">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public List&lt;AppointmentResponse&gt; findAll() {
+<span class="fc" id="L244">        return appointmentRepository.findAll().stream()</span>
+<span class="fc" id="L245">                .map(AppointmentResponse::fromEntity)</span>
+<span class="fc" id="L246">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public AppointmentResponse findById(Long id) {
+<span class="fc" id="L251">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="fc" id="L252">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+<span class="fc" id="L254">        User currentUser = getAuthenticatedUser();</span>
+<span class="fc" id="L255">        boolean isAdmin = isStaff(currentUser);</span>
+
+<span class="fc bfc" id="L257" title="All 4 branches covered.">        if (!isAdmin &amp;&amp; !appointment.getClient().getId().equals(currentUser.getId())) {</span>
+<span class="fc" id="L258">            throw new UnauthorizedException(&quot;Você não tem permissão para visualizar este agendamento&quot;);</span>
+        }
+
+<span class="fc" id="L261">        return AppointmentResponse.fromEntity(appointment);</span>
+    }
+
+    @Transactional
+    public AppointmentResponse generatePixPayment(Long id, GeneratePixRequest request) {
+<span class="fc" id="L266">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="pc" id="L267">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+<span class="fc" id="L269">        User currentUser = getAuthenticatedUser();</span>
+<span class="fc" id="L270">        boolean isAdmin = isStaff(currentUser);</span>
+
+        // Regra 1: Apenas o dono do agendamento ou a equipe do salão podem gerar o PIX
+<span class="fc bfc" id="L273" title="All 4 branches covered.">        if (!isAdmin &amp;&amp; !appointment.getClient().getId().equals(currentUser.getId())) {</span>
+<span class="fc" id="L274">            throw new UnauthorizedException(&quot;Você não tem permissão para gerar pagamento para este agendamento&quot;);</span>
+        }
+
+        // Regra 2: Não gerar se já estiver pago
+<span class="fc bfc" id="L278" title="All 2 branches covered.">        if (appointment.getPaymentStatus() == PaymentStatus.PAID) {</span>
+<span class="fc" id="L279">            throw new BadRequestException(&quot;Este agendamento já está pago.&quot;);</span>
+        }
+
+        // Regra 3: Não gerar para agendamentos cancelados (terminal state)
+<span class="fc bfc" id="L283" title="All 2 branches covered.">        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {</span>
+<span class="fc" id="L284">            throw new BadRequestException(&quot;Não é possível gerar PIX para um agendamento cancelado.&quot;);</span>
+        }
+
+<span class="fc" id="L287">        BigDecimal amount = appointment.getSalonService().getPrice();</span>
+<span class="pc bpc" id="L288" title="1 of 4 branches missed.">        if (amount == null || amount.compareTo(BigDecimal.ZERO) &lt;= 0) {</span>
+<span class="fc" id="L289">            throw new BadRequestException(&quot;Este serviço não possui um valor configurado para cobrança.&quot;);</span>
+        }
+
+        // Idempotency: Check if there's already a pending PIX payment
+<span class="pc bpc" id="L293" title="1 of 2 branches missed.">        if (appointment.getPaymentStatus() == PaymentStatus.PENDING &amp;&amp;</span>
+<span class="pc bpc" id="L294" title="1 of 2 branches missed.">                appointment.getPixQrCode() != null &amp;&amp;</span>
+<span class="nc bnc" id="L295" title="All 2 branches missed.">                appointment.getPaymentId() != null) {</span>
+<span class="nc" id="L296">            return AppointmentResponse.fromEntity(appointment);</span>
+        }
+
+        String clientCpf;
+<span class="pc bpc" id="L300" title="1 of 4 branches missed.">        if (request != null &amp;&amp; Boolean.TRUE.equals(request.useSavedCpf())) {</span>
+<span class="fc" id="L301">            clientCpf = appointment.getClient().getCpf();</span>
+<span class="pc bpc" id="L302" title="1 of 4 branches missed.">            if (clientCpf == null || clientCpf.isBlank()) {</span>
+<span class="fc" id="L303">                throw new BadRequestException(&quot;CPF é obrigatório para gerar o PIX. Por favor, cadastre seu CPF antes de continuar.&quot;);</span>
+            }
+        } else {
+<span class="pc bpc" id="L306" title="3 of 6 branches missed.">            if (request == null || request.cpf() == null || request.cpf().isBlank()) {</span>
+<span class="nc" id="L307">                throw new BadRequestException(&quot;CPF é obrigatório para gerar o PIX. Por favor, cadastre seu CPF antes de continuar.&quot;);</span>
+            }
+<span class="fc" id="L309">            String cleanCpf = request.cpf().replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L310" title="All 2 branches covered.">            if (!CpfValidator.isValid(cleanCpf)) {</span>
+<span class="fc" id="L311">                throw new BadRequestException(&quot;CPF inválido. Por favor, insira um CPF válido.&quot;);</span>
+            }
+
+            // Persist the updated CPF to the database
+<span class="fc" id="L315">            User client = appointment.getClient();</span>
+<span class="fc" id="L316">            client.setCpf(cleanCpf);</span>
+<span class="fc" id="L317">            userRepository.save(client);</span>
+<span class="fc" id="L318">            clientCpf = cleanCpf;</span>
+        }
+
+        // Gera a cobrança na API do Mercado Pago com dados reais do cliente
+<span class="fc" id="L322">        String description = &quot;Pagamento do agendamento #&quot; + appointment.getId() + &quot; - &quot; + appointment.getSalonService().getName();</span>
+<span class="fc" id="L323">        String payerEmail = appointment.getClient().getEmail();</span>
+<span class="fc" id="L324">        String payerName = appointment.getClient().getName();</span>
+
+<span class="fc" id="L326">        Payment payment = mercadoPagoPaymentService.createPixPayment(amount, description, payerEmail, payerName, clientCpf, appointment.getId());</span>
+
+        // Extrai o &quot;Copia e Cola&quot; de dentro da resposta complexa da API
+<span class="fc" id="L329">        String qrCodeCopiaECola = payment.getPointOfInteraction().getTransactionData().getQrCode();</span>
+
+        // Salva os dados no banco e marca que está aguardando o cliente pagar
+<span class="fc" id="L332">        appointment.setPaymentId(payment.getId());</span>
+<span class="fc" id="L333">        appointment.setPixQrCode(qrCodeCopiaECola);</span>
+<span class="fc" id="L334">        appointment.setPaymentStatus(PaymentStatus.PENDING);</span>
+
+<span class="fc" id="L336">        Appointment saved = appointmentRepository.save(appointment);</span>
+<span class="fc" id="L337">        return AppointmentResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional
+    public void processPixPaymentWebhook(Long paymentId) {
+        // 1. Double-Check: Consulta o Mercado Pago
+<span class="fc" id="L343">        Payment payment = mercadoPagoPaymentService.getPayment(paymentId);</span>
+        
+        // 2. Verifica se é um pagamento real e se foi aprovado
+<span class="fc bfc" id="L346" title="All 4 branches covered.">        if (payment == null || !&quot;approved&quot;.equals(payment.getStatus())) {</span>
+<span class="fc" id="L347">            log.warn(&quot;Webhook ignorado. Pagamento {} não existe ou não está aprovado.&quot;, paymentId);</span>
+<span class="fc" id="L348">            return; </span>
+        }
+
+        // 3. Pega aquele external_reference que enviamos na hora de criar o PIX
+<span class="fc" id="L352">        Long appointmentId = Long.valueOf(payment.getExternalReference());</span>
+<span class="fc" id="L353">        Appointment appointment = appointmentRepository.findById(appointmentId).orElse(null);</span>
+
+        // 4. Se não achar o agendamento ou se já estiver pago, não faz nada (Idempotência)
+<span class="pc bpc" id="L356" title="1 of 4 branches missed.">        if (appointment == null || appointment.getPaymentStatus() == PaymentStatus.PAID) {</span>
+<span class="fc" id="L357">            return; </span>
+        }
+
+        // 5. MARCA COMO PAGO!
+<span class="fc" id="L361">        appointment.setPaymentStatus(PaymentStatus.PAID);</span>
+<span class="fc" id="L362">        appointmentRepository.save(appointment);</span>
+
+        // 6. Lança a receita no Fluxo de Caixa financeiro do salão
+<span class="fc" id="L365">        CashFlow cashFlow = new CashFlow();</span>
+<span class="fc" id="L366">        cashFlow.setType(CashFlowType.INCOME);</span>
+<span class="fc" id="L367">        cashFlow.setAmount(payment.getTransactionAmount());</span>
+<span class="fc" id="L368">        cashFlow.setDescription(&quot;Pagamento PIX do agendamento #&quot; + appointment.getId() + &quot; - &quot; + appointment.getSalonService().getName());</span>
+<span class="fc" id="L369">        cashFlow.setDate(java.time.LocalDate.now());</span>
+<span class="fc" id="L370">        cashFlow.setAppointment(appointment);</span>
+<span class="fc" id="L371">        cashFlowRepository.save(cashFlow);</span>
+        
+        try {
+<span class="fc" id="L374">            emailService.sendPaymentConfirmationNotificationToClient(appointment);</span>
+<span class="nc" id="L375">        } catch (Exception e) {</span>
+<span class="nc" id="L376">            log.error(&quot;Erro ao enviar e-mail de confirmação de pagamento (efeito colateral): {}&quot;, e.getMessage());</span>
+<span class="fc" id="L377">        }</span>
+
+        // 7. Registra no log de auditoria
+<span class="fc" id="L380">        auditLogService.logAction(</span>
+<span class="fc" id="L381">                appointment.getClient().getId(),</span>
+<span class="fc" id="L382">                appointment.getClient().getEmail(),</span>
+                &quot;PIX_PAYMENT_CONFIRMED&quot;,
+                &quot;Appointment&quot;,
+<span class="fc" id="L385">                appointment.getId(),</span>
+<span class="fc" id="L386">                &quot;Pagamento PIX do agendamento #&quot; + appointment.getId() + &quot; recebido com sucesso via webhook.&quot;,</span>
+                &quot;SUCCESS&quot;
+        );
+        
+<span class="fc" id="L390">        log.info(&quot;✅ SUCESSO! Agendamento {} marcado como PAGO e dinheiro lançado no Caixa.&quot;, appointmentId);</span>
+<span class="fc" id="L391">    }</span>
+
+    @Transactional
+    public AppointmentResponse cancel(Long id) {
+<span class="fc" id="L395">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="fc" id="L396">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+<span class="fc" id="L398">        User currentUser = getAuthenticatedUser();</span>
+<span class="fc" id="L399">        boolean isAdmin = isStaff(currentUser);</span>
+
+<span class="fc bfc" id="L401" title="All 4 branches covered.">        if (!isAdmin &amp;&amp; !appointment.getClient().getId().equals(currentUser.getId())) {</span>
+<span class="fc" id="L402">            throw new UnauthorizedException(&quot;Você não tem permissão para cancelar este agendamento&quot;);</span>
+        }
+
+        // Guard clause: estado terminal — já cancelado não pode voltar atrás
+<span class="fc bfc" id="L406" title="All 2 branches covered.">        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {</span>
+<span class="fc" id="L407">            throw new BusinessException(&quot;Agendamentos pagos ou cancelados não podem ter seu status alterado.&quot;);</span>
+        }
+
+        // Guard clause: não é possível cancelar um agendamento com pagamento confirmado sem estorno prévio
+<span class="fc bfc" id="L411" title="All 2 branches covered.">        if (appointment.getPaymentStatus() == PaymentStatus.PAID) {</span>
+<span class="fc" id="L412">            throw new BusinessException(&quot;Não é possível cancelar um agendamento que já foi pago. Realize o estorno antes de cancelar.&quot;);</span>
+        }
+
+<span class="fc bfc" id="L415" title="All 2 branches covered.">        if (appointment.getStatus() == AppointmentStatus.DONE) {</span>
+<span class="fc" id="L416">            throw new BadRequestException(&quot;Não é possível cancelar um agendamento já concluído&quot;);</span>
+        }
+
+<span class="fc bfc" id="L419" title="All 2 branches covered.">        if (appointment.getStatus() == AppointmentStatus.DECLINED) {</span>
+<span class="fc" id="L420">            throw new BadRequestException(&quot;Esta solicitação já foi recusada&quot;);</span>
+        }
+
+<span class="fc" id="L423">        appointment.setStatus(AppointmentStatus.CANCELLED);</span>
+<span class="fc" id="L424">        Appointment saved = appointmentRepository.save(appointment);</span>
+<span class="fc" id="L425">        emailService.sendCancellationNotification(saved);</span>
+<span class="fc" id="L426">        return AppointmentResponse.fromEntity(saved);</span>
+    }
+
+    @Transactional
+    public AppointmentResponse updateStatus(Long id, String statusStr) {
+<span class="fc" id="L431">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="fc" id="L432">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+        // Guard clause: estado terminal — agendamento cancelado não permite mais alterações de status
+<span class="pc bpc" id="L435" title="1 of 2 branches missed.">        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {</span>
+<span class="nc" id="L436">            throw new BusinessException(&quot;Agendamentos pagos ou cancelados não podem ter seu status alterado.&quot;);</span>
+        }
+
+        try {
+<span class="fc" id="L440">            AppointmentStatus status = AppointmentStatus.valueOf(statusStr.toUpperCase());</span>
+<span class="fc bfc" id="L441" title="All 2 branches covered.">            if (status == AppointmentStatus.REQUESTED) {</span>
+<span class="fc" id="L442">                throw new BadRequestException(&quot;Status inválido para esta operação&quot;);</span>
+            }
+<span class="fc bfc" id="L444" title="All 4 branches covered.">            if ((status == AppointmentStatus.CONFIRMED || status == AppointmentStatus.DONE)</span>
+<span class="fc bfc" id="L445" title="All 2 branches covered.">                    &amp;&amp; appointment.getScheduledAt() == null) {</span>
+<span class="fc" id="L446">                throw new BadRequestException(&quot;É necessário ter data e hora definidas neste agendamento&quot;);</span>
+            }
+
+            // Guard clause desacoplado: bloqueia alterações de status para não-DONE quando o pagamento está finalizado.
+            // Permite DONE mesmo se já pago (ex: concluir serviço após pagamento PIX confirmado).
+<span class="fc bfc" id="L451" title="All 2 branches covered.">            if (status != AppointmentStatus.DONE &amp;&amp;</span>
+<span class="fc bfc" id="L452" title="All 2 branches covered.">                    (appointment.getPaymentStatus() == PaymentStatus.PAID ||</span>
+<span class="pc bpc" id="L453" title="1 of 2 branches missed.">                     appointment.getPaymentStatus() == PaymentStatus.CANCELLED)) {</span>
+<span class="fc" id="L454">                throw new BusinessException(&quot;Agendamentos pagos ou cancelados não podem ter seu status alterado.&quot;);</span>
+            }
+
+<span class="fc" id="L457">            appointment.setStatus(status);</span>
+
+<span class="fc bfc" id="L459" title="All 2 branches covered.">            if (status == AppointmentStatus.DONE) {</span>
+<span class="fc" id="L460">                SalonService svc = appointment.getSalonService();</span>
+<span class="fc" id="L461">                BigDecimal servicePrice = svc.getPrice();</span>
+<span class="fc bfc" id="L462" title="All 4 branches covered.">                boolean shouldAutoBill = servicePrice != null &amp;&amp; servicePrice.signum() &gt; 0;</span>
+
+<span class="fc bfc" id="L464" title="All 2 branches covered.">                if (shouldAutoBill) {</span>
+<span class="fc" id="L465">                    boolean alreadyBilled = cashFlowRepository.findAll().stream()</span>
+<span class="pc bpc" id="L466" title="2 of 4 branches missed.">                            .anyMatch(cf -&gt; cf.getAppointment() != null &amp;&amp; cf.getAppointment().getId().equals(id));</span>
+
+<span class="fc bfc" id="L468" title="All 2 branches covered.">                    if (!alreadyBilled) {</span>
+<span class="fc" id="L469">                        CashFlow cashFlow = new CashFlow();</span>
+<span class="fc" id="L470">                        cashFlow.setType(CashFlowType.INCOME);</span>
+<span class="fc" id="L471">                        cashFlow.setAmount(servicePrice);</span>
+<span class="fc" id="L472">                        cashFlow.setDescription(&quot;Pagamento do agendamento #&quot; + appointment.getId() + &quot; - &quot; + svc.getName());</span>
+<span class="fc" id="L473">                        cashFlow.setDate(java.time.LocalDate.now());</span>
+<span class="fc" id="L474">                        cashFlow.setAppointment(appointment);</span>
+<span class="fc" id="L475">                        cashFlowRepository.save(cashFlow);</span>
+                    }
+                }
+            }
+
+<span class="fc" id="L480">            Appointment saved = appointmentRepository.save(appointment);</span>
+
+            // Trigger email notifications based on resulting status
+<span class="fc bfc" id="L483" title="All 2 branches covered.">            if (status == AppointmentStatus.CONFIRMED) {</span>
+<span class="fc" id="L484">                emailService.sendConfirmationNotificationToClient(saved);</span>
+<span class="pc bpc" id="L485" title="1 of 4 branches missed.">            } else if (status == AppointmentStatus.CANCELLED || status == AppointmentStatus.DECLINED) {</span>
+<span class="fc" id="L486">                emailService.sendCancellationNotification(saved);</span>
+            }
+
+<span class="fc" id="L489">            return AppointmentResponse.fromEntity(saved);</span>
+<span class="fc" id="L490">        } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L491">            throw new BadRequestException(&quot;Status inválido&quot;);</span>
+        }
+    }
+
+    @Transactional
+    public AppointmentResponse updatePaymentStatus(Long id, String paymentStatusStr) {
+<span class="pc bpc" id="L497" title="1 of 2 branches missed.">        if (!isStaff(getAuthenticatedUser())) {</span>
+<span class="nc" id="L498">            throw new UnauthorizedException(&quot;Apenas a equipe pode atualizar o status de pagamento&quot;);</span>
+        }
+
+<span class="fc" id="L501">        Appointment appointment = appointmentRepository.findById(id)</span>
+<span class="pc" id="L502">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+
+        // Guard clause: agendamento cancelado não permite mais alterações de pagamento
+<span class="pc bpc" id="L505" title="1 of 2 branches missed.">        if (appointment.getStatus() == AppointmentStatus.CANCELLED) {</span>
+<span class="nc" id="L506">            throw new BusinessException(&quot;Agendamentos pagos ou cancelados não podem ter seu status alterado.&quot;);</span>
+        }
+
+        // Guard clause: status de pagamento em estado terminal
+<span class="pc bpc" id="L510" title="1 of 2 branches missed.">        if (appointment.getPaymentStatus() == PaymentStatus.PAID ||</span>
+<span class="pc bpc" id="L511" title="1 of 2 branches missed.">                appointment.getPaymentStatus() == PaymentStatus.CANCELLED) {</span>
+<span class="nc" id="L512">            throw new BusinessException(&quot;Agendamentos pagos ou cancelados não podem ter seu status alterado.&quot;);</span>
+        }
+
+        try {
+<span class="fc" id="L516">            PaymentStatus paymentStatus = PaymentStatus.valueOf(paymentStatusStr.toUpperCase());</span>
+
+            // Apenas o Webhook do Mercado Pago tem permissão de sistema para transitar um agendamento de PENDING para PAID.
+            // O endpoint manual do admin não deve permitir essa transição sem um ID de pagamento válido.
+<span class="pc bpc" id="L520" title="2 of 4 branches missed.">            if (paymentStatus == PaymentStatus.PAID &amp;&amp; appointment.getPaymentStatus() == PaymentStatus.PENDING) {</span>
+<span class="pc bpc" id="L521" title="1 of 2 branches missed.">                if (appointment.getPaymentId() == null) {</span>
+<span class="fc" id="L522">                    throw new BusinessException(&quot;Transição manual para PAGO não permitida para agendamentos pendentes sem um ID de pagamento válido.&quot;);</span>
+                }
+            }
+
+<span class="nc" id="L526">            appointment.setPaymentStatus(paymentStatus);</span>
+
+<span class="nc bnc" id="L528" title="All 2 branches missed.">            if (paymentStatus == PaymentStatus.PAID) {</span>
+<span class="nc" id="L529">                SalonService svc = appointment.getSalonService();</span>
+<span class="nc" id="L530">                BigDecimal servicePrice = svc.getPrice();</span>
+<span class="nc bnc" id="L531" title="All 4 branches missed.">                boolean shouldAutoBill = servicePrice != null &amp;&amp; servicePrice.signum() &gt; 0;</span>
+
+<span class="nc bnc" id="L533" title="All 2 branches missed.">                if (shouldAutoBill) {</span>
+<span class="nc" id="L534">                    boolean alreadyBilled = cashFlowRepository.findAll().stream()</span>
+<span class="nc bnc" id="L535" title="All 4 branches missed.">                            .anyMatch(cf -&gt; cf.getAppointment() != null &amp;&amp; cf.getAppointment().getId().equals(id));</span>
+
+<span class="nc bnc" id="L537" title="All 2 branches missed.">                    if (!alreadyBilled) {</span>
+<span class="nc" id="L538">                        CashFlow cashFlow = new CashFlow();</span>
+<span class="nc" id="L539">                        cashFlow.setType(CashFlowType.INCOME);</span>
+<span class="nc" id="L540">                        cashFlow.setAmount(servicePrice);</span>
+<span class="nc" id="L541">                        cashFlow.setDescription(&quot;Pagamento (Confirmado Admin) do agendamento #&quot; + appointment.getId() + &quot; - &quot; + svc.getName());</span>
+<span class="nc" id="L542">                        cashFlow.setDate(java.time.LocalDate.now());</span>
+<span class="nc" id="L543">                        cashFlow.setAppointment(appointment);</span>
+<span class="nc" id="L544">                        cashFlowRepository.save(cashFlow);</span>
+                    }
+                }
+            }
+
+<span class="nc" id="L549">            Appointment saved = appointmentRepository.save(appointment);</span>
+<span class="nc" id="L550">            return AppointmentResponse.fromEntity(saved);</span>
+<span class="nc" id="L551">        } catch (IllegalArgumentException e) {</span>
+<span class="nc" id="L552">            throw new BadRequestException(&quot;Status de pagamento inválido&quot;);</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

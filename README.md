@@ -8,17 +8,64 @@ Sistema para gerenciamento de salão de beleza. Abrange operações administrati
 
 ## 🚀 Status da Entrega 1 (Requisitos Acadêmicos)
 
-O sistema cumpre os requisitos exigidos utilizando padrões modernos de desenvolvimento:
+O sistema cumpre todos os requisitos exigidos utilizando padrões modernos de desenvolvimento:
 
 - **Log de Auditoria:**
-  - **Backend:** Interceptação de requisições usando a anotação `@Auditable`. Captura IP real, User-Agent e mascara dados sensíveis (senhas, cartões) antes de salvar no banco.
+  - **Backend:** Interceptação de requisições usando a anotação `@Auditable` e filtro HTTP. Captura IP real, User-Agent e mascara dados sensíveis (senhas, cartões) antes de salvar no banco.
   - **Frontend:** Console administrativo com filtros combinados e leitor de JSON com _syntax highlighting_.
 - **Integração com Serviços Externos (Resend API & Mercado Pago):**
   - **E-mails Transacionais (Resend API):** Envio de confirmações e cancelamentos em segundo plano (`@Async`) usando templates Thymeleaf e o `RestClient` do Spring.
   - **Pagamentos via PIX (Mercado Pago API):** Geração de QR Code e Pix Copia e Cola (Checkout Transparente) com coleta JIT (Just-In-Time) de CPF (validação por Módulo 11) e Webhooks protegidos por assinatura de segurança (`x-signature` via HMAC-SHA256) para conciliação automática.
+- **Suporte a PWA (Progressive Web App):**
+  - O frontend foi construído como um PWA (Progressive Web App) utilizando `vite-plugin-pwa`. Isso permite a instalação local do aplicativo, cache inteligente de recursos estáticos com Workbox e funcionamento offline-first da interface, com estratégias *NetworkFirst* de cache para rotas públicas e feature flags.
 - **Testes de Qualidade e Cobertura Comprovável:**
-  - **Backend (JaCoCo - ~91%):** Testes unitários/integração com JUnit 5 e Mockito. O Maven está configurado para **barrar o build** se a cobertura cair abaixo de 85%.
-  - **Frontend (Vitest - ~99%):** Cobertura quase total de rotas, contextos e UI utilizando React Testing Library.
+  - **Backend (JaCoCo - Linhas: 92.78% | Instruções: 93.56% | Branches: 78.61%):** Testes unitários/integração com JUnit 5 e Mockito. Relatório de cobertura disponível em [cobertura/backend/index.html](./cobertura/backend/index.html).
+  - **Frontend (Vitest - Linhas: 99.15% | Branches: 91.87%):** Relatório de cobertura disponível em [cobertura/frontend/index.html](./cobertura/frontend/index.html).
+
+---
+
+## 📝 Log de Auditoria
+
+O sistema de auditoria registra ações críticas de gravação ou autenticação realizadas no sistema.
+
+- **O que é auditado:**
+  - Operações de escrita em entidades de negócio (criação, edição e exclusão de produtos, serviços, funcionários, clientes e agendamentos).
+  - Controle de acesso (login de usuários, geração de tokens, atualização/inativação de contas).
+  - Alterações de configurações de infraestrutura (estados das Feature Flags).
+  - Execução de pagamentos via PIX.
+- **Onde fica armazenado:**
+  - Os logs são persistidos na tabela relacional `tb_audit_log` no banco de dados.
+  - **Principais campos:** `id` (PK), `user_email` (e-mail do operador ou `GUEST`), `action` (descrição da ação/HTTP método e endpoint), `entity_type` (nome da classe/entidade afetada), `entity_id` (identificador do registro modificado), `status` (resultado da operação: `SUCCESS` ou `FAILURE`), `ip_address` (IP de origem resolvendo cabeçalhos como `X-Forwarded-For`), `user_agent` (navegador e OS do cliente), `created_at` (timestamp local de America/Recife).
+- **Como foi implementado:**
+  - **Programação Orientada a Aspectos (AOP):** Utilização da anotação customizada `@Auditable` em métodos de escrita nos controladores. O aspecto `AuditAspect` intercepta a execução, resolve o resultado (se houve sucesso ou se uma exceção foi disparada) e grava o log de forma assíncrona.
+  - **Filtro HTTP (Spring Security Filter):** O filtro `AuditRequestFilter` intercepta todas as requisições HTTP para registrar acessos a endpoints e mapear dados da requisição (IP, User-Agent, cabeçalhos).
+- **Classes e arquivos participantes:**
+  - [AuditAspect.java](./salon-back/src/main/java/com/cristiane/salon/aspect/AuditAspect.java) (Aspecto interceptor)
+  - [Auditable.java](./salon-back/src/main/java/com/cristiane/salon/aspect/Auditable.java) (Anotação de controle)
+  - [AuditRequestFilter.java](./salon-back/src/main/java/com/cristiane/salon/security/AuditRequestFilter.java) (Filtro de requisição HTTP)
+  - [AuditLogService.java](./salon-back/src/main/java/com/cristiane/salon/models/audit/AuditLogService.java) (Serviço de negócio)
+  - [AuditLog.java](./salon-back/src/main/java/com/cristiane/salon/models/audit/AuditLog.java) (Entidade JPA)
+
+---
+
+## 🔗 Integração com Serviço Externo
+
+O sistema integra-se com serviços de e-mail e gateways de pagamento em produção.
+
+- **Serviços Externos Utilizados:**
+  1. **Resend API:** Envio de e-mails transacionais (solicitações, confirmações e cancelamentos de agendamento).
+  2. **Mercado Pago API (PIX):** Checkout transparente para geração JIT de chaves PIX (cópia e cola) e QR Codes, além de recepção de Webhooks para atualização automatizada do status da reserva.
+- **Para que são usados:**
+  - O **Resend** envia notificações automáticas em segundo plano aos clientes e administradores em eventos chave da agenda.
+  - O **Mercado Pago** gerencia a cobrança de reservas, garantindo conciliação bancária imediata e conciliação segura via Webhooks.
+- **Como são configurados (Variáveis de Ambiente):**
+  - `MAIL_API_URL` e `MAIL_PASSWORD` (API Key do Resend).
+  - `MP_ACCESS_TOKEN` (Access Token da conta do Mercado Pago).
+  - `MP_WEBHOOK_SECRET` (Chave de criptografia secreta usada para validar a assinatura `x-signature` das requisições via HMAC-SHA256).
+- **Classes e arquivos participantes:**
+  - [EmailService.java](./salon-back/src/main/java/com/cristiane/salon/integrations/email/service/EmailService.java) (Integração Resend)
+  - [MercadoPagoPaymentService.java](./salon-back/src/main/java/com/cristiane/salon/integrations/payment/service/MercadoPagoPaymentService.java) (Comunicação com SDK Mercado Pago e assinatura digital)
+  - [MercadoPagoWebhookController.java](./salon-back/src/main/java/com/cristiane/salon/integrations/payment/controller/MercadoPagoWebhookController.java) (Endpoint de retorno e conciliação do PIX)
 
 ---
 

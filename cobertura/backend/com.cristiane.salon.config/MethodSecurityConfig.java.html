@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MethodSecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config</a> &gt; <span class="el_source">MethodSecurityConfig.java</span></div><h1>MethodSecurityConfig.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+
+/**
+ * Configuração de segurança de método para habilitar as anotações {@code @PreAuthorize}.
+ * 
+ * Padrão de Autorização Adotado:
+ * - A autorização de endpoints/métodos de serviço é realizada de forma customizada via expressões SpEL
+ *   em anotações, como por exemplo: {@code @PreAuthorize(&quot;@verifyUserPermissions.userOwnResourceOrHasPermission(#id)&quot;)}.
+ * - O bean {@code verifyUserPermissions} (da classe {@link com.cristiane.salon.security.VerifyUserPermissions})
+ *   avalia e resolve dinamicamente se o acesso deve ser permitido:
+ *   1. Permite acesso total para as roles {@code ROLE_SYSADMIN} e {@code ROLE_ADMIN} (com restrições específicas para rotas sysadmin/audit).
+ *   2. Valida se o usuário logado é dono do recurso (comparando o ID do usuário autenticado com o ID informado no recurso).
+ *   3. Delega a verificação de permissões dinâmicas associadas ao método HTTP e endpoint da requisição atual 
+ *      através do {@link com.cristiane.salon.security.CustomPermissionEvaluator}.
+ * 
+ * Nota: O mecanismo de {@code PermissionEvaluator} padrão do Spring Security (usando expressões {@code hasPermission(...)})
+ * não é utilizado nesta arquitetura, em favor do padrão customizado e centralizado. Portanto, a classe
+ * {@code EntityPermissionEvaluator} foi completamente removida como código morto.
+ */
+@Configuration
+@EnableMethodSecurity
+<span class="fc" id="L25">public class MethodSecurityConfig {</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

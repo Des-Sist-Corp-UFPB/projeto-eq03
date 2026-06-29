@@ -1,0 +1,255 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmailService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.integrations.email.service</a> &gt; <span class="el_source">EmailService.java</span></div><h1>EmailService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.integrations.email.service;
+
+import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.MediaType;
+import org.springframework.scheduling.annotation.Async;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import org.thymeleaf.TemplateEngine;
+import org.thymeleaf.context.Context;
+
+import java.util.Map;
+
+<span class="fc" id="L18">@Slf4j</span>
+@Service
+@RequiredArgsConstructor
+public class EmailService {
+
+    private final FeatureFlagService featureFlagService;
+    private final TemplateEngine templateEngine;
+    private final AuditLogService auditLogService;
+
+    @Value(&quot;${mail.password}&quot;)
+    private String apiKey;
+
+    @Value(&quot;${mail.from:notificacoes@elksandro.com}&quot;)
+    private String fromEmail;
+
+    @Value(&quot;${mail.business:elksandrosandro19@gmail.com}&quot;)
+    private String businessEmail;
+
+    @Value(&quot;${mail.api-url}&quot;)
+    private String apiUrl;
+
+    private void sendViaHttpApi(String to, String subject, String htmlContent, String replyTo) {
+<span class="fc" id="L40">        RestClient restClient = RestClient.create(apiUrl);</span>
+
+<span class="fc" id="L42">        Map&lt;String, Object&gt; payload = Map.of(</span>
+                &quot;from&quot;, &quot;Cristiane Salon &lt;&quot; + fromEmail + &quot;&gt;&quot;,
+                &quot;to&quot;, new String[]{to},
+                &quot;subject&quot;, subject,
+                &quot;html&quot;, htmlContent,
+                &quot;reply_to&quot;, replyTo
+        );
+
+<span class="fc" id="L50">        restClient.post()</span>
+<span class="fc" id="L51">                .uri(&quot;/emails&quot;)</span>
+<span class="fc" id="L52">                .header(&quot;Authorization&quot;, &quot;Bearer &quot; + apiKey)</span>
+<span class="fc" id="L53">                .contentType(MediaType.APPLICATION_JSON)</span>
+<span class="fc" id="L54">                .body(payload)</span>
+<span class="fc" id="L55">                .retrieve()</span>
+<span class="fc" id="L56">                .toBodilessEntity();</span>
+<span class="fc" id="L57">    }</span>
+
+    @Async
+    public void sendRequestNotificationToStaff(Appointment appointment) {
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        if (!featureFlagService.isEnabled(&quot;EMAIL_NOTIFICATIONS&quot;)) {</span>
+<span class="fc" id="L62">            log.info(&quot;Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).&quot;);</span>
+<span class="fc" id="L63">            return;</span>
+        }
+
+        try {
+<span class="fc" id="L67">            Context context = new Context();</span>
+<span class="fc" id="L68">            context.setVariable(&quot;appointment&quot;, appointment);</span>
+<span class="fc" id="L69">            String htmlContent = templateEngine.process(&quot;mail/appointment-request&quot;, context);</span>
+
+<span class="fc" id="L71">            sendViaHttpApi(businessEmail, &quot;Novo Pedido de Agendamento Recebido&quot;, htmlContent, businessEmail);</span>
+<span class="fc" id="L72">            log.info(&quot;E-mail de notificação de solicitação enviado com sucesso para a equipe.&quot;);</span>
+
+<span class="fc" id="L74">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="fc" id="L79">                    appointment.getId(),</span>
+                    &quot;E-mail de solicitação de agendamento enviado para a equipe (&quot; + businessEmail + &quot;)&quot;,
+                    &quot;SUCCESS&quot;);
+<span class="fc" id="L82">        } catch (Exception e) {</span>
+<span class="fc" id="L83">            log.warn(&quot;Falha ao enviar e-mail de solicitação para a equipe: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L84">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="fc" id="L89">                    appointment.getId(),</span>
+                    &quot;Falha ao enviar e-mail de solicitação de agendamento para a equipe (&quot; + businessEmail + &quot;)&quot;,
+                    &quot;FAILURE&quot;,
+<span class="fc" id="L92">                    e.getMessage());</span>
+<span class="fc" id="L93">        }</span>
+<span class="fc" id="L94">    }</span>
+
+    @Async
+    public void sendConfirmationNotificationToClient(Appointment appointment) {
+<span class="fc bfc" id="L98" title="All 2 branches covered.">        if (!featureFlagService.isEnabled(&quot;EMAIL_NOTIFICATIONS&quot;)) {</span>
+<span class="fc" id="L99">            log.info(&quot;Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).&quot;);</span>
+<span class="fc" id="L100">            return;</span>
+        }
+
+<span class="fc" id="L103">        String clientEmail = appointment.getClient().getEmail();</span>
+<span class="fc bfc" id="L104" title="All 4 branches covered.">        if (clientEmail == null || clientEmail.trim().isEmpty()) {</span>
+<span class="fc" id="L105">            log.info(&quot;Cliente não possui e-mail cadastrado.&quot;);</span>
+<span class="fc" id="L106">            return;</span>
+        }
+
+        try {
+<span class="fc" id="L110">            Context context = new Context();</span>
+<span class="fc" id="L111">            context.setVariable(&quot;appointment&quot;, appointment);</span>
+<span class="fc" id="L112">            String htmlContent = templateEngine.process(&quot;mail/appointment-confirmation&quot;, context);</span>
+
+<span class="fc" id="L114">            sendViaHttpApi(clientEmail, &quot;Seu Agendamento foi Confirmado!&quot;, htmlContent, businessEmail);</span>
+<span class="fc" id="L115">            log.info(&quot;E-mail de confirmação enviado com sucesso para: {}&quot;, clientEmail);</span>
+
+<span class="fc" id="L117">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="fc" id="L122">                    appointment.getId(),</span>
+                    &quot;E-mail de confirmação de agendamento enviado para: &quot; + clientEmail,
+                    &quot;SUCCESS&quot;);
+<span class="fc" id="L125">        } catch (Exception e) {</span>
+<span class="fc" id="L126">            log.warn(&quot;Falha ao enviar e-mail de confirmação para o cliente {}: {}&quot;, clientEmail, e.getMessage());</span>
+<span class="fc" id="L127">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="fc" id="L132">                    appointment.getId(),</span>
+                    &quot;Falha ao enviar e-mail de confirmação para: &quot; + clientEmail,
+                    &quot;FAILURE&quot;,
+<span class="fc" id="L135">                    e.getMessage());</span>
+<span class="fc" id="L136">        }</span>
+<span class="fc" id="L137">    }</span>
+
+    @Async
+    public void sendPaymentConfirmationNotificationToClient(Appointment appointment) {
+<span class="nc bnc" id="L141" title="All 2 branches missed.">        if (!featureFlagService.isEnabled(&quot;EMAIL_NOTIFICATIONS&quot;)) {</span>
+<span class="nc" id="L142">            log.info(&quot;Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).&quot;);</span>
+<span class="nc" id="L143">            return;</span>
+        }
+
+<span class="nc" id="L146">        String clientEmail = appointment.getClient().getEmail();</span>
+<span class="nc bnc" id="L147" title="All 4 branches missed.">        if (clientEmail == null || clientEmail.trim().isEmpty()) {</span>
+<span class="nc" id="L148">            log.info(&quot;Cliente não possui e-mail cadastrado.&quot;);</span>
+<span class="nc" id="L149">            return;</span>
+        }
+
+        try {
+<span class="nc" id="L153">            Context context = new Context();</span>
+<span class="nc" id="L154">            context.setVariable(&quot;appointment&quot;, appointment);</span>
+<span class="nc" id="L155">            String htmlContent = templateEngine.process(&quot;mail/payment-confirmation&quot;, context);</span>
+
+<span class="nc" id="L157">            sendViaHttpApi(clientEmail, &quot;Pagamento Recebido e Confirmado!&quot;, htmlContent, businessEmail);</span>
+<span class="nc" id="L158">            log.info(&quot;E-mail de confirmação de pagamento enviado com sucesso para: {}&quot;, clientEmail);</span>
+
+<span class="nc" id="L160">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="nc" id="L165">                    appointment.getId(),</span>
+                    &quot;E-mail de confirmação de pagamento enviado para: &quot; + clientEmail,
+                    &quot;SUCCESS&quot;);
+<span class="nc" id="L168">        } catch (Exception e) {</span>
+<span class="nc" id="L169">            log.warn(&quot;Falha ao enviar e-mail de confirmação de pagamento para o cliente {}: {}&quot;, clientEmail, e.getMessage());</span>
+<span class="nc" id="L170">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="nc" id="L175">                    appointment.getId(),</span>
+                    &quot;Falha ao enviar e-mail de confirmação de pagamento para: &quot; + clientEmail,
+                    &quot;FAILURE&quot;,
+<span class="nc" id="L178">                    e.getMessage());</span>
+<span class="nc" id="L179">        }</span>
+<span class="nc" id="L180">    }</span>
+
+    @Async
+    public void sendCancellationNotification(Appointment appointment) {
+<span class="fc bfc" id="L184" title="All 2 branches covered.">        if (!featureFlagService.isEnabled(&quot;EMAIL_NOTIFICATIONS&quot;)) {</span>
+<span class="fc" id="L185">            log.info(&quot;Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).&quot;);</span>
+<span class="fc" id="L186">            return;</span>
+        }
+
+        // Notify client
+<span class="fc" id="L190">        String clientEmail = appointment.getClient().getEmail();</span>
+<span class="pc bpc" id="L191" title="1 of 4 branches missed.">        if (clientEmail != null &amp;&amp; !clientEmail.trim().isEmpty()) {</span>
+            try {
+<span class="fc" id="L193">                Context context = new Context();</span>
+<span class="fc" id="L194">                context.setVariable(&quot;appointment&quot;, appointment);</span>
+<span class="fc" id="L195">                context.setVariable(&quot;isStaff&quot;, false);</span>
+<span class="fc" id="L196">                String htmlContent = templateEngine.process(&quot;mail/appointment-cancellation&quot;, context);</span>
+
+<span class="fc" id="L198">                sendViaHttpApi(clientEmail, &quot;Agendamento Cancelado&quot;, htmlContent, businessEmail);</span>
+<span class="fc" id="L199">                log.info(&quot;E-mail de cancelamento enviado com sucesso para o cliente: {}&quot;, clientEmail);</span>
+
+<span class="fc" id="L201">                auditLogService.logAction(</span>
+                        null,
+                        &quot;SYSTEM&quot;,
+                        &quot;EMAIL_SENT&quot;,
+                        &quot;Appointment&quot;,
+<span class="fc" id="L206">                        appointment.getId(),</span>
+                        &quot;E-mail de cancelamento de agendamento enviado para o cliente: &quot; + clientEmail,
+                        &quot;SUCCESS&quot;);
+<span class="fc" id="L209">            } catch (Exception e) {</span>
+<span class="fc" id="L210">                log.warn(&quot;Falha ao enviar e-mail de cancelamento para o cliente {}: {}&quot;, clientEmail, e.getMessage());</span>
+<span class="fc" id="L211">                auditLogService.logAction(</span>
+                        null,
+                        &quot;SYSTEM&quot;,
+                        &quot;EMAIL_SENT&quot;,
+                        &quot;Appointment&quot;,
+<span class="fc" id="L216">                        appointment.getId(),</span>
+                        &quot;Falha ao enviar e-mail de cancelamento para o cliente: &quot; + clientEmail,
+                        &quot;FAILURE&quot;,
+<span class="fc" id="L219">                        e.getMessage());</span>
+<span class="fc" id="L220">            }</span>
+        }
+
+        // Notify staff/admin
+        try {
+<span class="fc" id="L225">            Context context = new Context();</span>
+<span class="fc" id="L226">            context.setVariable(&quot;appointment&quot;, appointment);</span>
+<span class="fc" id="L227">            context.setVariable(&quot;isStaff&quot;, true);</span>
+<span class="fc" id="L228">            String htmlContent = templateEngine.process(&quot;mail/appointment-cancellation&quot;, context);</span>
+
+<span class="fc" id="L230">            sendViaHttpApi(businessEmail, &quot;Agendamento Cancelado&quot;, htmlContent, businessEmail);</span>
+<span class="fc" id="L231">            log.info(&quot;E-mail de cancelamento enviado com sucesso para a equipe.&quot;);</span>
+
+<span class="fc" id="L233">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="fc" id="L238">                    appointment.getId(),</span>
+                    &quot;E-mail de cancelamento de agendamento enviado para a equipe (&quot; + businessEmail + &quot;)&quot;,
+                    &quot;SUCCESS&quot;);
+<span class="fc" id="L241">        } catch (Exception e) {</span>
+<span class="fc" id="L242">            log.warn(&quot;Falha ao enviar e-mail de cancelamento para a equipe: {}&quot;, e.getMessage());</span>
+<span class="fc" id="L243">            auditLogService.logAction(</span>
+                    null,
+                    &quot;SYSTEM&quot;,
+                    &quot;EMAIL_SENT&quot;,
+                    &quot;Appointment&quot;,
+<span class="fc" id="L248">                    appointment.getId(),</span>
+                    &quot;Falha ao enviar e-mail de cancelamento para a equipe (&quot; + businessEmail + &quot;)&quot;,
+                    &quot;FAILURE&quot;,
+<span class="fc" id="L251">                    e.getMessage());</span>
+<span class="fc" id="L252">        }</span>
+<span class="fc" id="L253">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>BeanConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config</a> &gt; <span class="el_source">BeanConfig.java</span></div><h1>BeanConfig.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config;
+
+import com.cristiane.salon.security.SecurityUserDetailsService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+
+import java.io.IOException;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+
+@Configuration
+@RequiredArgsConstructor
+public class BeanConfig {
+
+    private final SecurityUserDetailsService userDetailsService;
+
+    @Bean
+    public AuthenticationProvider authenticationProvider() {
+<span class="fc" id="L30">        DaoAuthenticationProvider authProvider = new DaoAuthenticationProvider(userDetailsService);</span>
+<span class="fc" id="L31">        authProvider.setPasswordEncoder(passwordEncoder());</span>
+<span class="fc" id="L32">        return authProvider;</span>
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+<span class="fc" id="L37">        return config.getAuthenticationManager();</span>
+    }
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+<span class="fc" id="L42">        return new BCryptPasswordEncoder();</span>
+    }
+
+    // Jackson 2.x ObjectMapper for legacy components dependency injection
+    @Bean
+    public ObjectMapper objectMapper() {
+<span class="fc" id="L48">        ObjectMapper mapper = new ObjectMapper();</span>
+<span class="fc" id="L49">        com.fasterxml.jackson.databind.module.SimpleModule module = new com.fasterxml.jackson.databind.module.SimpleModule();</span>
+        
+<span class="fc" id="L51">        module.addSerializer(LocalDateTime.class, new com.fasterxml.jackson.databind.JsonSerializer&lt;LocalDateTime&gt;() {</span>
+<span class="fc" id="L52">            private static final ZoneId UTC = ZoneId.of(&quot;UTC&quot;);</span>
+<span class="fc" id="L53">            private static final ZoneId RECIFE = ZoneId.of(&quot;America/Recife&quot;);</span>
+<span class="fc" id="L54">            private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ss&quot;);</span>
+
+            @Override
+            public void serialize(LocalDateTime value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws IOException {
+<span class="nc bnc" id="L58" title="All 2 branches missed.">                if (value != null) {</span>
+<span class="nc" id="L59">                    ZonedDateTime utcDateTime = value.atZone(UTC);</span>
+<span class="nc" id="L60">                    ZonedDateTime recifeDateTime = utcDateTime.withZoneSameInstant(RECIFE);</span>
+<span class="nc" id="L61">                    gen.writeString(recifeDateTime.toLocalDateTime().format(FORMATTER));</span>
+                }
+<span class="nc" id="L63">            }</span>
+        });
+
+<span class="fc" id="L66">        module.addSerializer(Instant.class, new com.fasterxml.jackson.databind.JsonSerializer&lt;Instant&gt;() {</span>
+<span class="fc" id="L67">            private static final ZoneId RECIFE = ZoneId.of(&quot;America/Recife&quot;);</span>
+<span class="fc" id="L68">            private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ssXXX&quot;);</span>
+
+            @Override
+            public void serialize(Instant value, com.fasterxml.jackson.core.JsonGenerator gen, com.fasterxml.jackson.databind.SerializerProvider serializers) throws IOException {
+<span class="nc bnc" id="L72" title="All 2 branches missed.">                if (value != null) {</span>
+<span class="nc" id="L73">                    ZonedDateTime recifeDateTime = value.atZone(RECIFE);</span>
+<span class="nc" id="L74">                    gen.writeString(recifeDateTime.format(FORMATTER));</span>
+                }
+<span class="nc" id="L76">            }</span>
+        });
+        
+<span class="fc" id="L79">        mapper.registerModule(module);</span>
+<span class="fc" id="L80">        return mapper;</span>
+    }
+
+    // Jackson 3.x JacksonModule to format java.time classes globally in Spring Boot 4.x
+    @Bean
+    public tools.jackson.databind.JacksonModule customTimeModule() {
+<span class="fc" id="L86">        tools.jackson.databind.module.SimpleModule module = new tools.jackson.databind.module.SimpleModule();</span>
+        
+<span class="fc" id="L88">        module.addSerializer(LocalDateTime.class, new tools.jackson.databind.ValueSerializer&lt;LocalDateTime&gt;() {</span>
+<span class="fc" id="L89">            private static final ZoneId UTC = ZoneId.of(&quot;UTC&quot;);</span>
+<span class="fc" id="L90">            private static final ZoneId RECIFE = ZoneId.of(&quot;America/Recife&quot;);</span>
+<span class="fc" id="L91">            private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ss&quot;);</span>
+
+            @Override
+            public void serialize(LocalDateTime value, tools.jackson.core.JsonGenerator gen, tools.jackson.databind.SerializationContext serializers) {
+<span class="nc bnc" id="L95" title="All 2 branches missed.">                if (value != null) {</span>
+<span class="nc" id="L96">                    ZonedDateTime utcDateTime = value.atZone(UTC);</span>
+<span class="nc" id="L97">                    ZonedDateTime recifeDateTime = utcDateTime.withZoneSameInstant(RECIFE);</span>
+<span class="nc" id="L98">                    gen.writeString(recifeDateTime.toLocalDateTime().format(FORMATTER));</span>
+                }
+<span class="nc" id="L100">            }</span>
+        });
+
+<span class="fc" id="L103">        module.addSerializer(Instant.class, new tools.jackson.databind.ValueSerializer&lt;Instant&gt;() {</span>
+<span class="fc" id="L104">            private static final ZoneId RECIFE = ZoneId.of(&quot;America/Recife&quot;);</span>
+<span class="fc" id="L105">            private static final DateTimeFormatter FORMATTER = DateTimeFormatter.ofPattern(&quot;yyyy-MM-dd'T'HH:mm:ssXXX&quot;);</span>
+
+            @Override
+            public void serialize(Instant value, tools.jackson.core.JsonGenerator gen, tools.jackson.databind.SerializationContext serializers) {
+<span class="nc bnc" id="L109" title="All 2 branches missed.">                if (value != null) {</span>
+<span class="nc" id="L110">                    ZonedDateTime recifeDateTime = value.atZone(RECIFE);</span>
+<span class="nc" id="L111">                    gen.writeString(recifeDateTime.format(FORMATTER));</span>
+                }
+<span class="nc" id="L113">            }</span>
+        });
+
+<span class="fc" id="L116">        return module;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

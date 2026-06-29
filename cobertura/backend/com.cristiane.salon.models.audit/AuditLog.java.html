@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditLog.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.audit</a> &gt; <span class="el_source">AuditLog.java</span></div><h1>AuditLog.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.audit;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Table(name = &quot;tb_audit_log&quot;, indexes = {
+        @Index(name = &quot;idx_user_id&quot;, columnList = &quot;user_id&quot;),
+        @Index(name = &quot;idx_action&quot;, columnList = &quot;action&quot;),
+        @Index(name = &quot;idx_created_at&quot;, columnList = &quot;created_at&quot;)
+})
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class AuditLog {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @Column(name = &quot;user_id&quot;)
+    private Long userId;
+    
+    @Column(name = &quot;user_email&quot;)
+    private String userEmail;
+    
+    @Column(name = &quot;action&quot;, nullable = false, length = 100)
+    private String action; // CREATE, UPDATE, DELETE, LOGIN, LOGOUT, etc
+    
+    @Column(name = &quot;entity_type&quot;, nullable = false, length = 100)
+    private String entityType; // User, Appointment, Service, etc
+    
+    @Column(name = &quot;entity_id&quot;)
+    private Long entityId;
+    
+    @Column(name = &quot;details&quot;, columnDefinition = &quot;TEXT&quot;)
+    private String details; // JSON with changes or additional info
+    
+    @Column(name = &quot;ip_address&quot;, length = 45)
+    private String ipAddress;
+    
+    @Column(name = &quot;user_agent&quot;)
+    private String userAgent;
+    
+    @Column(name = &quot;status&quot;, nullable = false, length = 20)
+    private String status; // SUCCESS, FAILURE
+    
+    @Column(name = &quot;error_message&quot;)
+    private String errorMessage;
+    
+    @Column(name = &quot;created_at&quot;, nullable = false)
+    private LocalDateTime createdAt;
+    
+    @PrePersist
+    protected void onCreate() {
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (createdAt == null) {</span>
+<span class="fc" id="L63">            createdAt = LocalDateTime.now();</span>
+        }
+<span class="fc" id="L65">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

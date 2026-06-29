@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CashFlowService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.cashflow.service</a> &gt; <span class="el_source">CashFlowService.java</span></div><h1>CashFlowService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.cashflow.service;
+
+import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.cristiane.salon.models.cashflow.dto.CashFlowRequest;
+import com.cristiane.salon.models.cashflow.dto.CashFlowResponse;
+import com.cristiane.salon.models.cashflow.dto.CashFlowItemRequest;
+import com.cristiane.salon.models.cashflow.entity.CashFlow;
+import com.cristiane.salon.models.cashflow.enums.CashFlowType;
+import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
+import com.cristiane.salon.models.product.entity.Product;
+import com.cristiane.salon.models.product.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class CashFlowService {
+
+    private final CashFlowRepository cashFlowRepository;
+    private final AppointmentRepository appointmentRepository;
+    private final ProductRepository productRepository;
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
+
+    @Transactional(readOnly = true)
+    public List&lt;CashFlowResponse&gt; findByPeriod(LocalDate from, LocalDate to) {
+<span class="fc bfc" id="L39" title="All 2 branches covered.">        if (from == null) from = LocalDate.now().withDayOfMonth(1);</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        if (to == null) to = LocalDate.now().plusDays(30);</span>
+
+<span class="fc" id="L42">        return cashFlowRepository.findByDateBetween(from, to).stream()</span>
+<span class="fc" id="L43">                .map(CashFlowResponse::fromEntity)</span>
+<span class="fc" id="L44">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional
+    public CashFlowResponse create(CashFlowRequest request) {
+<span class="fc" id="L49">        CashFlow cashFlow = new CashFlow();</span>
+
+<span class="pc bpc" id="L51" title="1 of 4 branches missed.">        if (request.items() != null &amp;&amp; !request.items().isEmpty()) {</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">            if (!&quot;INCOME&quot;.equalsIgnoreCase(request.type())) {</span>
+<span class="fc" id="L53">                throw new BadRequestException(&quot;Venda de produtos deve ser um registro de entrada (INCOME).&quot;);</span>
+            }
+<span class="fc" id="L55">            cashFlow.setType(CashFlowType.INCOME);</span>
+
+<span class="fc" id="L57">            BigDecimal totalAmount = BigDecimal.ZERO;</span>
+<span class="fc" id="L58">            List&lt;String&gt; itemDescriptions = new ArrayList&lt;&gt;();</span>
+
+<span class="fc bfc" id="L60" title="All 2 branches covered.">            for (CashFlowItemRequest item : request.items()) {</span>
+<span class="fc" id="L61">                Product product = productRepository.findById(item.productId())</span>
+<span class="fc" id="L62">                        .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Produto com ID &quot; + item.productId() + &quot; não encontrado.&quot;));</span>
+
+<span class="pc bpc" id="L64" title="1 of 4 branches missed.">                if (product.getActive() == null || !product.getActive()) {</span>
+<span class="fc" id="L65">                    throw new BadRequestException(&quot;Produto '&quot; + product.getName() + &quot;' não está ativo.&quot;);</span>
+                }
+
+<span class="fc bfc" id="L68" title="All 4 branches covered.">                if (product.getStock() == null || product.getStock() &lt; item.quantity()) {</span>
+<span class="fc" id="L69">                    throw new BadRequestException(&quot;Estoque insuficiente para o produto: &quot; + product.getName() +</span>
+<span class="fc bfc" id="L70" title="All 2 branches covered.">                            &quot; (Solicitado: &quot; + item.quantity() + &quot;, Disponível: &quot; + (product.getStock() != null ? product.getStock() : 0) + &quot;)&quot;);</span>
+                }
+
+<span class="fc" id="L73">                product.setStock(product.getStock() - item.quantity());</span>
+<span class="fc" id="L74">                productRepository.save(product);</span>
+
+<span class="fc" id="L76">                BigDecimal itemTotal = product.getPrice().multiply(BigDecimal.valueOf(item.quantity()));</span>
+<span class="fc" id="L77">                totalAmount = totalAmount.add(itemTotal);</span>
+
+<span class="fc" id="L79">                itemDescriptions.add(item.quantity() + &quot;x &quot; + product.getName());</span>
+<span class="fc" id="L80">            }</span>
+
+<span class="fc" id="L82">            cashFlow.setAmount(totalAmount);</span>
+
+<span class="fc" id="L84">            String itemsSummary = String.join(&quot;, &quot;, itemDescriptions);</span>
+<span class="fc" id="L85">            String desc = request.description();</span>
+<span class="pc bpc" id="L86" title="3 of 8 branches missed.">            if (desc == null || desc.trim().isEmpty() || desc.equalsIgnoreCase(&quot;Venda de Produtos&quot;) || desc.equalsIgnoreCase(&quot;Venda de Produto&quot;)) {</span>
+<span class="fc" id="L87">                cashFlow.setDescription(&quot;Venda de Produtos: &quot; + itemsSummary);</span>
+            } else {
+<span class="fc" id="L89">                cashFlow.setDescription(desc + &quot; (&quot; + itemsSummary + &quot;)&quot;);</span>
+            }
+
+<span class="fc" id="L92">            cashFlow.setDate(request.date());</span>
+<span class="fc" id="L93">        } else {</span>
+            try {
+<span class="fc" id="L95">                cashFlow.setType(CashFlowType.valueOf(request.type().toUpperCase()));</span>
+<span class="fc" id="L96">            } catch (IllegalArgumentException e) {</span>
+<span class="fc" id="L97">                throw new BadRequestException(&quot;Tipo de fluxo de caixa inválido. Use INCOME ou EXPENSE.&quot;);</span>
+<span class="fc" id="L98">            }</span>
+<span class="fc" id="L99">            cashFlow.setAmount(request.amount());</span>
+<span class="fc" id="L100">            cashFlow.setDescription(request.description());</span>
+<span class="fc" id="L101">            cashFlow.setDate(request.date());</span>
+
+<span class="fc bfc" id="L103" title="All 2 branches covered.">            if (request.appointmentId() != null) {</span>
+<span class="fc" id="L104">                Appointment appointment = appointmentRepository.findById(request.appointmentId())</span>
+<span class="fc" id="L105">                        .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Agendamento não encontrado&quot;));</span>
+<span class="fc" id="L106">                cashFlow.setAppointment(appointment);</span>
+            }
+        }
+
+<span class="fc" id="L110">        CashFlowResponse response = CashFlowResponse.fromEntity(cashFlowRepository.save(cashFlow));</span>
+
+        // Audit Log manual
+        try {
+<span class="pc bpc" id="L114" title="1 of 4 branches missed.">            String action = (request.items() != null &amp;&amp; !request.items().isEmpty()) </span>
+<span class="fc" id="L115">                ? &quot;PRODUCT_SALE_REGISTERED&quot; </span>
+<span class="fc" id="L116">                : &quot;CASHFLOW_ENTRY_CREATED&quot;;</span>
+                
+<span class="fc" id="L118">            Long userId = null;</span>
+<span class="fc" id="L119">            String userEmail = &quot;SYSTEM&quot;;</span>
+<span class="fc" id="L120">            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L121" title="All 2 branches covered.">            if (auth != null) {</span>
+<span class="fc" id="L122">                userEmail = auth.getName();</span>
+<span class="pc bpc" id="L123" title="1 of 2 branches missed.">                if (auth.getPrincipal() instanceof com.cristiane.salon.models.user.entity.User user) {</span>
+<span class="fc" id="L124">                    userId = user.getId();</span>
+                }
+            }
+            
+<span class="fc" id="L128">            String details = null;</span>
+            try {
+<span class="nc" id="L130">                details = objectMapper.writeValueAsString(request);</span>
+<span class="pc" id="L131">            } catch (Exception ignored) {}</span>
+            
+<span class="fc" id="L133">            auditLogService.logAction(</span>
+                    userId,
+                    userEmail,
+                    action,
+                    &quot;CashFlow&quot;,
+<span class="fc" id="L138">                    response.id(),</span>
+                    details,
+                    &quot;SUCCESS&quot;
+            );
+<span class="fc" id="L142">        } catch (Exception e) {</span>
+            // Log silenciosamente
+<span class="fc" id="L144">        }</span>
+
+<span class="fc" id="L146">        return response;</span>
+    }
+
+    @Transactional
+    public void delete(Long id) {
+<span class="fc bfc" id="L151" title="All 2 branches covered.">        if (!cashFlowRepository.existsById(id)) {</span>
+<span class="fc" id="L152">            throw new ResourceNotFoundException(&quot;Registro não encontrado&quot;);</span>
+        }
+<span class="fc" id="L154">        cashFlowRepository.deleteById(id);</span>
+<span class="fc" id="L155">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

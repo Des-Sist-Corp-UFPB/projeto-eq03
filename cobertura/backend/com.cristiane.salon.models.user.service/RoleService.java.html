@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RoleService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.user.service</a> &gt; <span class="el_source">RoleService.java</span></div><h1>RoleService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.user.service;
+
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.user.dto.PermissionResponse;
+import com.cristiane.salon.models.user.dto.RolePermissionsResponse;
+import com.cristiane.salon.models.user.entity.Permission;
+import com.cristiane.salon.models.user.entity.Role;
+import com.cristiane.salon.models.user.repository.PermissionRepository;
+import com.cristiane.salon.models.user.repository.RoleRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class RoleService {
+
+    private final RoleRepository roleRepository;
+    private final PermissionRepository permissionRepository;
+
+    /**
+     * Retorna todos os Roles com suas permissões associadas.
+     * Utilizado pelo painel RBAC do SYSADMIN.
+     */
+    @Transactional(readOnly = true)
+    public List&lt;RolePermissionsResponse&gt; findAllRolesWithPermissions() {
+<span class="fc" id="L31">        return roleRepository.findAll().stream()</span>
+<span class="fc" id="L32">                .map(this::toRolePermissionsResponse)</span>
+<span class="fc" id="L33">                .collect(Collectors.toList());</span>
+    }
+
+    /**
+     * Retorna todas as permissões disponíveis no sistema.
+     */
+    @Transactional(readOnly = true)
+    public List&lt;PermissionResponse&gt; findAllPermissions() {
+<span class="fc" id="L41">        return permissionRepository.findAll().stream()</span>
+<span class="fc" id="L42">                .map(this::toPermissionResponse)</span>
+<span class="fc" id="L43">                .collect(Collectors.toList());</span>
+    }
+
+    /**
+     * Concede uma permissão a um role.
+     * Idempotente: não lança erro se a permissão já estiver associada.
+     */
+    @Transactional
+    public RolePermissionsResponse grantPermission(Long roleId, Long permissionId) {
+<span class="fc" id="L52">        Role role = roleRepository.findById(roleId)</span>
+<span class="fc" id="L53">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Role não encontrada&quot;));</span>
+
+<span class="fc" id="L55">        Permission permission = permissionRepository.findById(permissionId)</span>
+<span class="fc" id="L56">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Permissão não encontrada&quot;));</span>
+
+<span class="fc" id="L58">        role.getPermissions().add(permission);</span>
+<span class="fc" id="L59">        Role saved = roleRepository.save(role);</span>
+<span class="fc" id="L60">        return toRolePermissionsResponse(saved);</span>
+    }
+
+    /**
+     * Revoga uma permissão de um role.
+     */
+    @Transactional
+    public RolePermissionsResponse revokePermission(Long roleId, Long permissionId) {
+<span class="fc" id="L68">        Role role = roleRepository.findById(roleId)</span>
+<span class="fc" id="L69">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Role não encontrada&quot;));</span>
+
+<span class="fc" id="L71">        Permission permission = permissionRepository.findById(permissionId)</span>
+<span class="fc" id="L72">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Permissão não encontrada&quot;));</span>
+
+<span class="fc" id="L74">        role.getPermissions().remove(permission);</span>
+<span class="fc" id="L75">        Role saved = roleRepository.save(role);</span>
+<span class="fc" id="L76">        return toRolePermissionsResponse(saved);</span>
+    }
+
+    // ---- Helpers ----
+
+    private RolePermissionsResponse toRolePermissionsResponse(Role role) {
+<span class="fc" id="L82">        List&lt;PermissionResponse&gt; perms = role.getPermissions().stream()</span>
+<span class="fc" id="L83">                .map(this::toPermissionResponse)</span>
+<span class="fc" id="L84">                .sorted((a, b) -&gt; {</span>
+<span class="nc" id="L85">                    int cmp = a.classe().compareTo(b.classe());</span>
+<span class="nc bnc" id="L86" title="All 2 branches missed.">                    if (cmp != 0) return cmp;</span>
+<span class="nc" id="L87">                    return a.name().compareTo(b.name());</span>
+                })
+<span class="fc" id="L89">                .collect(Collectors.toList());</span>
+
+<span class="fc" id="L91">        return new RolePermissionsResponse(role.getId(), role.getName(), perms);</span>
+    }
+
+    private PermissionResponse toPermissionResponse(Permission p) {
+<span class="fc" id="L95">        return new PermissionResponse(p.getId(), p.getName(), p.getHttpMethod(), p.getEndpoint(), p.getClasse());</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

@@ -1,0 +1,71 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureFlagService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.featureflag.service</a> &gt; <span class="el_source">FeatureFlagService.java</span></div><h1>FeatureFlagService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.featureflag.service;
+
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.cristiane.salon.models.featureflag.entity.FeatureFlag;
+import com.cristiane.salon.models.featureflag.repository.FeatureFlagRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class FeatureFlagService {
+
+    private final FeatureFlagRepository repository;
+    private final AuditLogService auditLogService;
+
+    public boolean isEnabled(String name) {
+<span class="fc" id="L21">        return repository.findById(name)</span>
+<span class="fc" id="L22">                .map(FeatureFlag::getEnabled)</span>
+<span class="fc" id="L23">                .orElse(false);</span>
+    }
+
+    public List&lt;FeatureFlag&gt; findAll() {
+<span class="fc" id="L27">        return repository.findAll();</span>
+    }
+
+    @Transactional
+    public FeatureFlag toggle(String name) {
+<span class="fc" id="L32">        FeatureFlag flag = repository.findById(name)</span>
+<span class="fc" id="L33">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Feature Flag não encontrada: &quot; + name));</span>
+        
+<span class="fc" id="L35">        boolean from = flag.getEnabled();</span>
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        boolean to = !from;</span>
+        
+<span class="fc" id="L38">        flag.setEnabled(to);</span>
+<span class="fc" id="L39">        FeatureFlag saved = repository.save(flag);</span>
+
+        // Audit Log manual
+        try {
+<span class="fc" id="L43">            String details = String.format(&quot;{\&quot;flag\&quot;:\&quot;%s\&quot;,\&quot;from\&quot;:%b,\&quot;to\&quot;:%b}&quot;, name, from, to);</span>
+            
+<span class="fc" id="L45">            Long userId = null;</span>
+<span class="fc" id="L46">            String userEmail = &quot;SYSTEM&quot;;</span>
+<span class="fc" id="L47">            org.springframework.security.core.Authentication auth = org.springframework.security.core.context.SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="fc bfc" id="L48" title="All 2 branches covered.">            if (auth != null) {</span>
+<span class="fc" id="L49">                userEmail = auth.getName();</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">                if (auth.getPrincipal() instanceof com.cristiane.salon.models.user.entity.User user) {</span>
+<span class="fc" id="L51">                    userId = user.getId();</span>
+                }
+            }
+            
+<span class="fc" id="L55">            auditLogService.logAction(</span>
+                    userId,
+                    userEmail,
+                    &quot;FEATURE_FLAG_TOGGLED&quot;,
+                    &quot;FeatureFlag&quot;,
+                    null,
+                    details,
+                    &quot;SUCCESS&quot;
+            );
+<span class="fc" id="L64">        } catch (Exception e) {</span>
+            // Log silenciosamente
+<span class="fc" id="L66">        }</span>
+
+<span class="fc" id="L68">        return saved;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

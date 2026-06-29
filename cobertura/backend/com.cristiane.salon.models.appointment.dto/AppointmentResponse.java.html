@@ -1,0 +1,96 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AppointmentResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.appointment.dto</a> &gt; <span class="el_source">AppointmentResponse.java</span></div><h1>AppointmentResponse.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.appointment.dto;
+
+import com.cristiane.salon.models.appointment.entity.Appointment;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+
+<span class="fc" id="L8">public record AppointmentResponse(</span>
+        Long id,
+        Long clientId,
+        String clientName,
+        Long employeeId,
+        String employeeName,
+        Long serviceId,
+        String serviceName,
+        LocalDateTime scheduledAt,
+        LocalDate preferredDate,
+        String clientNotes,
+        String status,
+        String paymentStatus,
+        Long paymentId,
+        String pixQrCode,
+        Boolean clientHasSavedCpf,
+        String clientCpfMasked
+) {
+    public AppointmentResponse(
+            Long id,
+            Long clientId,
+            String clientName,
+            Long employeeId,
+            String employeeName,
+            Long serviceId,
+            String serviceName,
+            LocalDateTime scheduledAt,
+            LocalDate preferredDate,
+            String clientNotes,
+            String status
+    ) {
+<span class="fc" id="L39">        this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,</span>
+<span class="fc" id="L40">                scheduledAt, preferredDate, clientNotes, status, null, null, null, false, &quot;&quot;);</span>
+<span class="fc" id="L41">    }</span>
+
+    public AppointmentResponse(
+            Long id,
+            Long clientId,
+            String clientName,
+            Long employeeId,
+            String employeeName,
+            Long serviceId,
+            String serviceName,
+            LocalDateTime scheduledAt,
+            LocalDate preferredDate,
+            String clientNotes,
+            String status,
+            String paymentStatus,
+            Long paymentId,
+            String pixQrCode
+    ) {
+<span class="fc" id="L59">        this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,</span>
+<span class="fc" id="L60">                scheduledAt, preferredDate, clientNotes, status, paymentStatus, paymentId, pixQrCode, false, &quot;&quot;);</span>
+<span class="fc" id="L61">    }</span>
+
+    public static AppointmentResponse fromEntity(Appointment appointment) {
+<span class="fc" id="L64">        String rawCpf = appointment.getClient().getCpf();</span>
+<span class="pc bpc" id="L65" title="1 of 4 branches missed.">        boolean hasSavedCpf = rawCpf != null &amp;&amp; !rawCpf.isBlank();</span>
+<span class="fc" id="L66">        String maskedCpf = &quot;&quot;;</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (hasSavedCpf) {</span>
+<span class="fc" id="L68">            String clean = rawCpf.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">            if (clean.length() == 11) {</span>
+<span class="fc" id="L70">                maskedCpf = &quot;***.***.&quot; + clean.substring(6, 9) + &quot;-&quot;;</span>
+            } else {
+<span class="nc" id="L72">                maskedCpf = rawCpf;</span>
+            }
+        }
+
+<span class="fc" id="L76">        return new AppointmentResponse(</span>
+<span class="fc" id="L77">                appointment.getId(),</span>
+<span class="fc" id="L78">                appointment.getClient().getId(),</span>
+<span class="fc" id="L79">                appointment.getClient().getName(),</span>
+<span class="fc" id="L80">                appointment.getEmployee().getId(),</span>
+<span class="fc" id="L81">                appointment.getEmployee().getUser().getName(),</span>
+<span class="fc" id="L82">                appointment.getSalonService().getId(),</span>
+<span class="fc" id="L83">                appointment.getSalonService().getName(),</span>
+<span class="fc" id="L84">                appointment.getScheduledAt(),</span>
+<span class="fc" id="L85">                appointment.getPreferredDate(),</span>
+<span class="fc" id="L86">                appointment.getClientNotes(),</span>
+<span class="fc" id="L87">                appointment.getStatus().name(),</span>
+<span class="pc bpc" id="L88" title="1 of 2 branches missed.">                appointment.getPaymentStatus() != null ? appointment.getPaymentStatus().name() : null,</span>
+<span class="fc" id="L89">                appointment.getPaymentId(),</span>
+<span class="fc" id="L90">                appointment.getPixQrCode(),</span>
+<span class="fc" id="L91">                hasSavedCpf,</span>
+                maskedCpf
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

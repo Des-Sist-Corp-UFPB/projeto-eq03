@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>CpfValidator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.utils</a> &gt; <span class="el_source">CpfValidator.java</span></div><h1>CpfValidator.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.utils;
+
+<span class="nc" id="L3">public class CpfValidator {</span>
+    public static boolean isValid(String cpf) {
+<span class="fc bfc" id="L5" title="All 2 branches covered.">        if (cpf == null) {</span>
+<span class="fc" id="L6">            return false;</span>
+        }
+<span class="fc" id="L8">        String clean = cpf.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L9" title="All 2 branches covered.">        if (clean.length() != 11) {</span>
+<span class="fc" id="L10">            return false;</span>
+        }
+
+        // Rejeita CPFs conhecidos com todos os dígitos iguais
+<span class="fc bfc" id="L14" title="All 4 branches covered.">        if (clean.equals(&quot;00000000000&quot;) || clean.equals(&quot;11111111111&quot;) ||</span>
+<span class="fc bfc" id="L15" title="All 4 branches covered.">            clean.equals(&quot;22222222222&quot;) || clean.equals(&quot;33333333333&quot;) ||</span>
+<span class="fc bfc" id="L16" title="All 4 branches covered.">            clean.equals(&quot;44444444444&quot;) || clean.equals(&quot;55555555555&quot;) ||</span>
+<span class="fc bfc" id="L17" title="All 4 branches covered.">            clean.equals(&quot;66666666666&quot;) || clean.equals(&quot;77777777777&quot;) ||</span>
+<span class="fc bfc" id="L18" title="All 4 branches covered.">            clean.equals(&quot;88888888888&quot;) || clean.equals(&quot;99999999999&quot;)) {</span>
+<span class="fc" id="L19">            return false;</span>
+        }
+
+        try {
+            // Calcula o primeiro dígito verificador
+<span class="fc" id="L24">            int sum = 0;</span>
+<span class="fc bfc" id="L25" title="All 2 branches covered.">            for (int i = 0; i &lt; 9; i++) {</span>
+<span class="fc" id="L26">                sum += (clean.charAt(i) - '0') * (10 - i);</span>
+            }
+<span class="fc" id="L28">            int r1 = 11 - (sum % 11);</span>
+<span class="pc bpc" id="L29" title="1 of 4 branches missed.">            int d1 = (r1 == 10 || r1 == 11) ? 0 : r1;</span>
+
+<span class="pc bpc" id="L31" title="1 of 2 branches missed.">            if (d1 != (clean.charAt(9) - '0')) {</span>
+<span class="nc" id="L32">                return false;</span>
+            }
+
+            // Calcula o segundo dígito verificador
+<span class="fc" id="L36">            sum = 0;</span>
+<span class="fc bfc" id="L37" title="All 2 branches covered.">            for (int i = 0; i &lt; 10; i++) {</span>
+<span class="fc" id="L38">                sum += (clean.charAt(i) - '0') * (11 - i);</span>
+            }
+<span class="fc" id="L40">            int r2 = 11 - (sum % 11);</span>
+<span class="pc bpc" id="L41" title="2 of 4 branches missed.">            int d2 = (r2 == 10 || r2 == 11) ? 0 : r2;</span>
+
+<span class="fc bfc" id="L43" title="All 2 branches covered.">            return d2 == (clean.charAt(10) - '0');</span>
+<span class="nc" id="L44">        } catch (Exception e) {</span>
+<span class="nc" id="L45">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

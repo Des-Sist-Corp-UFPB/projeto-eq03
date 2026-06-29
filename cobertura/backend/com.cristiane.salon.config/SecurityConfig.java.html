@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SecurityConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config</a> &gt; <span class="el_source">SecurityConfig.java</span></div><h1>SecurityConfig.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config;
+
+import com.cristiane.salon.security.AuditRequestFilter;
+import com.cristiane.salon.security.JwtAuthenticationFilter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.boot.web.servlet.FilterRegistrationBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity
+@RequiredArgsConstructor
+public class SecurityConfig {
+
+    private final JwtAuthenticationFilter jwtAuthFilter;
+    private final AuditRequestFilter auditRequestFilter;
+    private final AuthenticationProvider authenticationProvider;
+
+    @Bean
+    public FilterRegistrationBean&lt;JwtAuthenticationFilter&gt; jwtFilterRegistration(JwtAuthenticationFilter filter) {
+<span class="fc" id="L31">        FilterRegistrationBean&lt;JwtAuthenticationFilter&gt; registration = new FilterRegistrationBean&lt;&gt;(filter);</span>
+<span class="fc" id="L32">        registration.setEnabled(false);</span>
+<span class="fc" id="L33">        return registration;</span>
+    }
+
+    @Bean
+    public FilterRegistrationBean&lt;AuditRequestFilter&gt; auditFilterRegistration(AuditRequestFilter filter) {
+<span class="fc" id="L38">        FilterRegistrationBean&lt;AuditRequestFilter&gt; registration = new FilterRegistrationBean&lt;&gt;(filter);</span>
+<span class="fc" id="L39">        registration.setEnabled(false);</span>
+<span class="fc" id="L40">        return registration;</span>
+    }
+
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+<span class="fc" id="L45">        http</span>
+<span class="fc" id="L46">            .csrf(AbstractHttpConfigurer::disable)</span>
+<span class="fc" id="L47">            .cors(cors -&gt; {}) // will be configured in CorsConfig</span>
+<span class="fc" id="L48">            .authorizeHttpRequests(auth -&gt; auth</span>
+                // Public routes
+<span class="fc" id="L50">                .requestMatchers(&quot;/ping&quot;).permitAll()</span>
+<span class="fc" id="L51">                .requestMatchers(&quot;/v1/auth/**&quot;).permitAll()</span>
+<span class="fc" id="L52">                .requestMatchers(HttpMethod.GET, &quot;/v1/services&quot;).permitAll()</span>
+<span class="fc" id="L53">                .requestMatchers(HttpMethod.GET, &quot;/v1/products&quot;).permitAll()</span>
+<span class="fc" id="L54">                .requestMatchers(HttpMethod.GET, &quot;/v1/employees/booking&quot;).permitAll()</span>
+<span class="fc" id="L55">                .requestMatchers(HttpMethod.GET, &quot;/v1/feature-flags&quot;).permitAll()</span>
+<span class="fc" id="L56">                .requestMatchers(HttpMethod.POST, &quot;/v1/webhooks/mercadopago&quot;).permitAll()</span>
+                
+                // Swagger &amp; API Docs
+<span class="fc" id="L59">                .requestMatchers(&quot;/swagger-ui/**&quot;, &quot;/swagger-ui.html&quot;, &quot;/v3/api-docs/**&quot;, &quot;/swagger-resources/**&quot;, &quot;/webjars/**&quot;).permitAll()</span>
+                
+                // Static resources &amp; Frontend SPA routing
+<span class="fc" id="L62">                .requestMatchers(HttpMethod.GET, &quot;/&quot;, &quot;/index.html&quot;, &quot;/static/**&quot;, &quot;/assets/**&quot;, &quot;/*.png&quot;, &quot;/*.ico&quot;, &quot;/*.json&quot;, &quot;/*.txt&quot;).permitAll()</span>
+                
+                // API routes require authentication (except the permitted ones above)
+<span class="fc" id="L65">                .requestMatchers(&quot;/v1/**&quot;).authenticated()</span>
+                
+                // Any other request (mostly frontend React routes) is permitted so the SPA config can forward to index.html
+<span class="fc" id="L68">                .anyRequest().permitAll()</span>
+            )
+<span class="fc" id="L70">            .sessionManagement(session -&gt; session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))</span>
+<span class="fc" id="L71">            .authenticationProvider(authenticationProvider)</span>
+<span class="fc" id="L72">            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)</span>
+<span class="fc" id="L73">            .addFilterAfter(auditRequestFilter, JwtAuthenticationFilter.class);</span>
+
+<span class="fc" id="L75">        return http.build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

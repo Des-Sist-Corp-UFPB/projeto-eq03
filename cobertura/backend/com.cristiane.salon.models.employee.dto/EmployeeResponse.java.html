@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmployeeResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.employee.dto</a> &gt; <span class="el_source">EmployeeResponse.java</span></div><h1>EmployeeResponse.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.employee.dto;
+
+import com.cristiane.salon.models.employee.entity.Employee;
+import com.cristiane.salon.models.employee.entity.RemunerationType;
+import com.cristiane.salon.models.employee.entity.CommissionScope;
+import java.math.BigDecimal;
+
+<span class="fc" id="L8">public record EmployeeResponse(</span>
+        Long id,
+        Long userId,
+        String name,
+        String email,
+        String bio,
+        RemunerationType remunerationType,
+        CommissionScope commissionScope,
+        BigDecimal remunerationValue,
+        BigDecimal commissionValue
+) {
+    public static EmployeeResponse fromEntity(Employee employee) {
+<span class="fc" id="L20">        return new EmployeeResponse(</span>
+<span class="fc" id="L21">                employee.getId(),</span>
+<span class="fc" id="L22">                employee.getUser().getId(),</span>
+<span class="fc" id="L23">                employee.getUser().getName(),</span>
+<span class="fc" id="L24">                employee.getUser().getEmail(),</span>
+<span class="fc" id="L25">                employee.getBio(),</span>
+<span class="fc" id="L26">                employee.getRemunerationType(),</span>
+<span class="fc" id="L27">                employee.getCommissionScope(),</span>
+<span class="fc" id="L28">                employee.getRemunerationValue(),</span>
+<span class="fc" id="L29">                employee.getCommissionValue()</span>
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

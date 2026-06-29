@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ProductService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.product.service</a> &gt; <span class="el_source">ProductService.java</span></div><h1>ProductService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.product.service;
+
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.product.dto.ProductRequest;
+import com.cristiane.salon.models.product.dto.ProductResponse;
+import com.cristiane.salon.models.product.entity.Product;
+import com.cristiane.salon.models.product.repository.ProductRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class ProductService {
+
+    private final ProductRepository productRepository;
+
+    @Transactional(readOnly = true)
+    public List&lt;ProductResponse&gt; findAll(Boolean active) {
+<span class="fc" id="L23">        return productRepository.findAll().stream()</span>
+<span class="fc bfc" id="L24" title="All 4 branches covered.">                .filter(product -&gt; active == null || product.getActive().equals(active))</span>
+<span class="fc" id="L25">                .map(ProductResponse::fromEntity)</span>
+<span class="fc" id="L26">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public ProductResponse findById(Long id) {
+<span class="fc" id="L31">        Product product = productRepository.findById(id)</span>
+<span class="fc" id="L32">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Produto não encontrado&quot;));</span>
+<span class="fc" id="L33">        return ProductResponse.fromEntity(product);</span>
+    }
+
+    @Transactional
+    public ProductResponse create(ProductRequest request) {
+<span class="fc" id="L38">        Product product = new Product();</span>
+<span class="fc" id="L39">        product.setName(request.name());</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">        product.setStock(request.stock() != null ? request.stock() : 0);</span>
+<span class="fc" id="L41">        product.setPrice(request.price());</span>
+<span class="fc bfc" id="L42" title="All 2 branches covered.">        product.setActive(request.active() != null ? request.active() : true);</span>
+
+<span class="fc" id="L44">        return ProductResponse.fromEntity(productRepository.save(product));</span>
+    }
+
+    @Transactional
+    public ProductResponse update(Long id, ProductRequest request) {
+<span class="fc" id="L49">        Product product = productRepository.findById(id)</span>
+<span class="fc" id="L50">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Produto não encontrado&quot;));</span>
+
+<span class="pc bpc" id="L52" title="1 of 2 branches missed.">        if (request.name() != null) product.setName(request.name());</span>
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (request.stock() != null) product.setStock(request.stock());</span>
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">        if (request.price() != null) product.setPrice(request.price());</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if (request.active() != null) product.setActive(request.active());</span>
+
+<span class="fc" id="L57">        return ProductResponse.fromEntity(productRepository.save(product));</span>
+    }
+
+    @Transactional
+    public void delete(Long id) {
+<span class="fc" id="L62">        Product product = productRepository.findById(id)</span>
+<span class="fc" id="L63">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Produto não encontrado&quot;));</span>
+<span class="fc" id="L64">        product.setActive(false);</span>
+<span class="fc" id="L65">        productRepository.save(product);</span>
+<span class="fc" id="L66">    }</span>
+
+    @Transactional
+    public ProductResponse reactivate(Long id) {
+<span class="fc" id="L70">        Product product = productRepository.findById(id)</span>
+<span class="fc" id="L71">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Produto não encontrado&quot;));</span>
+<span class="fc" id="L72">        product.setActive(true);</span>
+<span class="fc" id="L73">        return ProductResponse.fromEntity(productRepository.save(product));</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

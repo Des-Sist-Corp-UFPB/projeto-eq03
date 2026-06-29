@@ -13,6 +13,10 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.Authentication;
+import com.cristiane.salon.models.user.entity.User;
 
 import java.lang.reflect.Method;
 import java.util.Map;
@@ -420,6 +424,109 @@ class AuditAspectTest {
         verify(auditLogService).logAction(
                 any(), any(), any(), any(), any(),
                 any(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testLogSuccessfulAction_whenSecurityContextHasNoAuth_shouldUseDefaultSystemEmail() throws Exception {
+        SecurityContextHolder.clearContext();
+
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                isNull(), eq("SYSTEM"), eq("CREATE"), eq("Dummy"), isNull(), isNull(), eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void testLogSuccessfulAction_whenSecurityContextHasNonUserDetailsPrincipal_shouldReturnNullUserId() throws Exception {
+        Authentication auth = mock(Authentication.class);
+        when(auth.getPrincipal()).thenReturn("anonymousUser");
+        when(auth.getName()).thenReturn("anonymous@email.com");
+        
+        SecurityContext context = mock(SecurityContext.class);
+        when(context.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(context);
+
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                isNull(), eq("anonymous@email.com"), eq("CREATE"), eq("Dummy"), isNull(), isNull(), eq("SUCCESS")
+        );
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void testLogSuccessfulAction_whenSecurityContextHasValidUserPrincipal_shouldReturnUserIdAndEmail() throws Exception {
+        User user = mock(User.class);
+        when(user.getId()).thenReturn(500L);
+        
+        Authentication auth = mock(Authentication.class);
+        when(auth.getPrincipal()).thenReturn(user);
+        when(auth.getName()).thenReturn("user@email.com");
+        
+        SecurityContext context = mock(SecurityContext.class);
+        when(context.getAuthentication()).thenReturn(auth);
+        SecurityContextHolder.setContext(context);
+
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(new Object[0]);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                eq(500L), eq("user@email.com"), eq("CREATE"), eq("Dummy"), isNull(), isNull(), eq("SUCCESS")
+        );
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void testStatusOverrideToCompletedWithNullArgs() throws Exception {
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+        when(joinPoint.getArgs()).thenReturn(null); // Null args
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("APPOINTMENT_STATUS_CHANGED");
+        when(auditable.entityType()).thenReturn("Appointment");
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), eq("APPOINTMENT_STATUS_CHANGED"), eq("Appointment"), isNull(), isNull(), eq("SUCCESS")
         );
     }
 }

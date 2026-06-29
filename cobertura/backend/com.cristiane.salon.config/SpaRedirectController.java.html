@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SpaRedirectController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config</a> &gt; <span class="el_source">SpaRedirectController.java</span></div><h1>SpaRedirectController.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config;
+
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.RequestMapping;
+
+@Controller
+<span class="fc" id="L9">public class SpaRedirectController {</span>
+
+    // Essa expressão regular captura rotas que NÃO possuem ponto (ou seja, não são arquivos como .js, .css, .png)
+    // e que NÃO começam com /v1 (as rotas da sua API)
+    @RequestMapping(value = &quot;{path:[^\\.]*}&quot;)
+    public String redirectSpa(HttpServletRequest request) {
+<span class="fc" id="L15">        String uri = request.getRequestURI();</span>
+<span class="pc bpc" id="L16" title="3 of 6 branches missed.">        if (uri != null &amp;&amp; (uri.startsWith(&quot;/v1/&quot;) || uri.equals(&quot;/v1&quot;))) {</span>
+<span class="nc" id="L17">            throw new ResourceNotFoundException(&quot;Recurso não encontrado&quot;);</span>
+        }
+        // O &quot;forward:&quot; faz um redirecionamento interno no servidor. 
+        // A URL no navegador do usuário continua sendo /dashboard, mas o Spring entrega o index.html do React.
+<span class="fc" id="L21">        return &quot;forward:/index.html&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

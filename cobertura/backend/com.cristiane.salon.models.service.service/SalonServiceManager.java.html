@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SalonServiceManager.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.service.service</a> &gt; <span class="el_source">SalonServiceManager.java</span></div><h1>SalonServiceManager.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.service.service;
+
+import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.service.dto.SalonServiceRequest;
+import com.cristiane.salon.models.service.dto.SalonServiceResponse;
+import com.cristiane.salon.models.service.entity.SalonService;
+import com.cristiane.salon.models.service.repository.SalonServiceRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@Service
+@RequiredArgsConstructor
+public class SalonServiceManager {
+
+    private final SalonServiceRepository salonServiceRepository;
+
+    @Transactional(readOnly = true)
+    public List&lt;SalonServiceResponse&gt; findAll(Boolean active) {
+<span class="fc" id="L24">        return salonServiceRepository.findAll().stream()</span>
+<span class="fc bfc" id="L25" title="All 4 branches covered.">                .filter(service -&gt; active == null || service.getActive().equals(active))</span>
+<span class="fc" id="L26">                .map(SalonServiceResponse::fromEntity)</span>
+<span class="fc" id="L27">                .collect(Collectors.toList());</span>
+    }
+
+    @Transactional(readOnly = true)
+    public SalonServiceResponse findById(Long id) {
+<span class="fc" id="L32">        SalonService service = salonServiceRepository.findById(id)</span>
+<span class="fc" id="L33">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Serviço não encontrado&quot;));</span>
+<span class="fc" id="L34">        return SalonServiceResponse.fromEntity(service);</span>
+    }
+
+    @Transactional
+    public SalonServiceResponse create(SalonServiceRequest request) {
+<span class="fc" id="L39">        validateDuration(request.durationMin(), request.durationEstimate());</span>
+
+<span class="fc" id="L41">        SalonService service = new SalonService();</span>
+<span class="fc" id="L42">        service.setName(request.name());</span>
+<span class="fc" id="L43">        service.setDescription(request.description());</span>
+<span class="pc bpc" id="L44" title="1 of 4 branches missed.">        if (request.price() != null &amp;&amp; request.price().signum() &lt; 0) {</span>
+<span class="fc" id="L45">            throw new BadRequestException(&quot;O preço não pode ser negativo&quot;);</span>
+        }
+<span class="fc" id="L47">        service.setPrice(request.price());</span>
+<span class="fc" id="L48">        service.setDurationMin(request.durationMin());</span>
+<span class="fc" id="L49">        service.setDurationEstimate(blankToNull(request.durationEstimate()));</span>
+<span class="fc bfc" id="L50" title="All 2 branches covered.">        service.setActive(request.active() != null ? request.active() : true);</span>
+
+<span class="fc" id="L52">        return SalonServiceResponse.fromEntity(salonServiceRepository.save(service));</span>
+    }
+
+    @Transactional
+    public SalonServiceResponse update(Long id, SalonServiceRequest request) {
+<span class="fc" id="L57">        SalonService service = salonServiceRepository.findById(id)</span>
+<span class="fc" id="L58">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Serviço não encontrado&quot;));</span>
+
+<span class="pc bpc" id="L60" title="1 of 4 branches missed.">        if (request.price() != null &amp;&amp; request.price().signum() &lt; 0) {</span>
+<span class="fc" id="L61">            throw new BadRequestException(&quot;O preço não pode ser negativo&quot;);</span>
+        }
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">        if (request.name() != null) service.setName(request.name());</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (request.description() != null) service.setDescription(request.description());</span>
+<span class="fc" id="L65">        service.setPrice(request.price());</span>
+<span class="fc" id="L66">        service.setDurationMin(request.durationMin());</span>
+<span class="fc" id="L67">        service.setDurationEstimate(blankToNull(request.durationEstimate()));</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        if (request.active() != null) service.setActive(request.active());</span>
+
+<span class="fc" id="L70">        validateDuration(service.getDurationMin(), service.getDurationEstimate());</span>
+
+<span class="fc" id="L72">        return SalonServiceResponse.fromEntity(salonServiceRepository.save(service));</span>
+    }
+
+    @Transactional
+    public void delete(Long id) {
+<span class="fc" id="L77">        SalonService service = salonServiceRepository.findById(id)</span>
+<span class="fc" id="L78">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Serviço não encontrado&quot;));</span>
+<span class="fc" id="L79">        service.setActive(false);</span>
+<span class="fc" id="L80">        salonServiceRepository.save(service);</span>
+<span class="fc" id="L81">    }</span>
+
+    @Transactional
+    public SalonServiceResponse reactivate(Long id) {
+<span class="fc" id="L85">        SalonService service = salonServiceRepository.findById(id)</span>
+<span class="fc" id="L86">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Serviço não encontrado&quot;));</span>
+<span class="fc" id="L87">        service.setActive(true);</span>
+<span class="fc" id="L88">        return SalonServiceResponse.fromEntity(salonServiceRepository.save(service));</span>
+    }
+
+    private static String blankToNull(String s) {
+<span class="pc bpc" id="L92" title="1 of 4 branches missed.">        return s == null || s.isBlank() ? null : s.trim();</span>
+    }
+
+
+    private static void validateDuration(Integer durationMin, String durationEstimate) {
+<span class="fc bfc" id="L97" title="All 4 branches covered.">        boolean hasMin = durationMin != null &amp;&amp; durationMin &gt; 0;</span>
+<span class="fc bfc" id="L98" title="All 4 branches covered.">        boolean hasEst = durationEstimate != null &amp;&amp; !durationEstimate.isBlank();</span>
+<span class="fc bfc" id="L99" title="All 4 branches covered.">        if (!hasMin &amp;&amp; !hasEst) {</span>
+<span class="fc" id="L100">            throw new BadRequestException(</span>
+                    &quot;Informe o tempo estimado (ex.: em média 50 min) ou duração em minutos para uso interno na agenda.&quot;);
+        }
+<span class="fc" id="L103">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

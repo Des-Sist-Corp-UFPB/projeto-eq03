@@ -1,0 +1,100 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.audit.controller</a> &gt; <span class="el_source">AuditController.java</span></div><h1>AuditController.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.audit.controller;
+
+import com.cristiane.salon.models.audit.AuditLog;
+import com.cristiane.salon.models.audit.AuditLogService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+
+@RestController
+@RequestMapping(&quot;/v1/audit&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;Audit&quot;, description = &quot;Endpoints para logs de auditoria (Admin)&quot;)
+public class AuditController {
+    
+    private final AuditLogService auditLogService;
+    
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Lista todos os logs de auditoria com paginação e filtros combinados&quot;)
+    public ResponseEntity&lt;Page&lt;AuditLog&gt;&gt; getAllAuditLogs(
+            @RequestParam(required = false) Long userId,
+            @RequestParam(required = false) String entityType,
+            @RequestParam(required = false) String action,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate,
+            @PageableDefault(size = 15, sort = &quot;createdAt&quot;, direction = Sort.Direction.DESC) Pageable pageable) {
+        
+<span class="fc" id="L40">        Page&lt;AuditLog&gt; logs = auditLogService.getAuditLogsWithCombinedFilters(</span>
+                userId, entityType, action, startDate, endDate, pageable
+        );
+<span class="fc" id="L43">        return ResponseEntity.ok(logs);</span>
+    }
+
+    
+    @GetMapping(&quot;/user/{userId}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Lista logs de auditoria de um usuário específico&quot;)
+    public ResponseEntity&lt;Page&lt;AuditLog&gt;&gt; getAuditLogsByUser(
+            @PathVariable Long userId,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size) {
+        
+<span class="fc" id="L55">        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.DESC, &quot;createdAt&quot;);</span>
+<span class="fc" id="L56">        Page&lt;AuditLog&gt; logs = auditLogService.getAuditLogsByUser(userId, pageRequest);</span>
+<span class="fc" id="L57">        return ResponseEntity.ok(logs);</span>
+    }
+    
+    @GetMapping(&quot;/action/{action}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Lista logs de auditoria por tipo de ação&quot;)
+    public ResponseEntity&lt;Page&lt;AuditLog&gt;&gt; getAuditLogsByAction(
+            @PathVariable String action,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size) {
+        
+<span class="fc" id="L68">        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.DESC, &quot;createdAt&quot;);</span>
+<span class="fc" id="L69">        Page&lt;AuditLog&gt; logs = auditLogService.getAuditLogsByAction(action, pageRequest);</span>
+<span class="fc" id="L70">        return ResponseEntity.ok(logs);</span>
+    }
+    
+    @GetMapping(&quot;/entity/{entityType}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Lista logs de auditoria por tipo de entidade&quot;)
+    public ResponseEntity&lt;Page&lt;AuditLog&gt;&gt; getAuditLogsByEntityType(
+            @PathVariable String entityType,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size) {
+        
+<span class="fc" id="L81">        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.DESC, &quot;createdAt&quot;);</span>
+<span class="fc" id="L82">        Page&lt;AuditLog&gt; logs = auditLogService.getAuditLogsByEntityType(entityType, pageRequest);</span>
+<span class="fc" id="L83">        return ResponseEntity.ok(logs);</span>
+    }
+    
+    @GetMapping(&quot;/range&quot;)
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Lista logs de auditoria por período de datas&quot;)
+    public ResponseEntity&lt;Page&lt;AuditLog&gt;&gt; getAuditLogsByDateRange(
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @RequestParam(defaultValue = &quot;0&quot;) int page,
+            @RequestParam(defaultValue = &quot;20&quot;) int size) {
+        
+<span class="fc" id="L95">        PageRequest pageRequest = PageRequest.of(page, size, Sort.Direction.DESC, &quot;createdAt&quot;);</span>
+<span class="fc" id="L96">        Page&lt;AuditLog&gt; logs = auditLogService.getAuditLogsByDateRange(from, to, pageRequest);</span>
+<span class="fc" id="L97">        return ResponseEntity.ok(logs);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
