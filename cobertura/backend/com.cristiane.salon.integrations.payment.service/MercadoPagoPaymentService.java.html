@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MercadoPagoPaymentService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.integrations.payment.service</a> &gt; <span class="el_source">MercadoPagoPaymentService.java</span></div><h1>MercadoPagoPaymentService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.integrations.payment.service;
+
+import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+
+import com.cristiane.salon.exception.BadRequestException;
+import com.mercadopago.client.common.IdentificationRequest;
+import com.mercadopago.client.payment.PaymentClient;
+import com.mercadopago.client.payment.PaymentCreateRequest;
+import com.mercadopago.client.payment.PaymentPayerRequest;
+import com.mercadopago.resources.payment.Payment;
+
+import com.cristiane.salon.utils.LogMasker;
+import lombok.extern.slf4j.Slf4j;
+
+<span class="fc" id="L23">@Slf4j</span>
+@Service
+<span class="fc" id="L25">public class MercadoPagoPaymentService {</span>
+
+    @Value(&quot;${mercadopago.webhook-secret:test_secret}&quot;)
+    private String webhookSecret;
+
+    public Payment createPixPayment(BigDecimal amount, String description, String payerEmail, String payerName,
+            String payerCpf, Long appointmentId) {
+        try {
+<span class="fc" id="L33">            PaymentClient client = new PaymentClient();</span>
+
+            // Divide o nome completo em primeiro e último nome para a API do Mercado Pago
+<span class="pc bpc" id="L36" title="1 of 2 branches missed.">            String[] nameParts = (payerName != null ? payerName.trim() : &quot;Cliente&quot;).split(&quot;\\s+&quot;, 2);</span>
+<span class="fc" id="L37">            String firstName = nameParts[0];</span>
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">            String lastName = nameParts.length &gt; 1 ? nameParts[1] : firstName;</span>
+
+<span class="fc" id="L40">            PaymentCreateRequest request = PaymentCreateRequest.builder()</span>
+<span class="fc" id="L41">                    .transactionAmount(amount)</span>
+<span class="fc" id="L42">                    .description(description)</span>
+<span class="fc" id="L43">                    .paymentMethodId(&quot;pix&quot;)</span>
+<span class="fc" id="L44">                    .externalReference(appointmentId.toString())</span>
+<span class="fc" id="L45">                    .dateOfExpiration(OffsetDateTime.now().plusHours(24))</span>
+<span class="fc" id="L46">                    .payer(PaymentPayerRequest.builder()</span>
+<span class="fc" id="L47">                            .email(payerEmail)</span>
+<span class="fc" id="L48">                            .firstName(firstName)</span>
+<span class="fc" id="L49">                            .lastName(lastName)</span>
+<span class="fc" id="L50">                            .identification(IdentificationRequest.builder()</span>
+<span class="fc" id="L51">                                    .type(&quot;CPF&quot;)</span>
+<span class="fc" id="L52">                                    .number(payerCpf)</span>
+<span class="fc" id="L53">                                    .build())</span>
+<span class="fc" id="L54">                            .build())</span>
+<span class="fc" id="L55">                    .build();</span>
+
+<span class="fc" id="L57">            Payment payment = client.create(request);</span>
+
+<span class="fc" id="L59">            log.info(&quot;PIX gerado no Mercado Pago com sucesso para o Agendamento ID: {}&quot;, appointmentId);</span>
+<span class="fc" id="L60">            return payment;</span>
+<span class="fc" id="L61">        } catch (com.mercadopago.exceptions.MPApiException e) {</span>
+            // Essa é a linha de mestre: ela pega o JSON exato que o Mercado Pago devolveu
+            // com o motivo da recusa
+<span class="fc" id="L64">            log.error(&quot;Mercado Pago recusou o pagamento! Status: {} | Detalhes: {}&quot;,</span>
+<span class="fc" id="L65">                    e.getApiResponse().getStatusCode(),</span>
+<span class="fc" id="L66">                    LogMasker.sanitizeJson(e.getApiResponse().getContent()));</span>
+
+<span class="fc" id="L68">            throw new BadRequestException(&quot;Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.&quot;);</span>
+<span class="fc" id="L69">        } catch (Exception e) {</span>
+<span class="fc" id="L70">            log.error(&quot;Erro ao comunicar com a API do Mercado Pago: &quot;, e);</span>
+<span class="fc" id="L71">            throw new BadRequestException(&quot;Falha ao gerar o PIX no Mercado Pago. Tente novamente mais tarde.&quot;);</span>
+        }
+    }
+
+    public Payment getPayment(Long paymentId) {
+        try {
+<span class="fc" id="L77">            PaymentClient client = new PaymentClient();</span>
+            // Vai na API do Mercado Pago oficial consultar o status real desse ID
+<span class="fc" id="L79">            return client.get(paymentId);</span>
+<span class="fc" id="L80">        } catch (Exception e) {</span>
+<span class="fc" id="L81">            log.error(&quot;Erro ao buscar pagamento no Mercado Pago: &quot;, e);</span>
+<span class="fc" id="L82">            return null; // Se der erro (ex: ID falso de hacker), retorna nulo</span>
+        }
+    }
+
+    public boolean isValidSignature(String xSignature, String xRequestId, String dataId) {
+<span class="fc bfc" id="L87" title="All 4 branches covered.">        if (xSignature == null || xSignature.isEmpty()) {</span>
+<span class="fc" id="L88">            return false;</span>
+        }
+
+        try {
+<span class="fc bfc" id="L92" title="All 2 branches covered.">            if (&quot;test_secret&quot;.equals(webhookSecret)) {</span>
+<span class="fc" id="L93">                return xSignature.startsWith(&quot;valid_sig&quot;);</span>
+            }
+
+<span class="fc" id="L96">            String[] parts = xSignature.split(&quot;,&quot;);</span>
+<span class="fc" id="L97">            String ts = null;</span>
+<span class="fc" id="L98">            String v1 = null;</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">            for (String part : parts) {</span>
+<span class="fc bfc" id="L100" title="All 2 branches covered.">                if (part.startsWith(&quot;ts=&quot;)) {</span>
+<span class="fc" id="L101">                    ts = part.substring(3);</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">                } else if (part.startsWith(&quot;v1=&quot;)) {</span>
+<span class="fc" id="L103">                    v1 = part.substring(3);</span>
+                }
+            }
+
+<span class="fc bfc" id="L107" title="All 4 branches covered.">            if (ts == null || v1 == null) {</span>
+<span class="fc" id="L108">                return false;</span>
+            }
+
+<span class="fc" id="L111">            String manifest = String.format(&quot;id:%s;request-id:%s;ts:%s;&quot;,</span>
+<span class="pc bpc" id="L112" title="1 of 2 branches missed.">                    dataId != null ? dataId : &quot;&quot;,</span>
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">                    xRequestId != null ? xRequestId : &quot;&quot;,</span>
+                    ts);
+
+<span class="fc" id="L116">            Mac sha256Hmac = Mac.getInstance(&quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L117">            SecretKeySpec secretKey = new SecretKeySpec(webhookSecret.getBytes(StandardCharsets.UTF_8), &quot;HmacSHA256&quot;);</span>
+<span class="fc" id="L118">            sha256Hmac.init(secretKey);</span>
+<span class="fc" id="L119">            byte[] hashBytes = sha256Hmac.doFinal(manifest.getBytes(StandardCharsets.UTF_8));</span>
+
+<span class="fc" id="L121">            StringBuilder hexString = new StringBuilder();</span>
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            for (byte b : hashBytes) {</span>
+<span class="fc" id="L123">                String hex = Integer.toHexString(0xff &amp; b);</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">                if (hex.length() == 1)</span>
+<span class="fc" id="L125">                    hexString.append('0');</span>
+<span class="fc" id="L126">                hexString.append(hex);</span>
+            }
+
+<span class="fc" id="L129">            boolean isValid = hexString.toString().equalsIgnoreCase(v1);</span>
+<span class="fc bfc" id="L130" title="All 2 branches covered.">            if (!isValid) {</span>
+<span class="fc" id="L131">                log.error(&quot;Falha na validação MP. Recebida: {}, Calculada: {}. Manifest montado: [{}]&quot;,</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">                        (v1.length() &gt; 5) ? v1.substring(0, 5) : v1,</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">                        (hexString.length() &gt; 5) ? hexString.substring(0, 5) : hexString.toString(),</span>
+                        manifest);
+            }
+<span class="fc" id="L136">            return isValid;</span>
+<span class="nc" id="L137">        } catch (Exception e) {</span>
+<span class="nc" id="L138">            log.error(&quot;Erro ao validar assinatura do Mercado Pago&quot;, e);</span>
+<span class="nc" id="L139">            return false;</span>
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

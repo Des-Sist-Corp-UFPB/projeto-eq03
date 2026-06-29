@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>EmployeeController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.employee.controller</a> &gt; <span class="el_source">EmployeeController.java</span></div><h1>EmployeeController.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.employee.controller;
+
+import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.employee.dto.EmployeeBookingResponse;
+import com.cristiane.salon.models.employee.dto.EmployeeRequest;
+import com.cristiane.salon.models.employee.dto.EmployeeResponse;
+import com.cristiane.salon.models.employee.service.EmployeeService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/v1/employees&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;Employees&quot;, description = &quot;Endpoints para gerenciamento de funcionárias&quot;)
+public class EmployeeController {
+
+    private final EmployeeService employeeService;
+
+    @GetMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Lista todas as funcionárias (Admin)&quot;)
+    public ResponseEntity&lt;List&lt;EmployeeResponse&gt;&gt; findAll() {
+<span class="fc" id="L31">        return ResponseEntity.ok(employeeService.findAll());</span>
+    }
+
+    @GetMapping(&quot;/booking&quot;)
+    @PreAuthorize(&quot;permitAll()&quot;)
+    @Operation(summary = &quot;Lista funcionárias para agendamento (público)&quot;)
+    public ResponseEntity&lt;List&lt;EmployeeBookingResponse&gt;&gt; findAllForBooking() {
+<span class="fc" id="L38">        return ResponseEntity.ok(employeeService.findAllForBooking());</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Busca uma funcionária por ID (Admin)&quot;)
+    public ResponseEntity&lt;EmployeeResponse&gt; findById(@PathVariable Long id) {
+<span class="nc" id="L45">        return ResponseEntity.ok(employeeService.findById(id));</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;hasAnyRole('ADMIN')&quot;)
+    @Auditable(action = &quot;EMPLOYEE_CREATED&quot;, entityType = &quot;Employee&quot;, captureArgs = true)
+    @Operation(summary = &quot;Cria uma nova funcionária (Admin)&quot;)
+    public ResponseEntity&lt;EmployeeResponse&gt; create(@Valid @RequestBody EmployeeRequest request) {
+<span class="fc" id="L53">        return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN')&quot;)
+    @Auditable(action = &quot;EMPLOYEE_UPDATED&quot;, entityType = &quot;Employee&quot;, captureArgs = true)
+    @Operation(summary = &quot;Atualiza uma funcionária (Admin)&quot;)
+    public ResponseEntity&lt;EmployeeResponse&gt; update(@PathVariable Long id, @Valid @RequestBody EmployeeRequest request) {
+<span class="fc" id="L61">        return ResponseEntity.ok(employeeService.update(id, request));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasAnyRole('ADMIN')&quot;)
+    @Auditable(action = &quot;EMPLOYEE_DELETED&quot;, entityType = &quot;Employee&quot;, captureArgs = true)
+    @Operation(summary = &quot;Remove uma funcionária (Admin)&quot;)
+    public ResponseEntity&lt;Void&gt; delete(@PathVariable Long id) {
+<span class="fc" id="L69">        employeeService.delete(id);</span>
+<span class="fc" id="L70">        return ResponseEntity.noContent().build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

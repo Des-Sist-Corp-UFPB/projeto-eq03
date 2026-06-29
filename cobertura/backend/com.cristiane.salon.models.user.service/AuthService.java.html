@@ -1,0 +1,159 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.user.service</a> &gt; <span class="el_source">AuthService.java</span></div><h1>AuthService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.user.service;
+
+import com.cristiane.salon.exception.BadRequestException;
+import com.cristiane.salon.exception.ConflictException;
+import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.exception.UnauthorizedException;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.cristiane.salon.models.user.dto.LoginRequest;
+import com.cristiane.salon.models.user.dto.RegisterRequest;
+import com.cristiane.salon.models.user.dto.TokenResponse;
+import com.cristiane.salon.models.user.entity.Role;
+import com.cristiane.salon.models.user.entity.User;
+import com.cristiane.salon.models.user.repository.RoleRepository;
+import com.cristiane.salon.models.user.repository.UserRepository;
+import com.cristiane.salon.security.JwtService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class AuthService {
+
+    private final UserRepository userRepository;
+    private final RoleRepository roleRepository;
+    private final PasswordEncoder passwordEncoder;
+    private final JwtService jwtService;
+    private final AuthenticationManager authenticationManager;
+    private final AuditLogService auditLogService;
+
+    @Transactional
+    public TokenResponse register(RegisterRequest request) {
+        try {
+<span class="fc bfc" id="L37" title="All 2 branches covered.">            if (userRepository.findByEmail(request.email()).isPresent()) {</span>
+<span class="fc" id="L38">                throw new ConflictException(&quot;Email já cadastrado&quot;);</span>
+            }
+
+<span class="fc" id="L41">            Role clienteRole = roleRepository.findByName(&quot;CLIENTE&quot;)</span>
+<span class="fc" id="L42">                    .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;Role CLIENTE não encontrada&quot;));</span>
+
+<span class="fc" id="L44">            User user = new User();</span>
+<span class="fc" id="L45">            user.setName(request.name());</span>
+<span class="fc" id="L46">            user.setEmail(request.email());</span>
+<span class="fc" id="L47">            user.setPassword(passwordEncoder.encode(request.password()));</span>
+<span class="fc" id="L48">            user.setPhone(request.phone());</span>
+<span class="fc" id="L49">            user.setRole(clienteRole);</span>
+<span class="fc" id="L50">            user.setActive(true);</span>
+
+<span class="fc" id="L52">            userRepository.save(user);</span>
+
+<span class="fc" id="L54">            String jwtToken = jwtService.generateAccessToken(user);</span>
+<span class="fc" id="L55">            String refreshToken = jwtService.generateRefreshToken(user);</span>
+
+            // Registo de auditoria de sucesso
+<span class="fc" id="L58">            auditLogService.logAction(</span>
+<span class="fc" id="L59">                    user.getId(),</span>
+<span class="fc" id="L60">                    user.getEmail(),</span>
+                    &quot;REGISTER&quot;,
+                    &quot;User&quot;,
+<span class="fc" id="L63">                    user.getId(),</span>
+<span class="fc" id="L64">                    &quot;Cadastro efetuado com sucesso para: &quot; + user.getEmail(),</span>
+                    &quot;SUCCESS&quot;
+            );
+
+<span class="fc" id="L68">            return new TokenResponse(jwtToken, refreshToken);</span>
+<span class="fc" id="L69">        } catch (Exception e) {</span>
+            // Registo de auditoria de falha
+<span class="fc" id="L71">            auditLogService.logAction(</span>
+                    null,
+<span class="fc" id="L73">                    request.email(),</span>
+                    &quot;REGISTER&quot;,
+                    &quot;User&quot;,
+                    null,
+<span class="fc" id="L77">                    &quot;Falha ao realizar cadastro para o e-mail: &quot; + request.email(),</span>
+                    &quot;FAILURE&quot;,
+<span class="fc" id="L79">                    e.getMessage()</span>
+            );
+<span class="fc" id="L81">            throw e;</span>
+        }
+    }
+
+    public TokenResponse login(LoginRequest request) {
+        try {
+<span class="fc" id="L87">            User user = userRepository.findByEmail(request.email())</span>
+<span class="fc" id="L88">                    .orElseThrow(() -&gt; new UnauthorizedException(&quot;Usuário não encontrado&quot;));</span>
+
+<span class="fc bfc" id="L90" title="All 2 branches covered.">            if (!user.getActive()) {</span>
+<span class="fc" id="L91">                throw new UnauthorizedException(&quot;Sua conta está inativa&quot;);</span>
+            }
+
+<span class="fc" id="L94">            authenticationManager.authenticate(</span>
+<span class="fc" id="L95">                    new UsernamePasswordAuthenticationToken(request.email(), request.password())</span>
+            );
+
+<span class="fc" id="L98">            String jwtToken = jwtService.generateAccessToken(user);</span>
+<span class="fc" id="L99">            String refreshToken = jwtService.generateRefreshToken(user);</span>
+
+            // Registo de auditoria de sucesso
+<span class="fc" id="L102">            auditLogService.logAction(</span>
+<span class="fc" id="L103">                    user.getId(),</span>
+<span class="fc" id="L104">                    user.getEmail(),</span>
+                    &quot;LOGIN&quot;,
+                    &quot;User&quot;,
+<span class="fc" id="L107">                    user.getId(),</span>
+<span class="fc" id="L108">                    &quot;Login efetuado com sucesso pelo usuário: &quot; + user.getEmail(),</span>
+                    &quot;SUCCESS&quot;
+            );
+
+<span class="fc" id="L112">            return new TokenResponse(jwtToken, refreshToken);</span>
+<span class="fc" id="L113">        } catch (Exception e) {</span>
+            // Registo de auditoria de falha
+<span class="fc" id="L115">            Long userId = null;</span>
+            try {
+<span class="fc" id="L117">                userId = userRepository.findByEmail(request.email()).map(User::getId).orElse(null);</span>
+<span class="pc" id="L118">            } catch (Exception ignored) {}</span>
+
+<span class="fc" id="L120">            auditLogService.logAction(</span>
+                    userId,
+<span class="fc" id="L122">                    request.email(),</span>
+                    &quot;LOGIN&quot;,
+                    &quot;User&quot;,
+                    userId,
+<span class="fc" id="L126">                    &quot;Falha na tentativa de login com o e-mail: &quot; + request.email(),</span>
+                    &quot;FAILURE&quot;,
+<span class="fc" id="L128">                    e.getMessage()</span>
+            );
+<span class="fc" id="L130">            throw e;</span>
+        }
+    }
+
+    public TokenResponse refresh(String refreshToken) {
+        String userEmail;
+        try {
+<span class="fc" id="L137">            userEmail = jwtService.extractUsername(refreshToken);</span>
+<span class="fc" id="L138">        } catch (Exception e) {</span>
+<span class="fc" id="L139">            throw new UnauthorizedException(&quot;Refresh token inválido&quot;);</span>
+<span class="fc" id="L140">        }</span>
+
+<span class="fc bfc" id="L142" title="All 2 branches covered.">        if (userEmail != null) {</span>
+<span class="fc" id="L143">            User user = userRepository.findByEmail(userEmail)</span>
+<span class="fc" id="L144">                    .orElseThrow(() -&gt; new UnauthorizedException(&quot;Usuário não encontrado&quot;));</span>
+
+<span class="fc bfc" id="L146" title="All 2 branches covered.">            if (!user.getActive()) {</span>
+<span class="fc" id="L147">                throw new UnauthorizedException(&quot;Sua conta está inativa&quot;);</span>
+            }
+
+<span class="fc bfc" id="L150" title="All 2 branches covered.">            if (jwtService.isTokenValid(refreshToken, user)) {</span>
+<span class="fc" id="L151">                String accessToken = jwtService.generateAccessToken(user);</span>
+<span class="fc" id="L152">                return new TokenResponse(accessToken, refreshToken);</span>
+            }
+        }
+        
+<span class="fc" id="L156">        throw new UnauthorizedException(&quot;Refresh token expirado ou inválido&quot;);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

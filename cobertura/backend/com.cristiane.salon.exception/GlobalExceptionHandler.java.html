@@ -1,0 +1,286 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>GlobalExceptionHandler.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.exception</a> &gt; <span class="el_source">GlobalExceptionHandler.java</span></div><h1>GlobalExceptionHandler.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.exception;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.NoHandlerFoundException;
+
+import java.time.LocalDateTime;
+import java.util.Map;
+import java.util.stream.Collectors;
+
+@RestControllerAdvice
+<span class="fc" id="L27">public class GlobalExceptionHandler {</span>
+
+<span class="fc" id="L29">    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);</span>
+
+    @ExceptionHandler(ResourceNotFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleResourceNotFoundException(ResourceNotFoundException ex, HttpServletRequest request) {
+<span class="fc" id="L33">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L34">                LocalDateTime.now(),</span>
+<span class="fc" id="L35">                HttpStatus.NOT_FOUND.value(),</span>
+                &quot;Não Encontrado&quot;,
+<span class="fc" id="L37">                ex.getMessage(),</span>
+<span class="fc" id="L38">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L40">        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);</span>
+    }
+
+    @ExceptionHandler(BadRequestException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleBadRequestException(BadRequestException ex, HttpServletRequest request) {
+<span class="fc" id="L45">        log.warn(&quot;BadRequestException: {} on URI: {}&quot;, ex.getMessage(), request.getRequestURI());</span>
+<span class="fc" id="L46">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L47">                LocalDateTime.now(),</span>
+<span class="fc" id="L48">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Requisição Inválida&quot;,
+<span class="fc" id="L50">                ex.getMessage(),</span>
+<span class="fc" id="L51">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L53">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+    @ExceptionHandler(UnauthorizedException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleUnauthorizedException(UnauthorizedException ex, HttpServletRequest request) {
+<span class="fc" id="L58">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L59">                LocalDateTime.now(),</span>
+<span class="fc" id="L60">                HttpStatus.UNAUTHORIZED.value(),</span>
+                &quot;Não Autorizado&quot;,
+<span class="fc" id="L62">                ex.getMessage(),</span>
+<span class="fc" id="L63">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L65">        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);</span>
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
+<span class="fc" id="L70">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L71">                LocalDateTime.now(),</span>
+<span class="fc" id="L72">                HttpStatus.UNAUTHORIZED.value(),</span>
+                &quot;Não Autorizado&quot;,
+                &quot;Email ou senha incorretos&quot;,
+<span class="fc" id="L75">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L77">        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(error);</span>
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleAccessDeniedException(AccessDeniedException ex, HttpServletRequest request) {
+<span class="fc" id="L82">        String message = ex.getMessage();</span>
+<span class="pc bpc" id="L83" title="2 of 6 branches missed.">        if (message == null || &quot;Access is denied&quot;.equalsIgnoreCase(message) || &quot;Access denied&quot;.equalsIgnoreCase(message)) {</span>
+<span class="fc" id="L84">            message = &quot;Você não possui permissão para acessar este recurso.&quot;;</span>
+        }
+<span class="fc" id="L86">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L87">                LocalDateTime.now(),</span>
+<span class="fc" id="L88">                HttpStatus.FORBIDDEN.value(),</span>
+                &quot;Acesso Negado&quot;,
+                message,
+<span class="fc" id="L91">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L93">        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(error);</span>
+    }
+
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleValidationExceptions(MethodArgumentNotValidException ex, HttpServletRequest request) {
+<span class="fc" id="L98">        Map&lt;String, String&gt; errors = ex.getBindingResult().getFieldErrors().stream()</span>
+<span class="fc" id="L99">                .collect(Collectors.toMap(</span>
+                        FieldError::getField,
+<span class="pc bpc" id="L101" title="1 of 2 branches missed.">                        fe -&gt; fe.getDefaultMessage() != null ? fe.getDefaultMessage() : &quot;Valor inválido&quot;,</span>
+<span class="nc" id="L102">                        (msg1, msg2) -&gt; msg1</span>
+                ));
+
+<span class="fc" id="L105">        String message = errors.values().stream().collect(Collectors.joining(&quot;, &quot;));</span>
+
+<span class="fc" id="L107">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L108">                LocalDateTime.now(),</span>
+<span class="fc" id="L109">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Erro de Validação&quot;,
+                message,
+<span class="fc" id="L112">                request.getRequestURI(),</span>
+                errors
+        );
+<span class="fc" id="L115">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleConstraintViolation(ConstraintViolationException ex, HttpServletRequest request) {
+<span class="fc" id="L120">        Map&lt;String, String&gt; errors = ex.getConstraintViolations().stream()</span>
+<span class="fc" id="L121">                .collect(Collectors.toMap(</span>
+<span class="pc bpc" id="L122" title="1 of 2 branches missed.">                        cv -&gt; cv.getPropertyPath() != null ? cv.getPropertyPath().toString() : &quot;campo&quot;,</span>
+                        ConstraintViolation::getMessage,
+<span class="nc" id="L124">                        (msg1, msg2) -&gt; msg1</span>
+                ));
+
+<span class="fc" id="L127">        String message = errors.values().stream().collect(Collectors.joining(&quot;, &quot;));</span>
+
+<span class="fc" id="L129">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L130">                LocalDateTime.now(),</span>
+<span class="fc" id="L131">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Erro de Validação&quot;,
+                message,
+<span class="fc" id="L134">                request.getRequestURI(),</span>
+                errors
+        );
+<span class="fc" id="L137">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+    @ExceptionHandler(ConflictException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleConflictException(ConflictException ex, HttpServletRequest request) {
+<span class="nc" id="L142">        ErrorResponse error = new ErrorResponse(</span>
+<span class="nc" id="L143">                LocalDateTime.now(),</span>
+<span class="nc" id="L144">                HttpStatus.CONFLICT.value(),</span>
+                &quot;Conflito&quot;,
+<span class="nc" id="L146">                ex.getMessage(),</span>
+<span class="nc" id="L147">                request.getRequestURI()</span>
+        );
+<span class="nc" id="L149">        return ResponseEntity.status(HttpStatus.CONFLICT).body(error);</span>
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
+<span class="fc" id="L154">        log.debug(&quot;Bad request body: {}&quot;, ex.getMessage());</span>
+<span class="fc" id="L155">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L156">                LocalDateTime.now(),</span>
+<span class="fc" id="L157">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Requisição Inválida&quot;,
+                &quot;Corpo da requisição inválido. Verifique datas e números no formulário.&quot;,
+<span class="fc" id="L160">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L162">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleMissingParams(MissingServletRequestParameterException ex, HttpServletRequest request) {
+<span class="fc" id="L167">        String msg = String.format(&quot;Parâmetro obrigatório '%s' ausente&quot;, ex.getParameterName());</span>
+<span class="fc" id="L168">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L169">                LocalDateTime.now(),</span>
+<span class="fc" id="L170">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Parâmetro Obrigatório&quot;,
+                msg,
+<span class="fc" id="L173">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L175">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleDataIntegrity(DataIntegrityViolationException ex, HttpServletRequest request) {
+<span class="fc bfc" id="L180" title="All 2 branches covered.">        String cause = ex.getMostSpecificCause().getMessage() != null</span>
+<span class="fc" id="L181">                ? ex.getMostSpecificCause().getMessage()</span>
+<span class="fc" id="L182">                : &quot;&quot;;</span>
+<span class="fc" id="L183">        log.warn(&quot;Integridade no banco: {}&quot;, cause);</span>
+
+        // CPF duplicado → 409 Conflict com mensagem amigável
+<span class="pc bpc" id="L186" title="4 of 6 branches missed.">        if (cause.contains(&quot;tb_user_cpf_key&quot;) || (cause.contains(&quot;cpf&quot;) &amp;&amp; cause.contains(&quot;unique&quot;))) {</span>
+<span class="nc" id="L187">            ErrorResponse error = new ErrorResponse(</span>
+<span class="nc" id="L188">                    LocalDateTime.now(),</span>
+<span class="nc" id="L189">                    HttpStatus.CONFLICT.value(),</span>
+                    &quot;CPF Duplicado&quot;,
+                    &quot;Este CPF já está cadastrado em outra conta.&quot;,
+<span class="nc" id="L192">                    request.getRequestURI()</span>
+            );
+<span class="nc" id="L194">            return ResponseEntity.status(HttpStatus.CONFLICT).body(error);</span>
+        }
+
+<span class="fc" id="L197">        String hint = &quot;Não foi possível concluir a operação no banco de dados.&quot;;</span>
+<span class="pc bpc" id="L198" title="1 of 4 branches missed.">        if (cause.contains(&quot;scheduled_at&quot;) || cause.contains(&quot;null value&quot;)) {</span>
+<span class="fc" id="L199">            hint = &quot;O banco ainda parece exigir data/hora no agendamento. Confirme se as migrações Flyway (ex.: V5) foram aplicadas no ambiente.&quot;;</span>
+        }
+<span class="fc" id="L201">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L202">                LocalDateTime.now(),</span>
+<span class="fc" id="L203">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Dados Incompatíveis&quot;,
+                hint,
+<span class="fc" id="L206">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L208">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
+<span class="fc" id="L214">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L215">                LocalDateTime.now(),</span>
+<span class="fc" id="L216">                HttpStatus.METHOD_NOT_ALLOWED.value(),</span>
+                &quot;Método Não Suportado&quot;,
+<span class="fc" id="L218">                ex.getMessage(),</span>
+<span class="fc" id="L219">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L221">        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED).body(error);</span>
+    }
+
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleNotFound(NoHandlerFoundException ex, HttpServletRequest request) {
+<span class="fc" id="L226">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L227">                LocalDateTime.now(),</span>
+<span class="fc" id="L228">                HttpStatus.NOT_FOUND.value(),</span>
+                &quot;Não Encontrado&quot;,
+                &quot;Recurso não encontrado&quot;,
+<span class="fc" id="L231">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L233">        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);</span>
+    }
+
+    @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {
+<span class="fc" id="L238">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L239">                LocalDateTime.now(),</span>
+<span class="fc" id="L240">                HttpStatus.NOT_FOUND.value(),</span>
+                &quot;Não Encontrado&quot;,
+                &quot;Recurso não encontrado&quot;,
+<span class="fc" id="L243">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L245">        return ResponseEntity.status(HttpStatus.NOT_FOUND).body(error);</span>
+    }
+
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleGenericException(Exception ex, HttpServletRequest request) {
+<span class="fc" id="L250">        log.error(&quot;Erro não tratado&quot;, ex);</span>
+<span class="fc" id="L251">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L252">                LocalDateTime.now(),</span>
+<span class="fc" id="L253">                HttpStatus.INTERNAL_SERVER_ERROR.value(),</span>
+                &quot;Erro Interno do Servidor&quot;,
+                &quot;Ocorreu um erro inesperado no servidor.&quot;,
+<span class="fc" id="L256">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L258">        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(error);</span>
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+<span class="fc" id="L263">        ErrorResponse error = new ErrorResponse(</span>
+<span class="fc" id="L264">                LocalDateTime.now(),</span>
+<span class="fc" id="L265">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Argumento Inválido&quot;,
+<span class="fc" id="L267">                ex.getMessage(),</span>
+<span class="fc" id="L268">                request.getRequestURI()</span>
+        );
+<span class="fc" id="L270">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+
+    @ExceptionHandler(BusinessException.class)
+    public ResponseEntity&lt;ErrorResponse&gt; handleBusinessException(BusinessException ex, HttpServletRequest request) {
+<span class="nc" id="L275">        log.warn(&quot;BusinessException: {} on URI: {}&quot;, ex.getMessage(), request.getRequestURI());</span>
+<span class="nc" id="L276">        ErrorResponse error = new ErrorResponse(</span>
+<span class="nc" id="L277">                LocalDateTime.now(),</span>
+<span class="nc" id="L278">                HttpStatus.BAD_REQUEST.value(),</span>
+                &quot;Regra de Negócio Violada&quot;,
+<span class="nc" id="L280">                ex.getMessage(),</span>
+<span class="nc" id="L281">                request.getRequestURI()</span>
+        );
+<span class="nc" id="L283">        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(error);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

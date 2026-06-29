@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SpaWebConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config</a> &gt; <span class="el_source">SpaWebConfig.java</span></div><h1>SpaWebConfig.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config;
+
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+import org.springframework.web.servlet.resource.PathResourceResolver;
+
+import java.io.IOException;
+
+@Configuration
+<span class="fc" id="L13">public class SpaWebConfig implements WebMvcConfigurer {</span>
+
+    @Override
+    public void addResourceHandlers(ResourceHandlerRegistry registry) {
+<span class="fc" id="L17">        registry.addResourceHandler(&quot;/**&quot;)</span>
+<span class="fc" id="L18">                .addResourceLocations(&quot;classpath:/static/&quot;, &quot;classpath:/public/&quot;)</span>
+<span class="fc" id="L19">                .resourceChain(true)</span>
+<span class="fc" id="L20">                .addResolver(new PathResourceResolver() {</span>
+                    @Override
+                    protected Resource getResource(String resourcePath, Resource location) throws IOException {
+<span class="fc" id="L23">                        Resource requestedResource = location.createRelative(resourcePath);</span>
+<span class="pc bpc" id="L24" title="3 of 4 branches missed.">                        if (requestedResource.exists() &amp;&amp; requestedResource.isReadable()) {</span>
+<span class="nc" id="L25">                            return requestedResource;</span>
+                        }
+                        
+                        // Se for uma rota de API, não deve retornar o index.html (retorna null para resultar em 404)
+<span class="pc bpc" id="L29" title="8 of 10 branches missed.">                        if (resourcePath != null &amp;&amp; (resourcePath.startsWith(&quot;v1/&quot;) || resourcePath.startsWith(&quot;/v1/&quot;) || resourcePath.equals(&quot;v1&quot;) || resourcePath.equals(&quot;/v1&quot;))) {</span>
+<span class="fc" id="L30">                            return null;</span>
+                        }
+                        
+                        // Retorna o index.html se ele existir, caso contrário retorna null (evita 500)
+<span class="nc" id="L34">                        Resource indexHtml = new ClassPathResource(&quot;/static/index.html&quot;);</span>
+<span class="nc bnc" id="L35" title="All 4 branches missed.">                        if (indexHtml.exists() &amp;&amp; indexHtml.isReadable()) {</span>
+<span class="nc" id="L36">                            return indexHtml;</span>
+                        }
+                        
+<span class="nc" id="L39">                        return null;</span>
+                    }
+                });
+<span class="fc" id="L42">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

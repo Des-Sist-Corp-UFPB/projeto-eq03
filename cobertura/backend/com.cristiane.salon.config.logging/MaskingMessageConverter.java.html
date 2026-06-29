@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>MaskingMessageConverter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config.logging</a> &gt; <span class="el_source">MaskingMessageConverter.java</span></div><h1>MaskingMessageConverter.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config.logging;
+
+import ch.qos.logback.classic.pattern.MessageConverter;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+<span class="fc" id="L8">public class MaskingMessageConverter extends MessageConverter {</span>
+
+<span class="fc" id="L10">    private static final Pattern EMAIL_PATTERN = Pattern.compile(&quot;(?i)\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b&quot;);</span>
+<span class="fc" id="L11">    private static final Pattern CPF_PATTERN = Pattern.compile(&quot;\\b(\\d{3})\\.?(\\d{3})\\.?(\\d{3})-?(\\d{2})\\b&quot;);</span>
+<span class="fc" id="L12">    private static final Pattern PHONE_PATTERN = Pattern.compile(&quot;(\\b|\\()(\\d{2})\\)?[ \\t]*(9?\\d{4})-?(\\d{4})\\b&quot;);</span>
+    
+    // Detects names in contexts like &quot;Cliente: José Silva&quot; or in the JSON format &quot;clientName&quot;:&quot;José Silva&quot;
+<span class="fc" id="L15">    private static final Pattern CONTEXT_NAME_PATTERN = Pattern.compile(</span>
+            &quot;(?i)(usuário|cliente|profissional|nome|payerName|clientName|employeeName)[ \\t]*(?:logado|do agendamento)?[ \\t]*(?::|=|\&quot;[ \\t]*:[ \\t]*\&quot;)[ \\t]*([A-ZÀ-ÿ][a-zà-ÿ]+(?:[ \\t]+[A-ZÀ-ÿ][a-zà-ÿ]+)+)&quot;
+    );
+<span class="fc" id="L18">    private static final Pattern JSON_NAME_PATTERN = Pattern.compile(&quot;(?i)\&quot;(clientName|employeeName|payerName|name)\&quot;[ \\t]*:[ \\t]*\&quot;([^\&quot;]+)\&quot;&quot;);</span>
+
+    @Override
+    public String convert(ILoggingEvent event) {
+<span class="fc" id="L22">        return maskMessage(event.getFormattedMessage());</span>
+    }
+
+    public String maskMessage(String message) {
+<span class="fc" id="L26">        String result = message;</span>
+<span class="fc" id="L27">        result = maskEmails(result);</span>
+<span class="fc" id="L28">        result = maskPhones(result);</span>
+<span class="fc" id="L29">        result = maskCpfs(result);</span>
+<span class="fc" id="L30">        result = maskJsonNames(result);</span>
+<span class="fc" id="L31">        result = maskContextNames(result);</span>
+<span class="fc" id="L32">        return result;</span>
+    }
+
+    private String maskEmails(String text) {
+<span class="fc" id="L36">        Matcher matcher = EMAIL_PATTERN.matcher(text);</span>
+<span class="fc" id="L37">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L38" title="All 2 branches covered.">        while (matcher.find()) {</span>
+<span class="fc" id="L39">            matcher.appendReplacement(sb, Matcher.quoteReplacement(maskEmailValue(matcher.group())));</span>
+        }
+<span class="fc" id="L41">        matcher.appendTail(sb);</span>
+<span class="fc" id="L42">        return sb.toString();</span>
+    }
+
+    private String maskEmailValue(String email) {
+<span class="fc" id="L46">        int atIndex = email.indexOf('@');</span>
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">        if (atIndex &lt;= 0) return email;</span>
+<span class="fc" id="L48">        String local = email.substring(0, atIndex);</span>
+<span class="fc" id="L49">        String domain = email.substring(atIndex);</span>
+<span class="pc bpc" id="L50" title="1 of 2 branches missed.">        if (local.length() &lt;= 2) {</span>
+<span class="nc" id="L51">            return local.substring(0, 1) + &quot;***&quot; + domain;</span>
+        }
+<span class="fc" id="L53">        return local.substring(0, 2) + &quot;***&quot; + local.substring(local.length() - 1) + domain;</span>
+    }
+
+    private String maskCpfs(String text) {
+<span class="fc" id="L57">        Matcher matcher = CPF_PATTERN.matcher(text);</span>
+<span class="fc" id="L58">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">        while (matcher.find()) {</span>
+<span class="fc" id="L60">            matcher.appendReplacement(sb, &quot;***.***.***-&quot; + matcher.group(4));</span>
+        }
+<span class="fc" id="L62">        matcher.appendTail(sb);</span>
+<span class="fc" id="L63">        return sb.toString();</span>
+    }
+
+    private String maskPhones(String text) {
+<span class="fc" id="L67">        Matcher matcher = PHONE_PATTERN.matcher(text);</span>
+<span class="fc" id="L68">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        while (matcher.find()) {</span>
+<span class="fc" id="L70">            String prefix = matcher.group(1);</span>
+<span class="fc" id="L71">            String lastFour = matcher.group(4);</span>
+<span class="fc bfc" id="L72" title="All 2 branches covered.">            if (&quot;(&quot;.equals(prefix)) {</span>
+<span class="fc" id="L73">                matcher.appendReplacement(sb, &quot;() *****-&quot; + lastFour);</span>
+            } else {
+<span class="fc" id="L75">                matcher.appendReplacement(sb, &quot;*****&quot; + lastFour);</span>
+            }
+<span class="fc" id="L77">        }</span>
+<span class="fc" id="L78">        matcher.appendTail(sb);</span>
+<span class="fc" id="L79">        return sb.toString();</span>
+    }
+
+    private String maskJsonNames(String text) {
+<span class="fc" id="L83">        Matcher matcher = JSON_NAME_PATTERN.matcher(text);</span>
+<span class="fc" id="L84">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L85" title="All 2 branches covered.">        while (matcher.find()) {</span>
+<span class="fc" id="L86">            String key = matcher.group(1);</span>
+<span class="fc" id="L87">            String value = matcher.group(2);</span>
+<span class="fc" id="L88">            matcher.appendReplacement(sb, &quot;\&quot;&quot; + key + &quot;\&quot;:\&quot;&quot; + maskNameValue(value) + &quot;\&quot;&quot;);</span>
+<span class="fc" id="L89">        }</span>
+<span class="fc" id="L90">        matcher.appendTail(sb);</span>
+<span class="fc" id="L91">        return sb.toString();</span>
+    }
+
+    private String maskContextNames(String text) {
+<span class="fc" id="L95">        Matcher matcher = CONTEXT_NAME_PATTERN.matcher(text);</span>
+<span class="fc" id="L96">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L97" title="All 2 branches covered.">        while (matcher.find()) {</span>
+<span class="fc" id="L98">            String label = matcher.group(1);</span>
+<span class="fc" id="L99">            String name = matcher.group(2);</span>
+<span class="fc" id="L100">            String matchedGroup = matcher.group();</span>
+<span class="fc" id="L101">            String separator = matchedGroup.substring(label.length(), matchedGroup.length() - name.length());</span>
+<span class="fc" id="L102">            matcher.appendReplacement(sb, label + separator + maskNameValue(name));</span>
+<span class="fc" id="L103">        }</span>
+<span class="fc" id="L104">        matcher.appendTail(sb);</span>
+<span class="fc" id="L105">        return sb.toString();</span>
+    }
+
+    private String maskNameValue(String name) {
+<span class="pc bpc" id="L109" title="2 of 4 branches missed.">        if (name == null || name.trim().isEmpty()) {</span>
+<span class="nc" id="L110">            return name;</span>
+        }
+<span class="fc" id="L112">        String[] parts = name.trim().split(&quot;[ \\t]+&quot;);</span>
+<span class="fc" id="L113">        StringBuilder sb = new StringBuilder();</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">        for (int i = 0; i &lt; parts.length; i++) {</span>
+<span class="fc" id="L115">            String part = parts[i];</span>
+<span class="pc bpc" id="L116" title="1 of 2 branches missed.">            if (part.length() &gt; 0) {</span>
+<span class="fc" id="L117">                sb.append(part.charAt(0));</span>
+<span class="fc bfc" id="L118" title="All 2 branches covered.">                for (int j = 1; j &lt; part.length(); j++) {</span>
+<span class="fc" id="L119">                    sb.append('*');</span>
+                }
+            }
+<span class="fc bfc" id="L122" title="All 2 branches covered.">            if (i &lt; parts.length - 1) {</span>
+<span class="fc" id="L123">                sb.append(' ');</span>
+            }
+        }
+<span class="fc" id="L126">        return sb.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

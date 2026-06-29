@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>FeatureFlagController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.featureflag.controller</a> &gt; <span class="el_source">FeatureFlagController.java</span></div><h1>FeatureFlagController.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.featureflag.controller;
+
+import com.cristiane.salon.models.featureflag.entity.FeatureFlag;
+import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping(&quot;/v1&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;FeatureFlag&quot;, description = &quot;Endpoints para gerenciamento de Feature Flags&quot;)
+public class FeatureFlagController {
+
+    private final FeatureFlagService featureFlagService;
+
+    @GetMapping(&quot;/feature-flags&quot;)
+    @Operation(summary = &quot;Lista todas as feature flags ativas/disponíveis (público)&quot;)
+    public ResponseEntity&lt;List&lt;FeatureFlag&gt;&gt; getPublicFeatureFlags() {
+<span class="fc" id="L25">        return ResponseEntity.ok(featureFlagService.findAll());</span>
+    }
+
+    @GetMapping(&quot;/sysadmin/feature-flags&quot;)
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Lista todas as feature flags (Sysadmin)&quot;)
+    public ResponseEntity&lt;List&lt;FeatureFlag&gt;&gt; getAllFeatureFlags() {
+<span class="fc" id="L32">        return ResponseEntity.ok(featureFlagService.findAll());</span>
+    }
+
+    @PatchMapping(&quot;/sysadmin/feature-flags/{name}/toggle&quot;)
+    @PreAuthorize(&quot;hasAnyRole('SYSADMIN')&quot;)
+    @Operation(summary = &quot;Alterna o estado de uma feature flag (Sysadmin)&quot;)
+    public ResponseEntity&lt;FeatureFlag&gt; toggleFeatureFlag(@PathVariable String name) {
+<span class="fc" id="L39">        FeatureFlag updated = featureFlagService.toggle(name);</span>
+<span class="fc" id="L40">        return ResponseEntity.ok(updated);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

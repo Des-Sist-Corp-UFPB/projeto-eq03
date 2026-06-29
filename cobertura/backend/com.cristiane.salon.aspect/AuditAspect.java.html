@@ -1,0 +1,272 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditAspect.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.aspect</a> &gt; <span class="el_source">AuditAspect.java</span></div><h1>AuditAspect.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.aspect;
+
+import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.audit.AuditLogService;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import lombok.RequiredArgsConstructor;
+import org.aspectj.lang.JoinPoint;
+import org.aspectj.lang.annotation.AfterReturning;
+import org.aspectj.lang.annotation.AfterThrowing;
+import org.aspectj.lang.annotation.Aspect;
+import org.aspectj.lang.reflect.MethodSignature;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.http.ResponseEntity;
+
+import java.lang.annotation.Annotation;
+import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Map;
+import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
+
+@Aspect
+@Component
+@RequiredArgsConstructor
+public class AuditAspect {
+    
+    private final AuditLogService auditLogService;
+    private final ObjectMapper objectMapper;
+    
+    @AfterReturning(
+            pointcut = &quot;@annotation(auditable)&quot;,
+            returning = &quot;result&quot;
+    )
+    public void logSuccessfulAction(JoinPoint joinPoint, Auditable auditable, Object result) {
+        try {
+<span class="fc" id="L42">            Long userId = getUserId();</span>
+<span class="fc" id="L43">            String userEmail = getUserEmail();</span>
+<span class="fc" id="L44">            String action = auditable.action();</span>
+<span class="fc" id="L45">            String entityType = auditable.entityType();</span>
+            
+            // Check status override for DONE appointments
+<span class="fc bfc" id="L48" title="All 2 branches covered.">            if (&quot;APPOINTMENT_STATUS_CHANGED&quot;.equals(action)) {</span>
+<span class="fc" id="L49">                boolean isDone = false;</span>
+                try {
+<span class="fc" id="L51">                    MethodSignature signature = (MethodSignature) joinPoint.getSignature();</span>
+<span class="fc" id="L52">                    String[] parameterNames = signature.getParameterNames();</span>
+<span class="fc" id="L53">                    Object[] args = joinPoint.getArgs();</span>
+<span class="pc bpc" id="L54" title="1 of 4 branches missed.">                    if (parameterNames != null &amp;&amp; args != null) {</span>
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">                        for (int i = 0; i &lt; parameterNames.length; i++) {</span>
+<span class="pc bpc" id="L56" title="1 of 4 branches missed.">                            if (&quot;status&quot;.equals(parameterNames[i]) &amp;&amp; args[i] instanceof String statusVal) {</span>
+<span class="pc bpc" id="L57" title="1 of 2 branches missed.">                                if (&quot;DONE&quot;.equalsIgnoreCase(statusVal)) {</span>
+<span class="fc" id="L58">                                    isDone = true;</span>
+                                }
+                                break;
+                            }
+                        }
+<span class="pc bpc" id="L63" title="1 of 2 branches missed.">                    } else if (args != null) {</span>
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">                        for (Object arg : args) {</span>
+<span class="pc bpc" id="L65" title="1 of 4 branches missed.">                            if (arg instanceof String statusVal &amp;&amp; &quot;DONE&quot;.equalsIgnoreCase(statusVal)) {</span>
+<span class="fc" id="L66">                                isDone = true;</span>
+<span class="fc" id="L67">                                break;</span>
+                            }
+                        }
+                    }
+<span class="pc" id="L71">                } catch (Exception ignored) {}</span>
+                
+<span class="pc bpc" id="L73" title="1 of 2 branches missed.">                if (isDone) {</span>
+<span class="fc" id="L74">                    action = &quot;APPOINTMENT_COMPLETED&quot;;</span>
+                }
+            }
+            
+<span class="fc" id="L78">            Long entityId = extractEntityId(joinPoint, result);</span>
+<span class="fc bfc" id="L79" title="All 2 branches covered.">            String details = auditable.captureArgs() ? extractDetails(joinPoint) : null;</span>
+            
+<span class="fc" id="L81">            auditLogService.logAction(</span>
+                    userId,
+                    userEmail,
+                    action,
+                    entityType,
+                    entityId,
+                    details,
+                    &quot;SUCCESS&quot;
+            );
+<span class="nc" id="L90">        } catch (Exception e) {</span>
+            // Log silenciosamente para não quebrar a aplicação
+<span class="fc" id="L92">        }</span>
+<span class="fc" id="L93">    }</span>
+    
+    @AfterThrowing(
+            pointcut = &quot;@annotation(auditable)&quot;,
+            throwing = &quot;exception&quot;
+    )
+    public void logFailedAction(JoinPoint joinPoint, Auditable auditable, Exception exception) {
+        try {
+<span class="fc" id="L101">            Long userId = getUserId();</span>
+<span class="fc" id="L102">            String userEmail = getUserEmail();</span>
+<span class="fc" id="L103">            String action = auditable.action();</span>
+<span class="fc" id="L104">            String entityType = auditable.entityType();</span>
+<span class="fc" id="L105">            Long entityId = extractEntityId(joinPoint, null);</span>
+            
+<span class="fc" id="L107">            auditLogService.logAction(</span>
+                    userId,
+                    userEmail,
+                    action,
+                    entityType,
+                    entityId,
+                    null,
+                    &quot;FAILURE&quot;,
+<span class="fc" id="L115">                    exception.getMessage()</span>
+            );
+<span class="nc" id="L117">        } catch (Exception e) {</span>
+            // Log silenciosamente para não quebrar a aplicação
+<span class="fc" id="L119">        }</span>
+<span class="fc" id="L120">    }</span>
+    
+    private Long getUserId() {
+<span class="fc" id="L123">        Authentication auth = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="pc bpc" id="L124" title="3 of 4 branches missed.">        if (auth != null &amp;&amp; auth.getPrincipal() instanceof com.cristiane.salon.models.user.entity.User user) {</span>
+<span class="nc" id="L125">            return user.getId();</span>
+        }
+<span class="fc" id="L127">        return null;</span>
+    }
+    
+    private String getUserEmail() {
+<span class="fc" id="L131">        Authentication auth = SecurityContextHolder.getContext().getAuthentication();</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if (auth != null) {</span>
+<span class="nc" id="L133">            return auth.getName();</span>
+        }
+<span class="fc" id="L135">        return &quot;SYSTEM&quot;;</span>
+    }
+    
+    private Long extractEntityId(JoinPoint joinPoint, Object result) {
+        // 1. Try to extract from PathVariable (for update/delete)
+        try {
+<span class="fc" id="L141">            MethodSignature signature = (MethodSignature) joinPoint.getSignature();</span>
+<span class="fc" id="L142">            Method method = signature.getMethod();</span>
+<span class="fc" id="L143">            Object[] args = joinPoint.getArgs();</span>
+<span class="fc" id="L144">            Annotation[][] parameterAnnotations = method.getParameterAnnotations();</span>
+<span class="fc bfc" id="L145" title="All 2 branches covered.">            for (int i = 0; i &lt; parameterAnnotations.length; i++) {</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">                for (Annotation annotation : parameterAnnotations[i]) {</span>
+<span class="pc bpc" id="L147" title="1 of 2 branches missed.">                    if (annotation instanceof PathVariable) {</span>
+<span class="fc bfc" id="L148" title="All 2 branches covered.">                        if (args[i] instanceof Number) {</span>
+<span class="fc" id="L149">                            return ((Number) args[i]).longValue();</span>
+<span class="pc bpc" id="L150" title="1 of 2 branches missed.">                        } else if (args[i] instanceof String) {</span>
+                            try {
+<span class="fc" id="L152">                                return Long.parseLong((String) args[i]);</span>
+<span class="fc" id="L153">                            } catch (NumberFormatException ignored) {}</span>
+                        }
+                    }
+                }
+            }
+<span class="fc" id="L158">        } catch (Exception ignored) {}</span>
+
+        // 2. Try to extract from return value (for creation - POST)
+<span class="fc bfc" id="L161" title="All 2 branches covered.">        if (result != null) {</span>
+<span class="fc" id="L162">            Object body = result;</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">            if (result instanceof ResponseEntity&lt;?&gt; responseEntity) {</span>
+<span class="fc" id="L164">                body = responseEntity.getBody();</span>
+            }
+<span class="pc bpc" id="L166" title="1 of 2 branches missed.">            if (body != null) {</span>
+<span class="fc bfc" id="L167" title="All 2 branches covered.">                if (body instanceof Number) {</span>
+<span class="fc" id="L168">                    return ((Number) body).longValue();</span>
+                }
+                try {
+<span class="fc" id="L171">                    Method idMethod = body.getClass().getMethod(&quot;id&quot;);</span>
+<span class="fc" id="L172">                    Object idVal = idMethod.invoke(body);</span>
+<span class="pc bpc" id="L173" title="1 of 2 branches missed.">                    if (idVal instanceof Number) {</span>
+<span class="fc" id="L174">                        return ((Number) idVal).longValue();</span>
+                    }
+<span class="fc" id="L176">                } catch (Exception ignored) {</span>
+                    try {
+<span class="fc" id="L178">                        Method getIdMethod = body.getClass().getMethod(&quot;getId&quot;);</span>
+<span class="fc" id="L179">                        Object idVal = getIdMethod.invoke(body);</span>
+<span class="pc bpc" id="L180" title="1 of 2 branches missed.">                        if (idVal instanceof Number) {</span>
+<span class="fc" id="L181">                            return ((Number) idVal).longValue();</span>
+                        }
+<span class="fc" id="L183">                    } catch (Exception ignored2) {</span>
+                        try {
+<span class="fc" id="L185">                            Field idField = body.getClass().getDeclaredField(&quot;id&quot;);</span>
+<span class="fc" id="L186">                            idField.setAccessible(true);</span>
+<span class="fc" id="L187">                            Object idVal = idField.get(body);</span>
+<span class="pc bpc" id="L188" title="1 of 2 branches missed.">                            if (idVal instanceof Number) {</span>
+<span class="fc" id="L189">                                return ((Number) idVal).longValue();</span>
+                            }
+<span class="nc" id="L191">                        } catch (Exception ignored3) {}</span>
+<span class="nc" id="L192">                    }</span>
+<span class="nc" id="L193">                }</span>
+            }
+        }
+
+        // 3. Fallback: search for any Long argument in method signature
+        try {
+<span class="fc" id="L199">            Object[] args = joinPoint.getArgs();</span>
+<span class="fc bfc" id="L200" title="All 2 branches covered.">            for (Object arg : args) {</span>
+<span class="fc bfc" id="L201" title="All 2 branches covered.">                if (arg instanceof Long) {</span>
+<span class="fc" id="L202">                    return (Long) arg;</span>
+                }
+            }
+<span class="pc" id="L205">        } catch (Exception ignored) {}</span>
+
+<span class="fc" id="L207">        return null;</span>
+    }
+    
+    private String extractDetails(JoinPoint joinPoint) {
+        try {
+<span class="fc" id="L212">            Object[] args = joinPoint.getArgs();</span>
+<span class="fc" id="L213">            List&lt;Object&gt; maskedArgs = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L214" title="All 2 branches covered.">            for (Object arg : args) {</span>
+<span class="fc" id="L215">                maskedArgs.add(maskSensitiveFields(arg));</span>
+            }
+<span class="fc" id="L217">            return objectMapper.writeValueAsString(maskedArgs);</span>
+<span class="fc" id="L218">        } catch (Exception e) {</span>
+<span class="fc" id="L219">            return null;</span>
+        }
+    }
+
+    private Object maskSensitiveFields(Object arg) {
+<span class="pc bpc" id="L224" title="1 of 2 branches missed.">        if (arg == null) {</span>
+<span class="nc" id="L225">            return null;</span>
+        }
+        
+<span class="pc bpc" id="L228" title="5 of 10 branches missed.">        if (arg instanceof String || arg instanceof Number || arg instanceof Boolean || </span>
+            arg instanceof java.time.temporal.Temporal || arg instanceof java.util.Date) {
+<span class="nc" id="L230">            return arg;</span>
+        }
+        
+        try {
+<span class="fc" id="L234">            Map&lt;String, Object&gt; map = objectMapper.convertValue(arg, new com.fasterxml.jackson.core.type.TypeReference&lt;Map&lt;String, Object&gt;&gt;() {});</span>
+<span class="fc" id="L235">            maskMap(map);</span>
+<span class="fc" id="L236">            return map;</span>
+<span class="fc" id="L237">        } catch (Exception e) {</span>
+<span class="fc" id="L238">            return arg;</span>
+        }
+    }
+    
+    private void maskMap(Map&lt;String, Object&gt; map) {
+<span class="pc bpc" id="L243" title="1 of 2 branches missed.">        if (map == null) return;</span>
+        
+<span class="fc" id="L245">        Set&lt;String&gt; sensitiveKeys = Set.of(</span>
+            &quot;password&quot;, &quot;senha&quot;, &quot;token&quot;, &quot;jwt&quot;, &quot;refreshtoken&quot;, &quot;clientnotes&quot;, &quot;client_notes&quot;,
+            &quot;card&quot;, &quot;cartao&quot;, &quot;creditcard&quot;, &quot;bank&quot;, &quot;banco&quot;, &quot;cvv&quot;, &quot;cardNumber&quot;, &quot;card_number&quot;
+        );
+        
+<span class="fc bfc" id="L250" title="All 2 branches covered.">        for (Map.Entry&lt;String, Object&gt; entry : new HashSet&lt;&gt;(map.entrySet())) {</span>
+<span class="fc" id="L251">            String key = entry.getKey().toLowerCase();</span>
+<span class="fc" id="L252">            Object value = entry.getValue();</span>
+            
+<span class="fc bfc" id="L254" title="All 2 branches covered.">            if (sensitiveKeys.contains(key)) {</span>
+<span class="fc" id="L255">                map.put(entry.getKey(), &quot;***&quot;);</span>
+<span class="fc bfc" id="L256" title="All 2 branches covered.">            } else if (value instanceof Map) {</span>
+                @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L258">                Map&lt;String, Object&gt; childMap = (Map&lt;String, Object&gt;) value;</span>
+<span class="fc" id="L259">                maskMap(childMap);</span>
+<span class="fc bfc" id="L260" title="All 2 branches covered.">            } else if (value instanceof Collection) {</span>
+<span class="fc bfc" id="L261" title="All 2 branches covered.">                for (Object item : (Collection&lt;?&gt;) value) {</span>
+<span class="pc bpc" id="L262" title="1 of 2 branches missed.">                    if (item instanceof Map) {</span>
+                        @SuppressWarnings(&quot;unchecked&quot;)
+<span class="fc" id="L264">                        Map&lt;String, Object&gt; childMap = (Map&lt;String, Object&gt;) item;</span>
+<span class="fc" id="L265">                        maskMap(childMap);</span>
+                    }
+<span class="fc" id="L267">                }</span>
+            }
+<span class="fc" id="L269">        }</span>
+<span class="fc" id="L270">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

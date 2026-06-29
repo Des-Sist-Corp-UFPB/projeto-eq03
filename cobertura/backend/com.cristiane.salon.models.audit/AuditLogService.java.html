@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditLogService.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.models.audit</a> &gt; <span class="el_source">AuditLogService.java</span></div><h1>AuditLogService.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.models.audit;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.stereotype.Service;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+
+import java.time.LocalDateTime;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.List;
+
+@Service
+@RequiredArgsConstructor
+public class AuditLogService {
+    
+<span class="fc" id="L24">    private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);</span>
+    
+    private final AuditLogRepository auditLogRepository;
+    
+    public AuditLog logAction(
+            Long userId,
+            String userEmail,
+            String action,
+            String entityType,
+            Long entityId,
+            String details,
+            String status) {
+<span class="fc" id="L36">        return logAction(userId, userEmail, action, entityType, entityId, details, status, null);</span>
+    }
+    
+    public AuditLog logAction(
+            Long userId,
+            String userEmail,
+            String action,
+            String entityType,
+            Long entityId,
+            String details,
+            String status,
+            String errorMessage) {
+        
+        try {
+<span class="fc" id="L50">            HttpServletRequest request = getRequest();</span>
+<span class="fc" id="L51">            String ipAddress = getClientIp(request);</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">            String userAgent = request != null ? request.getHeader(&quot;User-Agent&quot;) : &quot;N/A&quot;;</span>
+            
+<span class="fc" id="L54">            AuditLog auditLog = AuditLog.builder()</span>
+<span class="fc" id="L55">                    .userId(userId)</span>
+<span class="fc" id="L56">                    .userEmail(userEmail)</span>
+<span class="fc" id="L57">                    .action(action)</span>
+<span class="fc" id="L58">                    .entityType(entityType)</span>
+<span class="fc" id="L59">                    .entityId(entityId)</span>
+<span class="fc" id="L60">                    .details(details)</span>
+<span class="fc" id="L61">                    .ipAddress(ipAddress)</span>
+<span class="fc" id="L62">                    .userAgent(userAgent)</span>
+<span class="fc" id="L63">                    .status(status)</span>
+<span class="fc" id="L64">                    .errorMessage(errorMessage)</span>
+<span class="fc" id="L65">                    .createdAt(LocalDateTime.now())</span>
+<span class="fc" id="L66">                    .build();</span>
+            
+<span class="fc" id="L68">            AuditLog savedAudit = auditLogRepository.save(auditLog);</span>
+            
+<span class="fc" id="L70">            logger.info(&quot;🔍 AUDITORIA | Usuário: {} | Ação: {} | Entidade: {} (ID: {}) | Status: {}&quot;,</span>
+                    userEmail, action, entityType, entityId, status);
+            
+<span class="fc" id="L73">            return savedAudit;</span>
+<span class="fc" id="L74">        } catch (Exception e) {</span>
+<span class="fc" id="L75">            logger.error(&quot;❌ Erro ao registrar auditoria&quot;, e);</span>
+<span class="fc" id="L76">            return null;</span>
+        }
+    }
+    
+    public Page&lt;AuditLog&gt; getAllAuditLogs(Pageable pageable) {
+<span class="fc" id="L81">        return auditLogRepository.findAll(pageable);</span>
+    }
+
+    public Page&lt;AuditLog&gt; getAllAuditLogs(String action, String entityType, String userEmail, Pageable pageable) {
+<span class="pc bpc" id="L85" title="1 of 4 branches missed.">        String searchAction = (action == null || action.trim().isEmpty()) ? null : action.trim();</span>
+<span class="pc bpc" id="L86" title="1 of 4 branches missed.">        String searchEntity = (entityType == null || entityType.trim().isEmpty()) ? null : entityType.trim();</span>
+        
+<span class="fc" id="L88">        String searchEmail = null;</span>
+<span class="pc bpc" id="L89" title="1 of 4 branches missed.">        if (userEmail != null &amp;&amp; !userEmail.trim().isEmpty()) {</span>
+<span class="fc" id="L90">            searchEmail = &quot;%&quot; + userEmail.trim().toLowerCase() + &quot;%&quot;;</span>
+        }
+        
+<span class="fc" id="L93">        return auditLogRepository.findWithFilters(searchAction, searchEntity, searchEmail, pageable);</span>
+    }
+
+    public Page&lt;AuditLog&gt; getAuditLogsWithCombinedFilters(
+            Long userId,
+            String entityType,
+            String action,
+            LocalDate startDate,
+            LocalDate endDate,
+            Pageable pageable) {
+        
+<span class="pc bpc" id="L104" title="1 of 4 branches missed.">        String searchAction = (action == null || action.trim().isEmpty()) ? null : action.trim();</span>
+<span class="pc bpc" id="L105" title="1 of 4 branches missed.">        String searchEntity = (entityType == null || entityType.trim().isEmpty()) ? null : entityType.trim();</span>
+
+<span class="fc" id="L107">        LocalDateTime queryStart = null;</span>
+<span class="fc bfc" id="L108" title="All 2 branches covered.">        if (startDate != null) {</span>
+<span class="fc" id="L109">            ZonedDateTime recifeStart = startDate.atTime(LocalTime.of(0, 0, 0)).atZone(ZoneId.of(&quot;America/Recife&quot;));</span>
+<span class="fc" id="L110">            queryStart = recifeStart.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();</span>
+        }
+
+<span class="fc" id="L113">        LocalDateTime queryEnd = null;</span>
+<span class="fc bfc" id="L114" title="All 2 branches covered.">        if (endDate != null) {</span>
+<span class="fc" id="L115">            ZonedDateTime recifeEnd = endDate.atTime(LocalTime.of(23, 59, 59)).atZone(ZoneId.of(&quot;America/Recife&quot;));</span>
+<span class="fc" id="L116">            queryEnd = recifeEnd.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();</span>
+        }
+
+<span class="fc" id="L119">        return auditLogRepository.findWithFiltersCombined(</span>
+                userId,
+                searchEntity,
+                searchAction,
+                queryStart,
+                queryEnd,
+                pageable
+        );
+    }
+    
+    public Page&lt;AuditLog&gt; getAuditLogsByUser(Long userId, Pageable pageable) {
+<span class="fc" id="L130">        return auditLogRepository.findByUserId(userId, pageable);</span>
+    }
+    
+    public Page&lt;AuditLog&gt; getAuditLogsByAction(String action, Pageable pageable) {
+<span class="fc" id="L134">        return auditLogRepository.findByAction(action, pageable);</span>
+    }
+    
+    public Page&lt;AuditLog&gt; getAuditLogsByEntityType(String entityType, Pageable pageable) {
+<span class="fc" id="L138">        return auditLogRepository.findByEntityType(entityType, pageable);</span>
+    }
+    
+    public Page&lt;AuditLog&gt; getAuditLogsByDateRange(LocalDateTime from, LocalDateTime to, Pageable pageable) {
+<span class="fc" id="L142">        return auditLogRepository.findByCreatedAtBetween(from, to, pageable);</span>
+    }
+    
+    public List&lt;AuditLog&gt; getEntityHistory(String entityType, Long entityId) {
+<span class="fc" id="L146">        return auditLogRepository.findByEntityTypeAndEntityId(entityType, entityId);</span>
+    }
+    
+    private HttpServletRequest getRequest() {
+        try {
+<span class="fc" id="L151">            ServletRequestAttributes attributes = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();</span>
+<span class="fc bfc" id="L152" title="All 2 branches covered.">            return attributes != null ? attributes.getRequest() : null;</span>
+<span class="nc" id="L153">        } catch (Exception e) {</span>
+<span class="nc" id="L154">            return null;</span>
+        }
+    }
+    
+    private String getClientIp(HttpServletRequest request) {
+<span class="fc bfc" id="L159" title="All 2 branches covered.">        if (request == null) return &quot;N/A&quot;;</span>
+        
+<span class="fc" id="L161">        String xForwardedFor = request.getHeader(&quot;X-Forwarded-For&quot;);</span>
+<span class="fc bfc" id="L162" title="All 4 branches covered.">        if (xForwardedFor != null &amp;&amp; !xForwardedFor.isEmpty()) {</span>
+<span class="fc" id="L163">            return xForwardedFor.split(&quot;,&quot;)[0];</span>
+        }
+        
+<span class="fc" id="L166">        String xRealIp = request.getHeader(&quot;X-Real-IP&quot;);</span>
+<span class="fc bfc" id="L167" title="All 4 branches covered.">        if (xRealIp != null &amp;&amp; !xRealIp.isEmpty()) {</span>
+<span class="fc" id="L168">            return xRealIp;</span>
+        }
+        
+<span class="fc" id="L171">        return request.getRemoteAddr();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

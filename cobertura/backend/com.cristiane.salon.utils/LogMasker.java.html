@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>LogMasker.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.utils</a> &gt; <span class="el_source">LogMasker.java</span></div><h1>LogMasker.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.utils;
+
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+<span class="nc" id="L6">public class LogMasker {</span>
+
+<span class="fc" id="L8">    private static final Pattern EMAIL_PATTERN = Pattern.compile(&quot;(?i)\\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\\.[A-Za-z]{2,}\\b&quot;);</span>
+<span class="fc" id="L9">    private static final Pattern CPF_PATTERN = Pattern.compile(&quot;\\b(\\d{3})\\.?(\\d{3})\\.?(\\d{3})-?(\\d{2})\\b&quot;);</span>
+
+    public static String maskEmail(String email) {
+<span class="fc bfc" id="L12" title="All 4 branches covered.">        if (email == null || email.trim().isEmpty()) {</span>
+<span class="fc" id="L13">            return email;</span>
+        }
+<span class="fc" id="L15">        int atIndex = email.indexOf('@');</span>
+<span class="pc bpc" id="L16" title="1 of 2 branches missed.">        if (atIndex &lt;= 0) {</span>
+<span class="nc" id="L17">            return &quot;***&quot;;</span>
+        }
+<span class="fc" id="L19">        String local = email.substring(0, atIndex);</span>
+<span class="fc" id="L20">        String domain = email.substring(atIndex);</span>
+<span class="fc bfc" id="L21" title="All 2 branches covered.">        if (local.length() &lt;= 2) {</span>
+<span class="fc" id="L22">            return local.substring(0, 1) + &quot;***&quot; + domain;</span>
+        }
+<span class="fc" id="L24">        return local.substring(0, 2) + &quot;***&quot; + local.substring(local.length() - 1) + domain;</span>
+    }
+
+    public static String maskCpf(String cpf) {
+<span class="fc bfc" id="L28" title="All 4 branches covered.">        if (cpf == null || cpf.trim().isEmpty()) {</span>
+<span class="fc" id="L29">            return cpf;</span>
+        }
+<span class="fc" id="L31">        String digits = cpf.replaceAll(&quot;\\D&quot;, &quot;&quot;);</span>
+<span class="fc bfc" id="L32" title="All 2 branches covered.">        if (digits.length() == 11) {</span>
+<span class="fc" id="L33">            return &quot;***.***.***-&quot; + digits.substring(9);</span>
+        }
+<span class="fc" id="L35">        return &quot;***&quot;;</span>
+    }
+
+    public static String sanitizeJson(String json) {
+<span class="pc bpc" id="L39" title="2 of 4 branches missed.">        if (json == null || json.trim().isEmpty()) {</span>
+<span class="nc" id="L40">            return json;</span>
+        }
+
+        // 1. Mask raw emails (including inside JSON fields) first to prevent double-masking
+<span class="fc" id="L44">        String result = maskRawEmails(json);</span>
+
+        // 2. Mask &quot;number&quot;:&quot;...&quot; (which might be CPF) in JSON
+<span class="fc" id="L47">        Matcher numberMatcher = Pattern.compile(&quot;(?i)(\&quot;number\&quot;\\s*:\\s*\&quot;)([^\&quot;]+)(\&quot;)&quot;).matcher(result);</span>
+<span class="fc" id="L48">        StringBuffer sb = new StringBuffer();</span>
+<span class="fc bfc" id="L49" title="All 2 branches covered.">        while (numberMatcher.find()) {</span>
+<span class="fc" id="L50">            String num = numberMatcher.group(2);</span>
+<span class="pc bpc" id="L51" title="1 of 2 branches missed.">            String masked = num.length() == 11 ? maskCpf(num) : &quot;***&quot;;</span>
+<span class="fc" id="L52">            numberMatcher.appendReplacement(sb, numberMatcher.group(1) + masked + numberMatcher.group(3));</span>
+<span class="fc" id="L53">        }</span>
+<span class="fc" id="L54">        numberMatcher.appendTail(sb);</span>
+<span class="fc" id="L55">        result = sb.toString();</span>
+
+        // 3. Also mask raw CPFs in the JSON string
+<span class="fc" id="L58">        result = maskRawCpfs(result);</span>
+
+<span class="fc" id="L60">        return result;</span>
+    }
+
+    public static String maskRawEmails(String text) {
+<span class="pc bpc" id="L64" title="1 of 2 branches missed.">        if (text == null) return null;</span>
+<span class="fc" id="L65">        Matcher m = EMAIL_PATTERN.matcher(text);</span>
+<span class="fc" id="L66">        StringBuffer sb = new StringBuffer();</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        while (m.find()) {</span>
+<span class="fc" id="L68">            m.appendReplacement(sb, maskEmail(m.group()));</span>
+        }
+<span class="fc" id="L70">        m.appendTail(sb);</span>
+<span class="fc" id="L71">        return sb.toString();</span>
+    }
+
+    public static String maskRawCpfs(String text) {
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">        if (text == null) return null;</span>
+<span class="fc" id="L76">        Matcher m = CPF_PATTERN.matcher(text);</span>
+<span class="fc" id="L77">        StringBuffer sb = new StringBuffer();</span>
+<span class="pc bpc" id="L78" title="1 of 2 branches missed.">        while (m.find()) {</span>
+<span class="nc" id="L79">            String cpfDigits = m.group(1) + m.group(2) + m.group(3) + m.group(4);</span>
+<span class="nc" id="L80">            m.appendReplacement(sb, maskCpf(cpfDigits));</span>
+<span class="nc" id="L81">        }</span>
+<span class="fc" id="L82">        m.appendTail(sb);</span>
+<span class="fc" id="L83">        return sb.toString();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>

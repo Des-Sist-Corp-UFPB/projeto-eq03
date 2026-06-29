@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="pt"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuditLogTableInitializer.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">salon</a> &gt; <a href="index.source.html" class="el_package">com.cristiane.salon.config</a> &gt; <span class="el_source">AuditLogTableInitializer.java</span></div><h1>AuditLogTableInitializer.java</h1><pre class="source lang-java linenums">package com.cristiane.salon.config;
+
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.ApplicationArguments;
+import org.springframework.boot.ApplicationRunner;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.stereotype.Component;
+
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+
+@Component
+@RequiredArgsConstructor
+<span class="fc" id="L17">@Slf4j</span>
+public class AuditLogTableInitializer implements ApplicationRunner {
+
+    private final DataSource dataSource;
+    private final JdbcTemplate jdbcTemplate;
+
+    @Override
+    public void run(ApplicationArguments args) throws Exception {
+<span class="pc bpc" id="L25" title="1 of 2 branches missed.">        if (auditTableExists()) {</span>
+<span class="fc" id="L26">            return;</span>
+        }
+
+<span class="nc" id="L29">        log.warn(&quot;Tabela tb_audit_log ausente. Criando estrutura mínima automaticamente.&quot;);</span>
+<span class="nc" id="L30">        jdbcTemplate.execute(&quot;&quot;&quot;</span>
+                CREATE TABLE tb_audit_log (
+                    id BIGSERIAL PRIMARY KEY,
+                    user_id BIGINT,
+                    user_email VARCHAR(255),
+                    action VARCHAR(100) NOT NULL,
+                    entity_type VARCHAR(100) NOT NULL,
+                    entity_id BIGINT,
+                    details TEXT,
+                    ip_address VARCHAR(45),
+                    user_agent TEXT,
+                    status VARCHAR(20) NOT NULL,
+                    error_message TEXT,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                &quot;&quot;&quot;);
+<span class="nc" id="L46">        jdbcTemplate.execute(&quot;CREATE INDEX IF NOT EXISTS idx_audit_user_id ON tb_audit_log(user_id)&quot;);</span>
+<span class="nc" id="L47">        jdbcTemplate.execute(&quot;CREATE INDEX IF NOT EXISTS idx_audit_action ON tb_audit_log(action)&quot;);</span>
+<span class="nc" id="L48">        jdbcTemplate.execute(&quot;CREATE INDEX IF NOT EXISTS idx_audit_entity_type ON tb_audit_log(entity_type)&quot;);</span>
+<span class="nc" id="L49">        jdbcTemplate.execute(&quot;CREATE INDEX IF NOT EXISTS idx_audit_created_at ON tb_audit_log(created_at)&quot;);</span>
+<span class="nc" id="L50">        jdbcTemplate.execute(&quot;CREATE INDEX IF NOT EXISTS idx_audit_user_email ON tb_audit_log(user_email)&quot;);</span>
+<span class="nc" id="L51">    }</span>
+
+    private boolean auditTableExists() throws Exception {
+<span class="fc" id="L54">        try (Connection connection = dataSource.getConnection()) {</span>
+<span class="fc" id="L55">            DatabaseMetaData metaData = connection.getMetaData();</span>
+<span class="fc" id="L56">            try (ResultSet tables = metaData.getTables(null, null, &quot;tb_audit_log&quot;, new String[]{&quot;TABLE&quot;})) {</span>
+<span class="fc" id="L57">                return tables.next();</span>
+            }
+        }
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.10.202304240956</span></div></body></html>
