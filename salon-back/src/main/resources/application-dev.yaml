@@ -2,9 +2,9 @@ spring:
   datasource:
     # Fallback para desenvolvimento local sem Docker (mvn spring-boot:run manual).
     # Com Docker, o valor vem do .env via env_file e sobrescreve este.
-    url: jdbc:postgresql://localhost:5432/salon_dev
-    username: salon
-    password: salon
+    url: jdbc:postgresql://localhost:5433/salon_dev
+    username: ${DB_USER:salon}
+    password: ${DB_PASS:salon}
     driver-class-name: org.postgresql.Driver
     hikari:
       maximum-pool-size: 5

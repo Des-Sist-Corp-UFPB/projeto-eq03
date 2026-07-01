@@ -1,4 +1,4 @@
-﻿services:
+services:
   db:
     image: postgres:16
     container_name: salon-db
@@ -9,7 +9,7 @@
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
     ports:
-      - "5432:5432"  # Exposto para debug local (DBeaver, psql, etc.)
+      - "5433:5432"  # Exposto para debug local (DBeaver, psql, etc.)
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
