@@ -1,30 +1,30 @@
-# Relatório de Performance e Teste de Estresse (SLA Analysis)
-  
-## Resumo de Carga (Simultânea e Concorrente)
-Este teste executa todas as rotas (Leituras de Relatórios, Listagens, Criações e Webhooks) **simultaneamente** de forma paralela concorrente, simulando o uso real em ambiente de pico.
+# Relatório de Carga Constante — Busca Binária da Capacidade Máxima (k6)
 
-* **Total de Requisições:** 5063
-* **Requisições por Segundo (RPS Total):** 111.97 req/s
-* **Taxa de Falhas (Erros de Rede/Banco):** 0.00%
+## Resumo Executivo — Carga Constante
+Este teste executa uma carga constante de **12 VUs** por **1 minuto** para avaliar se o sistema mantém os SLAs em um nível de concorrência específico. Faz parte de uma **Busca Binária Manual** para determinar a capacidade máxima sustentável. Se todos os SLAs estiverem em 100%, aumente os VUs; se houver quebra, reduza e repita.
 
-## Tempos de Resposta (Duração das Requisições)
+* **Total de Requisições:** 2510
+* **Vazão Média (RPS Total):** 41.53 req/s
+* **Taxa de Falha:** 0.08% (Máximo permitido: 1.00%)
+
+## Distribuição dos Tempos de Resposta
 | Métrica | Tempo (ms) |
 |---|---|
-| Mínimo | 5.62 ms |
-| Médio | 2324.72 ms |
-| Mediana | 1370.85 ms |
-| p(95) - 95% das requisições | 5885.90 ms |
-| p(99) - 99% das requisições | 0.00 ms |
-| Máximo | 9515.71 ms |
+| Mínimo | 2.61 ms |
+| Médio | 186.64 ms |
+| Mediana | 173.84 ms |
+| **p(95) (95% das Requisições)** | **453.31 ms** |
+| p(99) (99% das Requisições) | 0.00 ms |
+| Máximo | 782.55 ms |
 
-## Análise de Vazão e SLAs de Performance (Quanto o sistema aguenta)
-Abaixo estão as métricas de capacidade real do sistema para cada patamar de tempo limite aceitável:
+## Análise de SLA e Escabilidade
+Abaixo está o detalhamento da capacidade sob diferentes níveis de tolerância de tempo de resposta:
 
-| SLA Alvo | Tempo Limite | Requisições Atendidas no SLA | % de Sucesso | RPS Efetivo (Vazão no SLA) | Status (Meta: > 95%) |
+| SLA Alvo | Tempo Limite | Requisições Atendidas | % de Sucesso no SLA | RPS no SLA | Status |
 |---|---|---|---|---|---|
-| **SLA <= 1s** | 1000 ms | 2307 / 5063 | 45.59% | 51.02 req/s | ⚠️ Alerta |
-| **SLA <= 2s** | 2000 ms | 2718 / 5063 | 53.72% | 60.11 req/s | ⚠️ Alerta |
-| **SLA <= 3s** | 3000 ms | 3052 / 5063 | 60.32% | 67.49 req/s | ⚠️ Alerta |
+| **SLA <= 1s** | 1000 ms | 2505 / 2510 | 100.00% | 41.44 req/s | ✅ Aprovado |
+| **SLA <= 2s** | 2000 ms | 2505 / 2510 | 100.00% | 41.44 req/s | ✅ Aprovado |
+| **SLA <= 3s** | 3000 ms | 2505 / 2510 | 100.00% | 41.44 req/s | ✅ Aprovado |
 
 ---
-*Relatório gerado automaticamente via k6 custom summary em 2026-07-01T13:03:30.086Z*
+*Relatório de capacidade gerado automaticamente via k6 em 2026-07-04T20:34:48.388Z*

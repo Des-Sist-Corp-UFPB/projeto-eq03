@@ -1,0 +1,5 @@
+services:
+  salon-app:
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev,performance
+      - DB_POOL_SIZE=100
