@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${DB_USER}
       POSTGRES_PASSWORD: ${DB_PASS}
     ports:
-      - "5433:5432"  # Exposto para debug local (DBeaver, psql, etc.)
+      - "5433:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -36,6 +36,8 @@ services:
     container_name: salon-app
     env_file:
       - .env
+    environment:
+      - DB_URL=jdbc:postgresql://db:5432/salon_dev
     ports:
       - "80:8080"
     depends_on:
