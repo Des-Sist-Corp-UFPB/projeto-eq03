@@ -45,3 +45,6 @@ logs/*.log.*.gz
 
 # Credentials file
 admin_credentials.txt
+
+# Load test artifacts (podem conter tokens JWT)
+loadtest/resultado.json

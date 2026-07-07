@@ -1,187 +1,351 @@
 import http from 'k6/http';
 import { check, sleep, group } from 'k6';
-import { Rate } from 'k6/metrics';
+import { Counter } from 'k6/metrics';
+import exec from 'k6/execution';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Teste de Carga Constante — Busca Binária Manual da Capacidade Máxima — EQ03
-// Uso: k6 run -e VUS=50 -e BASE_URL=... -e ADMIN_EMAIL=... -e ADMIN_PASSWORD=...
+// Teste de Carga e Performance — EQ03
+//
+// Três cenários sequenciais e independentes. Cada um começa com 1 VU e sobe
+// automaticamente até 60 VUs ao longo de 90s (ramp), depois sustenta por 30s.
+// A métrica principal é quantas requisições HTTP 2xx o sistema entregou dentro
+// do budget de tempo de cada cenário (≤1s, ≤2s, ≤3s).
+//
+// Rotas exercitadas: todas as rotas protegidas da API (GET, POST, PUT, PATCH,
+// DELETE) — relatórios, agendamentos, caixa, funcionárias, produtos, serviços,
+// usuários e ping.
+//
+// Comando:
+//   docker run --rm -i --network projeto-eq03_salon-network \
+//     -v "%CD%:/app" -w //app --env-file .env \
+//     -e BASE_URL=http://salon-app:8080 \
+//     grafana/k6 run loadtest/carga.js
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE_URL = __ENV.BASE_URL || 'http://localhost:8080';
-const ADMIN_EMAIL = __ENV.ADMIN_EMAIL;
+const BASE_URL       = __ENV.BASE_URL       || 'http://localhost:8080';
+const ADMIN_EMAIL    = __ENV.ADMIN_EMAIL;
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD;
 
-// Métricas de SLA customizadas para encontrar o ponto de quebra
-const rateUnder1s = new Rate('rate_under_1s');
-const rateUnder2s = new Rate('rate_under_2s');
-const rateUnder3s = new Rate('rate_under_3s');
+// Duração real de cada cenário: 90s ramp + 30s sustentado = 120s
+const SCENARIO_DURATION_S = 120;
+
+const countOk1s = new Counter('count_ok_1s');
+const countOk2s = new Counter('count_ok_2s');
+const countOk3s = new Counter('count_ok_3s');
 
 export const options = {
-  // Carga Constante — parâmetro via variável de ambiente (busca binária manual)
-  // Exemplo de uso para testar 50 VUs: k6 run -e VUS=50 carga.js
-  vus: parseInt(__ENV.VUS || '10', 10),
-  duration: '1m',
+  summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
 
-  // Limite estrito de estabilidade: falha se houver mais de 1% de requisições mal-sucedidas
+  scenarios: {
+    // Cenário 1: budget ≤ 1s
+    sla_1s: {
+      executor:  'ramping-vus',
+      startVUs:  1,
+      stages: [
+        { duration: '90s', target: 60 },
+        { duration: '30s', target: 60 },
+      ],
+      startTime: '0s',
+    },
+    // Cenário 2: budget ≤ 2s (começa após sla_1s + 10s de gap)
+    sla_2s: {
+      executor:  'ramping-vus',
+      startVUs:  1,
+      stages: [
+        { duration: '90s', target: 60 },
+        { duration: '30s', target: 60 },
+      ],
+      startTime: '2m10s',
+    },
+    // Cenário 3: budget ≤ 3s (começa após sla_2s + 10s de gap)
+    sla_3s: {
+      executor:  'ramping-vus',
+      startVUs:  1,
+      stages: [
+        { duration: '90s', target: 60 },
+        { duration: '30s', target: 60 },
+      ],
+      startTime: '4m20s',
+    },
+  },
+
   thresholds: {
+    // Taxa de erro HTTP global
     http_req_failed: ['rate<0.01'],
+
+    // Submetrics por cenário — necessários para p(95)/p(99) no relatório
+    // (limite de 60s é apenas para forçar a criação da métrica, nunca dispara)
+    'http_req_duration{scenario:sla_1s}': ['p(99)<60000'],
+    'http_req_duration{scenario:sla_2s}': ['p(99)<60000'],
+    'http_req_duration{scenario:sla_3s}': ['p(99)<60000'],
+
+    // Meta principal: > 1000 requisições HTTP-OK dentro do budget
+    count_ok_1s: ['count>1000'],
+    count_ok_2s: ['count>1000'],
+    count_ok_3s: ['count>1000'],
+
+    // Cria submetrics por cenário (necessário para scenarioRps no handleSummary)
+    'http_reqs{scenario:sla_1s}': ['count>0'],
+    'http_reqs{scenario:sla_2s}': ['count>0'],
+    'http_reqs{scenario:sla_3s}': ['count>0'],
   },
 };
 
-// Mede e classifica os tempos de resposta para a análise de SLA
+// Conta requisições 2xx dentro do budget do cenário atual
 function trackResponseSla(res) {
-  if (res && res.timings && res.timings.duration) {
-    const duration = res.timings.duration;
-    rateUnder1s.add(duration < 1000);
-    rateUnder2s.add(duration < 2000);
-    rateUnder3s.add(duration < 3000);
-  }
+  if (!res || !res.timings) return;
+  if (res.status < 200 || res.status >= 300) return;
+  const d = res.timings.duration;
+  const s = exec.scenario.name;
+  if (s === 'sla_1s' && d < 1000) countOk1s.add(1);
+  if (s === 'sla_2s' && d < 2000) countOk2s.add(1);
+  if (s === 'sla_3s' && d < 3000) countOk3s.add(1);
 }
 
-// Inicializa a autenticação e prepara recursos de teste
 export function setup() {
-  console.log(`Iniciando Setup do Teste de Capacidade contra ${BASE_URL}...`);
+  console.log('Setup contra ' + BASE_URL);
 
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
-    throw new Error('ERRO: As variáveis de ambiente ADMIN_EMAIL e ADMIN_PASSWORD são obrigatórias!');
+    throw new Error('ERRO: ADMIN_EMAIL e ADMIN_PASSWORD são obrigatórios no .env');
   }
 
-  // 1. Efetua login
-  const loginRes = http.post(`${BASE_URL}/v1/auth/login`, JSON.stringify({
-    email: ADMIN_EMAIL,
-    password: ADMIN_PASSWORD
-  }), { headers: { 'Content-Type': 'application/json' } });
-
+  const loginRes = http.post(
+    BASE_URL + '/v1/auth/login',
+    JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
+    { headers: { 'Content-Type': 'application/json' } }
+  );
   const token = loginRes.json('accessToken');
-  if (!token) {
-    throw new Error(`ERRO: Não foi possível obter o token de acesso para ${ADMIN_EMAIL}. Verifique as credenciais.`);
-  }
+  if (!token) throw new Error('ERRO: login falhou — verifique as credenciais no .env');
 
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
-  };
+  const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
 
-  // 2. Garante a existência de um Serviço
+  // serviceId
   let serviceId = 1;
-  const svcRes = http.get(`${BASE_URL}/v1/services`, { headers });
-  if (svcRes.status === 200 && svcRes.json().length > 0) {
-    serviceId = svcRes.json()[0].id;
-  } else {
-    const newSvcRes = http.post(`${BASE_URL}/v1/services`, JSON.stringify({
-      name: 'Serviço de Teste Capacidade k6',
-      description: 'Criado para o teste de capacidade',
-      price: 100.00,
-      durationMin: 45,
-      active: true
-    }), { headers });
-    if (newSvcRes.status === 201) {
-      serviceId = newSvcRes.json().id;
+  const svcRes = http.get(BASE_URL + '/v1/services', { headers: h });
+  if (svcRes.status === 200) {
+    const list = svcRes.json();
+    if (Array.isArray(list) && list.length > 0) {
+      serviceId = list[0].id;
+    } else {
+      const r = http.post(BASE_URL + '/v1/services', JSON.stringify({
+        name: 'Serviço k6', description: 'Criado pelo setup de carga',
+        price: 100.00, durationMin: 45, active: true,
+      }), { headers: h });
+      if (r.status === 201) serviceId = r.json('id');
     }
   }
 
-  // 3. Garante a existência de uma Funcionária
+  // employeeId
   let employeeId = 1;
-  const empRes = http.get(`${BASE_URL}/v1/employees`, { headers });
-  if (empRes.status === 200 && empRes.json().length > 0) {
-    employeeId = empRes.json()[0].id;
-  } else {
-    const randomEmail = `k6_capacity_staff_${Math.floor(Math.random() * 1000000)}@teste.com`;
-    const regRes = http.post(`${BASE_URL}/v1/users`, JSON.stringify({
-      name: 'Funcionária k6 Capacity',
-      email: randomEmail,
-      password: 'EmployeePassword@123',
-      phone: '83999999999',
-      active: true,
-      roleId: 3 // FUNCIONARIA
-    }), { headers });
-
-    if (regRes.status === 200 || regRes.status === 201) {
-      const userId = regRes.json().id;
-      const newEmpRes = http.post(`${BASE_URL}/v1/employees`, JSON.stringify({
-        userId: userId,
-        bio: 'Funcionária criada pelo setup de capacidade',
-        remunerationType: 'SALARIO_FIXO',
-        commissionScope: 'GLOBAL',
-        remunerationValue: 2000.00,
-        commissionValue: 10.00
-      }), { headers });
-      if (newEmpRes.status === 201) {
-        employeeId = newEmpRes.json().id;
+  const empRes = http.get(BASE_URL + '/v1/employees', { headers: h });
+  if (empRes.status === 200) {
+    const list = empRes.json();
+    if (Array.isArray(list) && list.length > 0) {
+      employeeId = list[0].id;
+    } else {
+      const reg = http.post(BASE_URL + '/v1/users', JSON.stringify({
+        name: 'Funcionária k6', email: 'k6_emp_' + Date.now() + '@teste.com',
+        password: 'Employee@123', phone: '83911110000', active: true, roleId: 3,
+      }), { headers: h });
+      if (reg.status === 200 || reg.status === 201) {
+        const r = http.post(BASE_URL + '/v1/employees', JSON.stringify({
+          userId: reg.json('id'), bio: 'k6 load test', remunerationType: 'SALARIO_FIXO',
+          commissionScope: 'GLOBAL', remunerationValue: 2000, commissionValue: 10,
+        }), { headers: h });
+        if (r.status === 201) employeeId = r.json('id');
       }
     }
   }
 
-  console.log(`Setup concluído. Usando Service ID: ${serviceId}, Employee ID: ${employeeId}`);
-  return { token, employeeId, serviceId };
+  // productId — cria produto de teste se não existir
+  let productId = 1;
+  const prodRes = http.get(BASE_URL + '/v1/products', { headers: h });
+  if (prodRes.status === 200) {
+    const list = prodRes.json();
+    if (Array.isArray(list) && list.length > 0) {
+      productId = list[0].id;
+    } else {
+      const r = http.post(BASE_URL + '/v1/products', JSON.stringify({
+        name: 'Produto k6', stock: 9999, price: 25.00, active: true,
+      }), { headers: h });
+      if (r.status === 201) productId = r.json('id');
+    }
+  }
+
+  // testUserId — usuário criado para o PUT /v1/users/{id} (não o admin)
+  let testUserId = null;
+  const regU = http.post(BASE_URL + '/v1/users', JSON.stringify({
+    name: 'User k6 Update', email: 'k6_upd_' + Date.now() + '@teste.com',
+    password: 'UpdateUser@123', phone: '83922220000', active: true, roleId: 2,
+  }), { headers: h });
+  if (regU.status === 200 || regU.status === 201) testUserId = regU.json('id');
+
+  console.log('Setup OK — serviceId=' + serviceId + ' employeeId=' + employeeId +
+              ' productId=' + productId + ' testUserId=' + testUserId);
+  return { token, serviceId, employeeId, productId, testUserId };
 }
 
 export default function (data) {
-  const { token, employeeId, serviceId } = data;
-  const headers = {
-    'Content-Type': 'application/json',
-    'Authorization': `Bearer ${token}`
+  const h = {
+    'Content-Type':  'application/json',
+    'Authorization': 'Bearer ' + data.token,
   };
 
-  const actionSelector = Math.random();
+  const r = Math.random();
 
-  if (actionSelector < 0.30) {
-    // 1. ROTA LEITURA 1: Relatório financeiro (query pesada e filtros de agregação)
+  if (r < 0.05) {
+    // ── GET /ping ─────────────────────────────────────────────────────────
+    group('GET Ping', () => {
+      const res = http.get(BASE_URL + '/ping', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Ping': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.13) {
+    // ── GET /v1/reports/financial ─────────────────────────────────────────
     group('GET Financial Report', () => {
-      const res = http.get(`${BASE_URL}/v1/reports/financial?from=2026-06-01&to=2026-06-30`, { headers });
+      const res = http.get(BASE_URL + '/v1/reports/financial?from=2026-06-01&to=2026-06-30', { headers: h });
       trackResponseSla(res);
-
-      if (res.status !== 200) {
-        console.log(`Erro no Relatório: Status ${res.status} | Body: ${res.body}`);
-      }
-
-      check(res, {
-        'status 200 - Financial Report': (r) => r.status === 200,
-      });
+      check(res, { 'status 200 - Financial Report': (v) => v.status === 200 });
     });
 
-  } else if (actionSelector < 0.60) {
-    // 2. ROTA LEITURA 2: Listagem geral de agendamentos
+  } else if (r < 0.21) {
+    // ── GET /v1/reports/appointments ──────────────────────────────────────
+    group('GET Appointments Report', () => {
+      const res = http.get(BASE_URL + '/v1/reports/appointments?from=2026-06-01&to=2026-06-30', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Appointments Report': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.25) {
+    // ── GET /v1/reports/payroll ───────────────────────────────────────────
+    group('GET Payroll Report', () => {
+      const res = http.get(BASE_URL + '/v1/reports/payroll?from=2026-06-01&to=2026-06-30', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Payroll Report': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.35) {
+    // ── GET /v1/appointments ──────────────────────────────────────────────
     group('GET All Appointments', () => {
-      const res = http.get(`${BASE_URL}/v1/appointments`, { headers });
+      const res = http.get(BASE_URL + '/v1/appointments', { headers: h });
       trackResponseSla(res);
-      check(res, {
-        'status 200 - List Appointments': (r) => r.status === 200,
-      });
+      check(res, { 'status 200 - List Appointments': (v) => v.status === 200 });
     });
 
-  } else if (actionSelector < 0.80) {
-    // 3. ROTA ESCRITA 1: Criar novo pedido de agendamento (Escrita)
-    // scheduledAt nulo envia como solicitação, evitando conflitos de horários e assegurando 100% de sucesso
-    group('POST Create Appointment Request', () => {
-      const payload = JSON.stringify({
-        employeeId: employeeId,
-        serviceId: serviceId,
-        preferredDate: '2026-07-20',
-        clientNotes: `Teste de capacidade VU ${__VU} - Iteração ${__ITER}`
-      });
-      const res = http.post(`${BASE_URL}/v1/appointments`, payload, { headers });
+  } else if (r < 0.45) {
+    // ── GET /v1/cashflow ──────────────────────────────────────────────────
+    group('GET CashFlow', () => {
+      const res = http.get(BASE_URL + '/v1/cashflow', { headers: h });
       trackResponseSla(res);
-      check(res, {
-        'status 201 - Create Appointment': (r) => r.status === 201,
-      });
+      check(res, { 'status 200 - CashFlow': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.52) {
+    // ── GET /v1/employees/booking (public, sem role check) ────────────────
+    group('GET Employees Booking', () => {
+      const res = http.get(BASE_URL + '/v1/employees/booking', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Employees Booking': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.59) {
+    // ── GET /v1/products ──────────────────────────────────────────────────
+    group('GET Products', () => {
+      const res = http.get(BASE_URL + '/v1/products', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Products': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.65) {
+    // ── GET /v1/services ──────────────────────────────────────────────────
+    group('GET Services', () => {
+      const res = http.get(BASE_URL + '/v1/services', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Services': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.73) {
+    // ── POST /v1/appointments ─────────────────────────────────────────────
+    group('POST Create Appointment', () => {
+      const res = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
+        employeeId:    data.employeeId,
+        serviceId:     data.serviceId,
+        preferredDate: '2026-09-15',
+        clientNotes:   'k6 VU' + __VU + ' iter' + __ITER,
+      }), { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 201 - Create Appointment': (v) => v.status === 201 });
+    });
+
+  } else if (r < 0.81) {
+    // ── POST /v1/cashflow ─────────────────────────────────────────────────
+    group('POST CashFlow Entry', () => {
+      const res = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
+        type:        Math.random() < 0.5 ? 'INCOME' : 'EXPENSE',
+        amount:      parseFloat((Math.random() * 100 + 1).toFixed(2)),
+        description: 'k6 VU' + __VU + ' iter' + __ITER,
+        date:        '2026-07-01',
+      }), { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 201 - CashFlow Entry': (v) => v.status === 201 });
+    });
+
+  } else if (r < 0.86) {
+    // ── POST + DELETE /v1/cashflow/{id} ───────────────────────────────────
+    group('POST+DELETE CashFlow', () => {
+      const cr = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
+        type: 'EXPENSE', amount: 1.00,
+        description: 'k6 del VU' + __VU, date: '2026-07-01',
+      }), { headers: h });
+      if (cr.status === 201) {
+        const id = cr.json('id');
+        const dr = http.del(BASE_URL + '/v1/cashflow/' + id, null, { headers: h });
+        trackResponseSla(dr);
+        check(dr, { 'status 2xx - Delete CashFlow': (v) => v.status >= 200 && v.status < 300 });
+      }
+    });
+
+  } else if (r < 0.91) {
+    // ── POST + PATCH /v1/appointments/{id}/cancel ─────────────────────────
+    group('POST+PATCH Cancel Appointment', () => {
+      const cr = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
+        employeeId:    data.employeeId,
+        serviceId:     data.serviceId,
+        preferredDate: '2026-09-20',
+        clientNotes:   'k6 cancel VU' + __VU,
+      }), { headers: h });
+      if (cr.status === 201) {
+        const id = cr.json('id');
+        const pr = http.patch(BASE_URL + '/v1/appointments/' + id + '/cancel', null, { headers: h });
+        trackResponseSla(pr);
+        check(pr, { 'status 2xx - Cancel Appointment': (v) => v.status >= 200 && v.status < 300 });
+      }
+    });
+
+  } else if (r < 0.95) {
+    // ── PUT /v1/products/{id} ─────────────────────────────────────────────
+    group('PUT Update Product', () => {
+      const res = http.put(BASE_URL + '/v1/products/' + data.productId, JSON.stringify({
+        name:  'Produto k6 VU' + __VU,
+        stock: 9999,
+        price: parseFloat((Math.random() * 50 + 10).toFixed(2)),
+        active: true,
+      }), { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Update Product': (v) => v.status === 200 });
     });
 
   } else {
-    // 4. ROTA ESCRITA 2: Criação manual de entrada no Fluxo de Caixa
-    group('POST Manual CashFlow Entry', () => {
-      const payload = JSON.stringify({
-        type: Math.random() < 0.5 ? 'INCOME' : 'EXPENSE',
-        amount: parseFloat((Math.random() * 100 + 1).toFixed(2)),
-        description: `Lançamento de capacidade VU ${__VU} - Iteração ${__ITER}`,
-        date: '2026-07-01'
-      });
-      const res = http.post(`${BASE_URL}/v1/cashflow`, payload, { headers });
+    // ── PATCH /v1/users/{id} ──────────────────────────────────────────────
+    group('PATCH Update User', () => {
+      if (!data.testUserId) return;
+      const res = http.patch(BASE_URL + '/v1/users/' + data.testUserId, JSON.stringify({
+        phone: '839' + String(Math.floor(Math.random() * 90000000 + 10000000)),
+      }), { headers: h });
       trackResponseSla(res);
-      check(res, {
-        'status 201 - CashFlow Entry Created': (r) => r.status === 201,
-      });
+      check(res, { 'status 200 - Update User': (v) => v.status === 200 });
     });
   }
 
@@ -189,68 +353,78 @@ export default function (data) {
 }
 
 export function handleSummary(data) {
-  const reqDuration = data.metrics.http_req_duration ? data.metrics.http_req_duration.values : null;
-  const reqFailed = data.metrics.http_req_failed ? data.metrics.http_req_failed.values : null;
-  const totalReqs = data.metrics.http_reqs ? data.metrics.http_reqs.values.count : 0;
-  const rps = data.metrics.http_reqs ? data.metrics.http_reqs.values.rate : 0;
+  const mv  = (key) => (data.metrics[key] ? data.metrics[key].values : null);
+  const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 
-  const min = (reqDuration && reqDuration.min) ? reqDuration.min.toFixed(2) : '0.00';
-  const avg = (reqDuration && reqDuration.avg) ? reqDuration.avg.toFixed(2) : '0.00';
-  const med = (reqDuration && reqDuration.med) ? reqDuration.med.toFixed(2) : '0.00';
-  const p95 = (reqDuration && reqDuration['p(95)']) ? reqDuration['p(95)'].toFixed(2) : '0.00';
-  const p99 = (reqDuration && reqDuration['p(99)']) ? reqDuration['p(99)'].toFixed(2) : '0.00';
-  const max = (reqDuration && reqDuration.max) ? reqDuration.max.toFixed(2) : '0.00';
+  const ok1s = mv('count_ok_1s') ? mv('count_ok_1s').count : 0;
+  const ok2s = mv('count_ok_2s') ? mv('count_ok_2s').count : 0;
+  const ok3s = mv('count_ok_3s') ? mv('count_ok_3s').count : 0;
 
-  const failRate = (reqFailed && reqFailed.rate !== undefined) ? (reqFailed.rate * 100).toFixed(2) : '0.00';
+  function scenarioDur(scenario) {
+    const d = mv('http_req_duration{scenario:' + scenario + '}');
+    return {
+      p95: d && d['p(95)'] != null ? d['p(95)'].toFixed(2) : 'N/A',
+      p99: d && d['p(99)'] != null ? d['p(99)'].toFixed(2) : 'N/A',
+      avg: d && d.avg      != null ? d.avg.toFixed(2)      : 'N/A',
+      max: d && d.max      != null ? d.max.toFixed(2)      : 'N/A',
+    };
+  }
 
-  const rate1s = data.metrics.rate_under_1s ? (data.metrics.rate_under_1s.values.rate * 100).toFixed(2) : '0.00';
-  const rate2s = data.metrics.rate_under_2s ? (data.metrics.rate_under_2s.values.rate * 100).toFixed(2) : '0.00';
-  const rate3s = data.metrics.rate_under_3s ? (data.metrics.rate_under_3s.values.rate * 100).toFixed(2) : '0.00';
+  function scenarioRps(scenario) {
+    const r = mv('http_reqs{scenario:' + scenario + '}');
+    return r ? (r.count / SCENARIO_DURATION_S).toFixed(2) : '0.00';
+  }
 
-  const count1s = data.metrics.rate_under_1s ? data.metrics.rate_under_1s.values.passes : 0;
-  const count2s = data.metrics.rate_under_2s ? data.metrics.rate_under_2s.values.passes : 0;
-  const count3s = data.metrics.rate_under_3s ? data.metrics.rate_under_3s.values.passes : 0;
+  const d1 = scenarioDur('sla_1s');
+  const d2 = scenarioDur('sla_2s');
+  const d3 = scenarioDur('sla_3s');
 
-  const rps1s = totalReqs > 0 ? (rps * (count1s / totalReqs)).toFixed(2) : '0.00';
-  const rps2s = totalReqs > 0 ? (rps * (count2s / totalReqs)).toFixed(2) : '0.00';
-  const rps3s = totalReqs > 0 ? (rps * (count3s / totalReqs)).toFixed(2) : '0.00';
+  const failRate  = mv('http_req_failed') ? (mv('http_req_failed').rate * 100).toFixed(2) : '0.00';
+  const totalReqs = mv('http_reqs')       ? mv('http_reqs').count : 0;
 
-  const vuCount = parseInt(__ENV.VUS || '10', 10);
-  const reportContent = `# Relatório de Carga Constante — Busca Binária da Capacidade Máxima (k6)
+  const icon = (n, threshold) => n >= threshold ? '✅' : '❌';
 
-## Resumo Executivo — Carga Constante
-Este teste executa uma carga constante de **${vuCount} VUs** por **1 minuto** para avaliar se o sistema mantém os SLAs em um nível de concorrência específico. Faz parte de uma **Busca Binária Manual** para determinar a capacidade máxima sustentável. Se todos os SLAs estiverem em 100%, aumente os VUs; se houver quebra, reduza e repita.
+  const reportContent =
+`# Relatório de Carga e Performance — EQ03 (k6)
 
-* **Total de Requisições:** ${totalReqs}
-* **Vazão Média (RPS Total):** ${rps.toFixed(2)} req/s
-* **Taxa de Falha:** ${failRate}% (Máximo permitido: 1.00%)
+## Configuração
+| Parâmetro | Valor |
+|-----------|-------|
+| Ferramenta | k6 |
+| Executor | ramping-vus (auto: 1 → 60 VUs por cenário) |
+| Duração por cenário | 120 s (90 s ramp + 30 s sustentado) |
+| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /appointments · GET /cashflow · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
 
-## Distribuição dos Tempos de Resposta
-| Métrica | Tempo (ms) |
-|---|---|
-| Mínimo | ${min} ms |
-| Médio | ${avg} ms |
-| Mediana | ${med} ms |
-| **p(95) (95% das Requisições)** | **${p95} ms** |
-| p(99) (99% das Requisições) | ${p99} ms |
-| Máximo | ${max} ms |
+## Resultado Principal — Requisições HTTP-OK por Budget de Tempo
 
-## Análise de SLA e Escabilidade
-Abaixo está o detalhamento da capacidade sob diferentes níveis de tolerância de tempo de resposta:
+Cada cenário é **independente**: roda com seus próprios VUs e conta apenas
+requisições com status HTTP 2xx **e** tempo de resposta dentro do budget.
 
-| SLA Alvo | Tempo Limite | Requisições Atendidas | % de Sucesso no SLA | RPS no SLA | Status |
-|---|---|---|---|---|---|
-| **SLA <= 1s** | 1000 ms | ${count1s} / ${totalReqs} | ${rate1s}% | ${rps1s} req/s | ${parseFloat(rate1s) >= 95 ? '✅ Aprovado' : '⚠️ Alerta'} |
-| **SLA <= 2s** | 2000 ms | ${count2s} / ${totalReqs} | ${rate2s}% | ${rps2s} req/s | ${parseFloat(rate2s) >= 95 ? '✅ Aprovado' : '⚠️ Alerta'} |
-| **SLA <= 3s** | 3000 ms | ${count3s} / ${totalReqs} | ${rate3s}% | ${rps3s} req/s | ${parseFloat(rate3s) >= 95 ? '✅ Aprovado' : '⚠️ Alerta'} |
+| Budget | RPS real | Req. OK no Budget | p(95) | p(99) | Meta >1.000 |
+|--------|----------|-------------------|-------|-------|-------------|
+| **≤ 1 s** | ${scenarioRps('sla_1s')} req/s | **${fmt(ok1s)}** | ${d1.p95} ms | ${d1.p99} ms | ${icon(ok1s, 1000)} |
+| **≤ 2 s** | ${scenarioRps('sla_2s')} req/s | **${fmt(ok2s)}** | ${d2.p95} ms | ${d2.p99} ms | ${icon(ok2s, 1000)} |
+| **≤ 3 s** | ${scenarioRps('sla_3s')} req/s | **${fmt(ok3s)}** | ${d3.p95} ms | ${d3.p99} ms | ${icon(ok3s, 1000)} |
+
+## Saúde Global
+* **Total de requisições (todos os cenários):** ${fmt(totalReqs)}
+* **Taxa de falha HTTP:** ${failRate}% (máximo permitido: 1,00%)
+
+## Interpretação
+O teste rampa automaticamente de 1 até 60 VUs durante cada cenário.
+As colunas "Req. OK no Budget" mostram quantas requisições o sistema entregou
+dentro do limite de tempo daquele cenário, independentemente dos outros.
 
 ---
-*Relatório de capacidade gerado automaticamente via k6 em ${new Date().toISOString()}*
+*Relatório gerado automaticamente via k6 em ${new Date().toISOString()}*
 `;
 
+  const safeData = JSON.parse(JSON.stringify(data));
+  if (safeData.setup_data) safeData.setup_data.token = '[REDACTED]';
+
   return {
-    'stdout': textSummary(data, { indent: ' ', enableColors: true }) + '\n\n' + reportContent,
-    'loadtest/report.md': reportContent,
-    'loadtest/resultado.json': JSON.stringify(data, null, 2),
+    'stdout':                  textSummary(data, { indent: ' ', enableColors: true }) + '\n\n' + reportContent,
+    'loadtest/report.md':      reportContent,
+    'loadtest/resultado.json': JSON.stringify(safeData, null, 2),
   };
 }

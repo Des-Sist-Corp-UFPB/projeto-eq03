@@ -1,30 +1,32 @@
-# Relatório de Carga Constante — Busca Binária da Capacidade Máxima (k6)
+# Relatório de Carga e Performance — EQ03 (k6)
 
-## Resumo Executivo — Carga Constante
-Este teste executa uma carga constante de **12 VUs** por **1 minuto** para avaliar se o sistema mantém os SLAs em um nível de concorrência específico. Faz parte de uma **Busca Binária Manual** para determinar a capacidade máxima sustentável. Se todos os SLAs estiverem em 100%, aumente os VUs; se houver quebra, reduza e repita.
+## Configuração
+| Parâmetro | Valor |
+|-----------|-------|
+| Ferramenta | k6 |
+| Executor | ramping-vus (auto: 1 → 60 VUs por cenário) |
+| Duração por cenário | 120 s (90 s ramp + 30 s sustentado) |
+| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /appointments · GET /cashflow · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
 
-* **Total de Requisições:** 2510
-* **Vazão Média (RPS Total):** 41.53 req/s
-* **Taxa de Falha:** 0.08% (Máximo permitido: 1.00%)
+## Resultado Principal — Requisições HTTP-OK por Budget de Tempo
 
-## Distribuição dos Tempos de Resposta
-| Métrica | Tempo (ms) |
-|---|---|
-| Mínimo | 2.61 ms |
-| Médio | 186.64 ms |
-| Mediana | 173.84 ms |
-| **p(95) (95% das Requisições)** | **453.31 ms** |
-| p(99) (99% das Requisições) | 0.00 ms |
-| Máximo | 782.55 ms |
+Cada cenário é **independente**: roda com seus próprios VUs e conta apenas
+requisições com status HTTP 2xx **e** tempo de resposta dentro do budget.
 
-## Análise de SLA e Escabilidade
-Abaixo está o detalhamento da capacidade sob diferentes níveis de tolerância de tempo de resposta:
+| Budget | RPS real | Req. OK no Budget | p(95) | p(99) | Meta >1.000 |
+|--------|----------|-------------------|-------|-------|-------------|
+| **≤ 1 s** | 53.73 req/s | **4.479** | 2988.16 ms | 4335.05 ms | ✅ |
+| **≤ 2 s** | 49.00 req/s | **4.572** | 3135.26 ms | 4601.53 ms | ✅ |
+| **≤ 3 s** | 50.12 req/s | **5.056** | 3173.12 ms | 4533.05 ms | ✅ |
 
-| SLA Alvo | Tempo Limite | Requisições Atendidas | % de Sucesso no SLA | RPS no SLA | Status |
-|---|---|---|---|---|---|
-| **SLA <= 1s** | 1000 ms | 2505 / 2510 | 100.00% | 41.44 req/s | ✅ Aprovado |
-| **SLA <= 2s** | 2000 ms | 2505 / 2510 | 100.00% | 41.44 req/s | ✅ Aprovado |
-| **SLA <= 3s** | 3000 ms | 2505 / 2510 | 100.00% | 41.44 req/s | ✅ Aprovado |
+## Saúde Global
+* **Total de requisições (todos os cenários):** 18.346
+* **Taxa de falha HTTP:** 0.01% (máximo permitido: 1,00%)
+
+## Interpretação
+O teste rampa automaticamente de 1 até 60 VUs durante cada cenário.
+As colunas "Req. OK no Budget" mostram quantas requisições o sistema entregou
+dentro do limite de tempo daquele cenário, independentemente dos outros.
 
 ---
-*Relatório de capacidade gerado automaticamente via k6 em 2026-07-04T20:34:48.388Z*
+*Relatório gerado automaticamente via k6 em 2026-07-07T15:28:17.263Z*
