@@ -48,3 +48,6 @@ admin_credentials.txt
 
 # Load test artifacts (podem conter tokens JWT)
 loadtest/resultado.json
+
+# Claude Code local settings (pessoal, não compartilhado com o time)
+.claude/settings.local.json
