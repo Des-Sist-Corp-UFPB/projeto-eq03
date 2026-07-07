@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.user.service;
 
+import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.user.dto.PermissionResponse;
 import com.cristiane.salon.models.user.dto.RolePermissionsResponse;
@@ -38,6 +39,8 @@ class RoleServiceTest {
     private Permission permission1;
     private Permission permission2;
     private Role roleAdmin;
+    private Role roleSysadmin;
+    private Role roleGerente;
     private Role roleCliente;
 
     @BeforeEach
@@ -50,6 +53,16 @@ class RoleServiceTest {
         roleAdmin.setName("ADMIN");
         roleAdmin.setPermissions(new HashSet<>(Set.of(permission1)));
 
+        roleSysadmin = new Role();
+        roleSysadmin.setId(3L);
+        roleSysadmin.setName("SYSADMIN");
+        roleSysadmin.setPermissions(new HashSet<>());
+
+        roleGerente = new Role();
+        roleGerente.setId(4L);
+        roleGerente.setName("GERENTE_DE_ATENDIMENTO");
+        roleGerente.setPermissions(new HashSet<>(Set.of(permission1)));
+
         roleCliente = new Role();
         roleCliente.setId(2L);
         roleCliente.setName("CLIENTE");
@@ -57,21 +70,13 @@ class RoleServiceTest {
     }
 
     @Test
-    void findAllRolesWithPermissions_shouldReturnAllRoles() {
-        when(roleRepository.findAll()).thenReturn(List.of(roleAdmin, roleCliente));
+    void findAllRolesWithPermissions_shouldExcludeSysadminAndAdmin() {
+        when(roleRepository.findAll()).thenReturn(List.of(roleAdmin, roleSysadmin, roleGerente, roleCliente));
 
         List<RolePermissionsResponse> result = roleService.findAllRolesWithPermissions();
 
-        assertThat(result).hasSize(2);
         assertThat(result).extracting(RolePermissionsResponse::roleName)
-                .containsExactlyInAnyOrder("ADMIN", "CLIENTE");
-
-        RolePermissionsResponse adminResult = result.stream()
-                .filter(r -> r.roleName().equals("ADMIN"))
-                .findFirst()
-                .orElseThrow();
-        assertThat(adminResult.permissions()).hasSize(1);
-        assertThat(adminResult.permissions().get(0).id()).isEqualTo(1L);
+                .containsExactlyInAnyOrder("GERENTE_DE_ATENDIMENTO", "CLIENTE");
     }
 
     @Test
@@ -118,15 +123,36 @@ class RoleServiceTest {
     }
 
     @Test
-    void revokePermission_shouldRemovePermissionFromRole() {
+    void grantPermission_whenRoleIsAdmin_shouldThrowBadRequestException() {
         when(roleRepository.findById(1L)).thenReturn(Optional.of(roleAdmin));
+
+        assertThatThrownBy(() -> roleService.grantPermission(1L, 2L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("ADMIN");
+        verify(roleRepository, never()).save(any());
+    }
+
+    @Test
+    void grantPermission_whenRoleIsSysadmin_shouldThrowBadRequestException() {
+        when(roleRepository.findById(3L)).thenReturn(Optional.of(roleSysadmin));
+
+        assertThatThrownBy(() -> roleService.grantPermission(3L, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("SYSADMIN");
+        verify(roleRepository, never()).save(any());
+    }
+
+    @Test
+    void revokePermission_shouldRemovePermissionFromRole() {
+        when(roleRepository.findById(4L)).thenReturn(Optional.of(roleGerente));
         when(permissionRepository.findById(1L)).thenReturn(Optional.of(permission1));
-        when(roleRepository.save(roleAdmin)).thenReturn(roleAdmin);
+        when(roleRepository.save(roleGerente)).thenReturn(roleGerente);
 
-        RolePermissionsResponse result = roleService.revokePermission(1L, 1L);
+        RolePermissionsResponse result = roleService.revokePermission(4L, 1L);
 
-        assertThat(roleAdmin.getPermissions()).doesNotContain(permission1);
-        verify(roleRepository).save(roleAdmin);
+        assertThat(roleGerente.getPermissions()).doesNotContain(permission1);
+        assertThat(result.roleName()).isEqualTo("GERENTE_DE_ATENDIMENTO");
+        verify(roleRepository).save(roleGerente);
     }
 
     @Test
@@ -140,12 +166,22 @@ class RoleServiceTest {
 
     @Test
     void revokePermission_whenPermissionNotFound_shouldThrowResourceNotFoundException() {
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(roleAdmin));
+        when(roleRepository.findById(4L)).thenReturn(Optional.of(roleGerente));
         when(permissionRepository.findById(99L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> roleService.revokePermission(1L, 99L))
+        assertThatThrownBy(() -> roleService.revokePermission(4L, 99L))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Permissão não encontrada");
+    }
+
+    @Test
+    void revokePermission_whenRoleIsAdmin_shouldThrowBadRequestException() {
+        when(roleRepository.findById(1L)).thenReturn(Optional.of(roleAdmin));
+
+        assertThatThrownBy(() -> roleService.revokePermission(1L, 1L))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining("ADMIN");
+        verify(roleRepository, never()).save(any());
     }
 
     @Test
@@ -160,14 +196,14 @@ class RoleServiceTest {
 
     @Test
     void grantPermission_isIdempotent_addsPermissionOnce() {
-        roleAdmin.setPermissions(new HashSet<>(Set.of(permission1)));
-        when(roleRepository.findById(1L)).thenReturn(Optional.of(roleAdmin));
+        roleGerente.setPermissions(new HashSet<>(Set.of(permission1)));
+        when(roleRepository.findById(4L)).thenReturn(Optional.of(roleGerente));
         when(permissionRepository.findById(1L)).thenReturn(Optional.of(permission1));
-        when(roleRepository.save(roleAdmin)).thenReturn(roleAdmin);
+        when(roleRepository.save(roleGerente)).thenReturn(roleGerente);
 
-        roleService.grantPermission(1L, 1L);
+        roleService.grantPermission(4L, 1L);
 
         // Set semantics ensure no duplicate
-        assertThat(roleAdmin.getPermissions()).hasSize(1).contains(permission1);
+        assertThat(roleGerente.getPermissions()).hasSize(1).contains(permission1);
     }
 }

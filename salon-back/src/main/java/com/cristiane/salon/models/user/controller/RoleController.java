@@ -15,28 +15,28 @@ import java.util.List;
 @RestController
 @RequestMapping("/v1/roles")
 @RequiredArgsConstructor
-@Tag(name = "RBAC", description = "Gerenciamento dinâmico de permissões por cargo (SYSADMIN)")
+@Tag(name = "RBAC", description = "Gerenciamento dinâmico de permissões por cargo (SYSADMIN/ADMIN)")
 public class RoleController {
 
     private final RoleService roleService;
 
     @GetMapping
     @Operation(summary = "Lista todos os cargos com suas permissões")
-    @PreAuthorize("hasAuthority('GET:/v1/roles')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     public ResponseEntity<List<RolePermissionsResponse>> getAllRoles() {
         return ResponseEntity.ok(roleService.findAllRolesWithPermissions());
     }
 
     @GetMapping("/permissions")
     @Operation(summary = "Lista todas as permissões disponíveis no sistema")
-    @PreAuthorize("hasAuthority('GET:/v1/roles/permissions')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     public ResponseEntity<List<PermissionResponse>> getAllPermissions() {
         return ResponseEntity.ok(roleService.findAllPermissions());
     }
 
     @PostMapping("/{roleId}/permissions/{permissionId}")
     @Operation(summary = "Concede uma permissão a um cargo")
-    @PreAuthorize("hasAuthority('POST:/v1/roles/{roleId}/permissions/{permissionId}')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     public ResponseEntity<RolePermissionsResponse> grantPermission(
             @PathVariable Long roleId,
             @PathVariable Long permissionId) {
@@ -45,7 +45,7 @@ public class RoleController {
 
     @DeleteMapping("/{roleId}/permissions/{permissionId}")
     @Operation(summary = "Revoga uma permissão de um cargo")
-    @PreAuthorize("hasAuthority('DELETE:/v1/roles/{roleId}/permissions/{permissionId}')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     public ResponseEntity<RolePermissionsResponse> revokePermission(
             @PathVariable Long roleId,
             @PathVariable Long permissionId) {

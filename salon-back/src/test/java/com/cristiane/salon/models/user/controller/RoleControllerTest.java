@@ -36,7 +36,7 @@ class RoleControllerTest extends BaseControllerTest {
     );
 
     @Test
-    @WithMockUser(username = "sysadmin@salao.com", authorities = {"GET:/v1/roles"})
+    @WithMockUser(username = "sysadmin@salao.com", roles = {"SYSADMIN"})
     void getAllRoles_shouldReturn200WithRolesList() throws Exception {
         when(roleService.findAllRolesWithPermissions()).thenReturn(List.of(ROLE_RESPONSE));
 
@@ -47,7 +47,20 @@ class RoleControllerTest extends BaseControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "sysadmin@salao.com", authorities = {"GET:/v1/roles/permissions"})
+    @WithMockUser(username = "admin@salao.com", roles = {"ADMIN"})
+    void getAllRoles_shouldReturn200ForAdminToo() throws Exception {
+        when(roleService.findAllRolesWithPermissions()).thenReturn(List.of(ROLE_RESPONSE));
+
+        mvc.perform(get("/v1/roles").contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk());
+    }
+
+    // Nota: a autorização real de @verifyUserPermissions.userOwnResourceOrHasPermission(...)
+    // não é exercitada neste slice (@WebMvcTest não habilita @EnableMethodSecurity — ver
+    // ErrorScenariosTest). A cobertura de negação de acesso vive em VerifyUserPermissionsTest.
+
+    @Test
+    @WithMockUser(username = "sysadmin@salao.com", roles = {"SYSADMIN"})
     void getAllPermissions_shouldReturn200WithPermissionsList() throws Exception {
         when(roleService.findAllPermissions()).thenReturn(List.of(PERM_1));
 
@@ -58,7 +71,7 @@ class RoleControllerTest extends BaseControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "sysadmin@salao.com", authorities = {"POST:/v1/roles/{roleId}/permissions/{permissionId}"})
+    @WithMockUser(username = "sysadmin@salao.com", roles = {"SYSADMIN"})
     void grantPermission_shouldReturn200() throws Exception {
         when(roleService.grantPermission(1L, 2L)).thenReturn(ROLE_RESPONSE);
 
@@ -68,7 +81,7 @@ class RoleControllerTest extends BaseControllerTest {
     }
 
     @Test
-    @WithMockUser(username = "sysadmin@salao.com", authorities = {"DELETE:/v1/roles/{roleId}/permissions/{permissionId}"})
+    @WithMockUser(username = "sysadmin@salao.com", roles = {"SYSADMIN"})
     void revokePermission_shouldReturn200() throws Exception {
         RolePermissionsResponse revoked = new RolePermissionsResponse(1L, "ADMIN", List.of());
         when(roleService.revokePermission(1L, 1L)).thenReturn(revoked);
