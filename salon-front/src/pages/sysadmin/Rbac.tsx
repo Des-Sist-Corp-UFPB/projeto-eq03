@@ -118,7 +118,7 @@ export const Rbac = () => {
             </p>
             <p className="text-xs text-[#3b3036]/45 mt-1">
               SYSADMIN e ADMIN não aparecem aqui: o acesso total desses cargos é garantido
-              diretamente pelo sistema, então não há permissão para conceder ou revogar.
+              diretamente pelo sistema.
             </p>
           </div>
         </div>
