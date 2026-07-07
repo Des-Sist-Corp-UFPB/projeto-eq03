@@ -2,23 +2,8 @@ import { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useTheme } from '../context/ThemeContext';
-import {
-  Menu,
-  X,
-  Users,
-  UserCheck,
-  UserCog,
-  Scissors,
-  Package,
-  Calendar,
-  DollarSign,
-  FileBarChart,
-  LogOut,
-  ChevronLeft,
-  ChevronRight,
-  Sun,
-  Moon,
-} from 'lucide-react';
+import { getVisibleAdminNavItems } from '../config/adminNav';
+import { Menu, X, LogOut, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
 
 export const AdminLayout = () => {
   const { user, isAuthenticated, isLoading, logout } = useAuth();
@@ -40,7 +25,8 @@ export const AdminLayout = () => {
     return <Navigate to="/login" replace />;
   }
 
-  if (user?.role !== 'ADMIN' && user?.role !== 'GERENTE_DE_ATENDIMENTO' && user?.role !== 'SYSADMIN') {
+  const allowedAdminLayoutRoles = ['ADMIN', 'GERENTE_DE_ATENDIMENTO', 'FUNCIONARIA', 'SYSADMIN'];
+  if (!user?.role || !allowedAdminLayoutRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
   }
 
@@ -55,16 +41,7 @@ export const AdminLayout = () => {
     });
   };
 
-  const menuItems = [
-    { to: '/admin/reports', label: 'Relatórios', icon: FileBarChart },
-    { to: '/admin/clients', label: 'Clientes', icon: Users },
-    { to: '/admin/users', label: 'Equipe', icon: UserCog },
-    { to: '/admin/employees', label: 'Funcionários(as)', icon: UserCheck },
-    { to: '/admin/services', label: 'Serviços', icon: Scissors },
-    { to: '/admin/products', label: 'Produtos', icon: Package },
-    { to: '/admin/appointments', label: 'Agendamentos', icon: Calendar },
-    { to: '/admin/cashflow', label: 'Fluxo de Caixa', icon: DollarSign },
-  ];
+  const menuItems = getVisibleAdminNavItems(user?.role);
 
   const userName = user?.email ? user.email.split('@')[0] : 'Admin';
 
@@ -199,7 +176,13 @@ export const AdminLayout = () => {
         <header className="hidden md:flex justify-between items-center px-8 py-4 bg-white/70 backdrop-blur-md border-b border-[#eae1e1]/50 z-30 h-[73px]">
           <div className="flex items-center gap-4">
             <span className="text-xs font-semibold bg-[#be8a83]/10 text-[#be8a83] px-2.5 py-1 rounded-full uppercase tracking-wider">
-              {user?.role === 'SYSADMIN' ? 'Sysadmin' : user?.role === 'ADMIN' ? 'Administrador' : 'Gerente'}
+              {user?.role === 'SYSADMIN'
+                ? 'Sysadmin'
+                : user?.role === 'ADMIN'
+                  ? 'Administrador'
+                  : user?.role === 'FUNCIONARIA'
+                    ? 'Funcionária'
+                    : 'Gerente'}
             </span>
           </div>
           <div className="flex items-center gap-4">
