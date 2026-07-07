@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.user.service;
 
+import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.user.dto.PermissionResponse;
 import com.cristiane.salon.models.user.dto.RolePermissionsResponse;
@@ -19,16 +20,27 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class RoleService {
 
+    /**
+     * SYSADMIN e ADMIN têm acesso total resolvido de forma hardcoded em
+     * {@link com.cristiane.salon.security.VerifyUserPermissions} (independente da tabela
+     * tb_role_permissions). Conceder/revogar permissões desses cargos pelo painel RBAC não
+     * teria nenhum efeito real de autorização — por isso eles ficam de fora da listagem e
+     * não podem ser alvo de grant/revoke, para não passar uma falsa sensação de controle.
+     */
+    private static final Set<String> ROLES_WITH_HARDCODED_ACCESS = Set.of("SYSADMIN", "ADMIN");
+
     private final RoleRepository roleRepository;
     private final PermissionRepository permissionRepository;
 
     /**
-     * Retorna todos os Roles com suas permissões associadas.
+     * Retorna os Roles com suas permissões associadas, exceto SYSADMIN e ADMIN
+     * (acesso total garantido pelo sistema, não configurável via RBAC).
      * Utilizado pelo painel RBAC do SYSADMIN.
      */
     @Transactional(readOnly = true)
     public List<RolePermissionsResponse> findAllRolesWithPermissions() {
         return roleRepository.findAll().stream()
+                .filter(role -> !ROLES_WITH_HARDCODED_ACCESS.contains(role.getName()))
                 .map(this::toRolePermissionsResponse)
                 .collect(Collectors.toList());
     }
@@ -49,8 +61,7 @@ public class RoleService {
      */
     @Transactional
     public RolePermissionsResponse grantPermission(Long roleId, Long permissionId) {
-        Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada"));
+        Role role = findEditableRole(roleId);
 
         Permission permission = permissionRepository.findById(permissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Permissão não encontrada"));
@@ -65,8 +76,7 @@ public class RoleService {
      */
     @Transactional
     public RolePermissionsResponse revokePermission(Long roleId, Long permissionId) {
-        Role role = roleRepository.findById(roleId)
-                .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada"));
+        Role role = findEditableRole(roleId);
 
         Permission permission = permissionRepository.findById(permissionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Permissão não encontrada"));
@@ -77,6 +87,23 @@ public class RoleService {
     }
 
     // ---- Helpers ----
+
+    /**
+     * Busca um role garantindo que não é um dos cargos com acesso total hardcoded
+     * (SYSADMIN/ADMIN), já que alterar permissões deles não surtiria efeito real.
+     */
+    private Role findEditableRole(Long roleId) {
+        Role role = roleRepository.findById(roleId)
+                .orElseThrow(() -> new ResourceNotFoundException("Role não encontrada"));
+
+        if (ROLES_WITH_HARDCODED_ACCESS.contains(role.getName())) {
+            throw new BadRequestException(
+                    "As permissões do cargo " + role.getName() +
+                    " não podem ser alteradas: o acesso total já é garantido pelo sistema, " +
+                    "independentemente da tabela de permissões.");
+        }
+        return role;
+    }
 
     private RolePermissionsResponse toRolePermissionsResponse(Role role) {
         List<PermissionResponse> perms = role.getPermissions().stream()

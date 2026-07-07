@@ -27,6 +27,15 @@ import { AuditLog } from './pages/admin/audit/AuditLog';
 import { NotFound } from './pages/error/NotFound';
 import { Profile } from './pages/profile/Profile';
 import { featureFlagsService } from './services/featureFlags';
+import { useAuth } from './hooks/useAuth';
+import { getDefaultAdminPath } from './config/adminNav';
+
+// Redireciona "/admin" para a primeira seção que o cargo do usuário logado pode acessar
+// (ex.: FUNCIONARIA cai em /admin/appointments, não em /admin/reports, que ela não vê).
+const AdminIndexRedirect = () => {
+  const { user } = useAuth();
+  return <Navigate to={getDefaultAdminPath(user?.role)} replace />;
+};
 
 // Componente simples e moderno de Manutenção / Em Breve (suporta tema escuro)
 const MaintenancePage = () => {
@@ -86,7 +95,7 @@ export const Router = () => {
   return (
     <Routes>
       {/* Redirecionamentos para rotas administrativas intuitivas */}
-      <Route path="/admin" element={<Navigate to="/admin/reports" replace />} />
+      <Route path="/admin" element={<AdminIndexRedirect />} />
       <Route path="/sysadmin" element={<Navigate to="/sysadmin/feature-flags" replace />} />
 
       {/* Portal do Cliente e Home - Condicional à Feature Flag */}
@@ -131,7 +140,7 @@ export const Router = () => {
       <Route path="/register" element={<Register />} />
 
       <Route element={<AdminLayout />}>
-        <Route path="/admin/dashboard" element={<Navigate to="/admin/reports" replace />} />
+        <Route path="/admin/dashboard" element={<AdminIndexRedirect />} />
         <Route
           path="/admin/clients"
           element={

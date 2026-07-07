@@ -116,6 +116,10 @@ export const Rbac = () => {
               Gerencie dinamicamente as permissões de cada cargo. As alterações têm efeito
               imediato no próximo login do usuário.
             </p>
+            <p className="text-xs text-[#3b3036]/45 mt-1">
+              SYSADMIN e ADMIN não aparecem aqui: o acesso total desses cargos é garantido
+              diretamente pelo sistema, então não há permissão para conceder ou revogar.
+            </p>
           </div>
         </div>
         <button
