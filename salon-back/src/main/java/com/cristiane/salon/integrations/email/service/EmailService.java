@@ -15,6 +15,9 @@ import org.thymeleaf.context.Context;
 
 import java.util.Map;
 
+import org.springframework.context.annotation.Profile;
+
+@Profile("!performance")
 @Slf4j
 @Service
 @RequiredArgsConstructor

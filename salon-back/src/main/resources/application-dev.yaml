@@ -1,13 +1,11 @@
 spring:
   datasource:
-    # Fallback para desenvolvimento local sem Docker (mvn spring-boot:run manual).
-    # Com Docker, o valor vem do .env via env_file e sobrescreve este.
-    url: jdbc:postgresql://localhost:5432/salon_dev
-    username: salon
-    password: salon
+    url: ${DB_URL:jdbc:postgresql://localhost:5433/salon_dev}
+    username: ${DB_USER:salon}
+    password: ${DB_PASS:salon}
     driver-class-name: org.postgresql.Driver
     hikari:
-      maximum-pool-size: 5
+      maximum-pool-size: ${DB_POOL_SIZE:5}
   jpa:
     hibernate:
       ddl-auto: none
@@ -28,8 +26,8 @@ spring:
 security:
   jwt:
     secret: dev-secret-key-change-in-prod-must-be-at-least-256-bits-long!!
-    access-token-expiration-ms: 900000       # 15 minutos
-    refresh-token-expiration-ms: 604800000   # 7 dias
+    access-token-expiration-ms: 900000 # 15 minutos
+    refresh-token-expiration-ms: 604800000 # 7 dias
 
 springdoc:
   swagger-ui:

@@ -146,3 +146,66 @@ Mais detalhes sobre a arquitetura do projeto, APIs, testes e diretrizes de desen
 - [API.md](./docs/API.md) - Referência de Endpoints REST e Esquema de Banco de Dados.
 - [TESTING.md](./docs/TESTING.md) - Estratégia de testes de qualidade no Backend e Frontend.
 - [SECURITY.md](./docs/SECURITY.md) - Detalhes do controle de autenticação e autorização por papéis.
+
+---
+
+## 📊 Avaliação de Performance (k6)
+
+Realizamos testes de carga automatizados com o [k6](https://k6.io/) para validar a capacidade e estabilidade da API sob concorrência real. Adotamos uma estratégia de **Carga Constante com Busca Binária Manual**, que nos permitiu isolar cada nível de concorrência e medir os SLAs com precisão, sem misturar dados de períodos estáveis com momentos de saturação.
+
+Os artefatos completos do teste (script, relatório e saída JSON) estão em [`loadtest/`](./loadtest/).
+
+---
+
+### 1. Rotas testadas e usuários virtuais (VUs)
+
+Executamos o teste definitivo com **12 VUs em carga constante por 1 minuto** (`duration: '1m'`), resultando em **2.510 requisições** e um throughput médio de **41,53 req/s**.
+
+Simulamos o **caminho crítico da aplicação** com um fluxo autenticado (JWT via `sysadmin@salao.com`) misturando leitura e escrita, com a seguinte distribuição probabilística:
+
+| Rota | Método | Tipo | Probabilidade |
+|---|---|---|---|
+| `GET /v1/reports/financial` | GET | Leitura pesada (agregação SQL) | 30% |
+| `GET /v1/appointments` | GET | Listagem geral paginada | 30% |
+| `POST /v1/appointments` | POST | Escrita: criação de agendamento | 20% |
+| `POST /v1/cashflow` | POST | Escrita: lançamento de caixa | 20% |
+
+---
+
+### 2. Resultados de Latência e Taxa de Erro
+
+| Métrica | Resultado | Status |
+|---|---|---|
+| **p(95) — tempo de resposta** | **453 ms** | ✅ Abaixo de 500 ms |
+| **Taxa de erro (http_req_failed)** | **0,07%** | ✅ Abaixo de 1% |
+| Tempo médio de resposta | 187 ms | ✅ |
+| Mediana (p50) | 174 ms | ✅ |
+| p(90) | 392 ms | ✅ |
+| Throughput (RPS) | 41,53 req/s | ✅ |
+
+**SLAs atingidos com 100% de sucesso:**
+
+| SLA | Limite | % Atendido |
+|---|---|---|
+| SLA ≤ 1s | 1.000 ms | **100,00%** ✅ |
+| SLA ≤ 2s | 2.000 ms | **100,00%** ✅ |
+| SLA ≤ 3s | 3.000 ms | **100,00%** ✅ |
+
+---
+
+### 3. Gargalos identificados e melhorias aplicadas
+
+Durante o processo de busca binária da capacidade máxima, identificamos e resolvemos dois gargalos críticos que impediam o sistema de escalar:
+
+#### 🐘 Gargalo 1 — Pool de Conexões do Banco de Dados (HikariCP)
+
+Ao escalarmos os VUs para além de 30 usuários simultâneos, observamos que o `p(95)` disparava para **mais de 4 segundos**, enquanto a CPU e a memória da aplicação permaneciam estáveis. Diagnosticamos que o gargalo não era computacional, mas sim uma **fila de espera no pool de conexões do HikariCP**, que por padrão era limitado a `maximum-pool-size: 5`. Com 400 VUs ativos, até 395 threads ficavam bloqueadas aguardando uma conexão disponível.
+
+**O que fizemos:** Tornamos o tamanho do pool configurável via variável de ambiente (`${DB_POOL_SIZE:5}`) no `application-dev.yaml` e injetamos `DB_POOL_SIZE=100` no perfil de performance via `docker-compose.performance.yml`. A latência caiu imediatamente após a mudança.
+
+#### 🔐 Gargalo 2 — Autorização incorreta no endpoint de Relatório Financeiro (HTTP 403)
+
+Durante a análise dos logs do k6, identificamos que a rota `GET /v1/reports/financial` respondia com **status 403 Forbidden** para o usuário `sysadmin@salao.com`. A causa raiz foi que o `ReportController` utilizava a anotação `@PreAuthorize("hasAnyRole('ADMIN')")`, a expressão padrão do Spring Security, que ignorava completamente o validador customizado da equipe (`VerifyUserPermissions`). Esse validador, por design, já concedia acesso total à role `SYSADMIN` para qualquer recurso da aplicação.
+
+**O que fizemos:** Padronizamos as anotações do `ReportController` para `@PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")`, alinhando-as à arquitetura de segurança do projeto. A correção eliminou todos os erros 403 e a rota passou a responder com 100% de sucesso durante a carga.
+

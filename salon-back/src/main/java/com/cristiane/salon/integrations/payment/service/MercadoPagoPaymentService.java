@@ -17,9 +17,11 @@ import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
 import com.mercadopago.resources.payment.Payment;
 
+import org.springframework.context.annotation.Profile;
 import com.cristiane.salon.utils.LogMasker;
 import lombok.extern.slf4j.Slf4j;
 
+@Profile("!performance")
 @Slf4j
 @Service
 public class MercadoPagoPaymentService {
