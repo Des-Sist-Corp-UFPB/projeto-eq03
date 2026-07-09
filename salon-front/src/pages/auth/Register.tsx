@@ -67,7 +67,7 @@ export const Register = () => {
   return (
     <div className="min-h-screen w-full flex flex-col md:flex-row-reverse bg-white overflow-hidden">
       {/* Left Side (in code) / Right Side (visual due to flex-row-reverse): Photo of the business */}
-      <div className="hidden md:flex md:w-1/2 h-screen relative flex-col justify-between p-12 text-white md:animate-slide-image-to-right overflow-hidden">
+      <div className="hidden md:flex md:w-1/2 h-screen relative flex-col justify-between p-12 text-[#fcf9f9] md:animate-slide-image-to-right overflow-hidden">
         {/* Background Images Cross-Fade */}
         {images.map((img, index) => (
           <div
@@ -79,32 +79,43 @@ export const Register = () => {
           />
         ))}
 
-        {/* Deep obsidian gradient backdrop with high-contrast text overlay */}
-        <div className="absolute inset-0 bg-gradient-to-t from-[#0b0f17]/95 via-[#0b0f17]/60 to-[#0b0f17]/40 backdrop-blur-[2px] z-10" />
+        {/* Véu quente em tom rose/plum da marca — realça o texto sem apagar a foto do salão */}
+        <div className="absolute inset-0 bg-gradient-to-t from-[#3b3036]/85 via-[#3b3036]/25 to-[#3b3036]/10 z-10" />
+        <div className="absolute inset-0 bg-gradient-to-bl from-[#e5a49c]/15 via-transparent to-transparent z-10" />
 
         {/* Logo/Brand Title */}
-        <div className="z-20 drop-shadow-lg">
+        <div className="z-20">
           <Link
             to="/"
-            className="font-heading text-3xl font-bold tracking-wider text-white hover:text-[#e5a49c] transition-colors"
+            className="inline-block font-heading text-2xl font-bold tracking-wider text-[#fcf9f9] px-4 py-2 rounded-full bg-[#3b3036]/40 backdrop-blur-md border border-[#fcf9f9]/10 hover:text-[#e5a49c] hover:border-[#e5a49c]/30 transition-colors shadow-lg"
           >
             ESPAÇO CRISTIANE MOURA
           </Link>
         </div>
 
         {/* Brand Tagline */}
-        <div className="z-20 space-y-4">
-          <h1 className="font-heading text-4xl lg:text-5xl font-light leading-tight drop-shadow-2xl">
+        <div className="z-20 space-y-4 p-6 -mx-2 rounded-3xl bg-[#3b3036]/45 backdrop-blur-md border border-[#fcf9f9]/5 shadow-xl">
+          <h1 className="font-heading text-4xl lg:text-5xl font-light leading-tight !text-[#fcf9f9]">
             Seja bem-vinda ao seu momento de autocuidado.
           </h1>
-          <p className="text-[#fcf9f9]/90 text-sm max-w-md font-sans tracking-wide drop-shadow-lg">
+          <p className="text-[#fcf9f9]/90 text-sm max-w-md font-sans tracking-wide">
             Crie sua conta para ter acesso rápido a agendamentos, histórico de serviços e promoções
             exclusivas.
           </p>
+          <div className="flex gap-1.5 pt-1">
+            {images.map((img, index) => (
+              <span
+                key={img}
+                className={`h-1.5 rounded-full transition-all duration-500 ${
+                  index === currentImageIndex ? 'w-6 bg-[#e5a49c]' : 'w-1.5 bg-[#fcf9f9]/40'
+                }`}
+              />
+            ))}
+          </div>
         </div>
 
         {/* Footer/Copyright inside image */}
-        <div className="z-20 text-xs text-[#fcf9f9]/70 drop-shadow-md">
+        <div className="z-20 text-xs text-[#fcf9f9]/80">
           © {new Date().getFullYear()} Espaço Cristiane Moura. Todos os direitos reservados.
         </div>
       </div>
@@ -269,7 +280,7 @@ export const Register = () => {
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-3 bg-[#be8a83] hover:bg-[#a1706a] text-white font-semibold rounded-xl text-sm transition-all shadow-md shadow-[#be8a83]/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2 mt-6"
+              className="w-full py-3 bg-[#be8a83] hover:bg-[#a1706a] text-[#fcf9f9] font-semibold rounded-xl text-sm transition-all shadow-md shadow-[#be8a83]/10 disabled:opacity-50 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2 mt-6"
             >
               {isSubmitting ? 'Cadastrando...' : 'Criar minha conta'}
             </button>
