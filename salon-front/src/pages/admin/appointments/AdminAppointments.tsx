@@ -12,6 +12,7 @@ import { employeesApi } from '../employees/services/employees';
 import type { EmployeeData } from '../employees/services/employees';
 import type { UserData } from '../users/services/users';
 import { clientsApi } from '../clients/services/clients';
+import { usePermission } from '../../../hooks/usePermission';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import {
@@ -78,6 +79,7 @@ export const AdminAppointments = () => {
   };
 
   const { error: showError, confirm } = useAlert();
+  const canCreateAppointment = usePermission('POST', '/v1/appointments');
 
   const loadAppointments = async () => {
     setIsLoading(true);
@@ -109,7 +111,7 @@ export const AdminAppointments = () => {
       const [clientsResponse, servicesData, employeesData] = await Promise.all([
         clientsApi.findAll({ active: true }, 0, 1000),
         salonServicesApi.findAll(),
-        employeesApi.findAll(),
+        employeesApi.findAllForBooking(),
       ]);
       setClients(clientsResponse.content);
       setServices(servicesData.filter((s) => s.active));
@@ -122,8 +124,12 @@ export const AdminAppointments = () => {
 
   useEffect(() => {
     loadAppointments();
-    loadFormData();
-  }, []);
+    // Dados do formulário (clientes/serviços/profissionais) só são úteis para quem
+    // pode abrir o modal de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
+    if (canCreateAppointment) {
+      loadFormData();
+    }
+  }, [canCreateAppointment]);
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {

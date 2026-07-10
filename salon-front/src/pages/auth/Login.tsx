@@ -4,6 +4,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { getDefaultAdminPath } from '../../config/adminNav';
 import { AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 
 interface LoginFormData {
@@ -55,12 +56,14 @@ export const Login = () => {
         const role = decoded.role?.toUpperCase() ?? '';
         if (role === 'SYSADMIN') {
           destination = '/sysadmin/rbac';
-        } else if (role === 'ADMIN') {
-          destination = '/admin/dashboard';
+        } else if (role === 'ADMIN' || role === 'GERENTE_DE_ATENDIMENTO' || role === 'FUNCIONARIA') {
+          // Cada cargo administrativo cai na primeira seção que pode acessar
+          // (ex.: FUNCIONARIA vai para /admin/appointments, não para /admin/reports).
+          destination = getDefaultAdminPath(role);
         } else {
           // Cliente: verificar se havia um agendamento pendente
           const pending = localStorage.getItem('pending_appointment');
-          destination = pending ? '/appointment' : '/meus-agendamentos';
+          destination = pending ? '/appointment' : '/my-appointments';
         }
       } catch {
         // Fallback seguro se o token não puder ser decodificado

@@ -25,8 +25,8 @@ public class EmployeeController {
     private final EmployeeService employeeService;
 
     @GetMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
-    @Operation(summary = "Lista todas as funcionárias (Admin)")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Lista todas as funcionárias (Admin/Gerente)")
     public ResponseEntity<List<EmployeeResponse>> findAll() {
         return ResponseEntity.ok(employeeService.findAll());
     }
@@ -39,32 +39,32 @@ public class EmployeeController {
     }
 
     @GetMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
-    @Operation(summary = "Busca uma funcionária por ID (Admin)")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Busca uma funcionária por ID (Admin/Gerente)")
     public ResponseEntity<EmployeeResponse> findById(@PathVariable Long id) {
         return ResponseEntity.ok(employeeService.findById(id));
     }
 
     @PostMapping
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     @Auditable(action = "EMPLOYEE_CREATED", entityType = "Employee", captureArgs = true)
-    @Operation(summary = "Cria uma nova funcionária (Admin)")
+    @Operation(summary = "Cria uma nova funcionária (Admin/Gerente)")
     public ResponseEntity<EmployeeResponse> create(@Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED).body(employeeService.create(request));
     }
 
     @PutMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     @Auditable(action = "EMPLOYEE_UPDATED", entityType = "Employee", captureArgs = true)
-    @Operation(summary = "Atualiza uma funcionária (Admin)")
+    @Operation(summary = "Atualiza uma funcionária (Admin/Gerente)")
     public ResponseEntity<EmployeeResponse> update(@PathVariable Long id, @Valid @RequestBody EmployeeRequest request) {
         return ResponseEntity.ok(employeeService.update(id, request));
     }
 
     @DeleteMapping("/{id}")
-    @PreAuthorize("hasAnyRole('ADMIN')")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
     @Auditable(action = "EMPLOYEE_DELETED", entityType = "Employee", captureArgs = true)
-    @Operation(summary = "Remove uma funcionária (Admin)")
+    @Operation(summary = "Remove uma funcionária (Admin/Gerente)")
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         employeeService.delete(id);
         return ResponseEntity.noContent().build();
