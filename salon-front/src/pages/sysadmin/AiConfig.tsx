@@ -4,6 +4,7 @@ import { Sparkles, Eye, EyeOff } from 'lucide-react';
 import { aiConfigService, AI_MODELS, type AiConfigData, type AiConfigUpdatePayload } from '../../services/aiConfig';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
+import { McpTokensSection } from './McpTokensSection';
 
 const inputCls = 'input-premium';
 const labelCls = 'label-premium';
@@ -228,6 +229,8 @@ export const AiConfig = () => {
           {isSaving ? 'Salvando...' : 'Salvar configuração'}
         </button>
       </form>
+
+      <McpTokensSection />
     </div>
   );
 };

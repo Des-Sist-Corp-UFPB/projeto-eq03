@@ -1,6 +1,7 @@
 package com.cristiane.salon.controllers;
 
 import com.cristiane.salon.config.TestSecurityConfig;
+import com.cristiane.salon.mcp.security.McpAuthenticationFilter;
 import com.cristiane.salon.models.audit.AuditLogService;
 import com.cristiane.salon.security.AuditRequestFilter;
 import com.cristiane.salon.security.JwtAuthenticationFilter;
@@ -26,6 +27,9 @@ public abstract class BaseControllerTest {
     protected AuditRequestFilter auditRequestFilter;
 
     @MockitoBean
+    protected McpAuthenticationFilter mcpAuthenticationFilter;
+
+    @MockitoBean
     protected AuditLogService auditLogService;
 
     @BeforeEach
@@ -45,5 +49,13 @@ public abstract class BaseControllerTest {
             chain.doFilter(request, response);
             return null;
         }).when(auditRequestFilter).doFilter(any(), any(), any());
+
+        Mockito.doAnswer(invocation -> {
+            ServletRequest request = invocation.getArgument(0);
+            ServletResponse response = invocation.getArgument(1);
+            FilterChain chain = invocation.getArgument(2);
+            chain.doFilter(request, response);
+            return null;
+        }).when(mcpAuthenticationFilter).doFilter(any(), any(), any());
     }
 }
