@@ -31,7 +31,7 @@ vi.mock('../../../services/services/services', () => ({
 
 vi.mock('../../employees/services/employees', () => ({
   employeesApi: {
-    findAll: vi.fn(),
+    findAllForBooking: vi.fn(),
   },
 }));
 
@@ -128,7 +128,7 @@ describe('AdminAppointments Component', () => {
     vi.clearAllMocks();
     vi.mocked(appointmentsApi.findAll).mockResolvedValue(mockAppointments);
     vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServices);
-    vi.mocked(employeesApi.findAll).mockResolvedValue(mockEmployees);
+    vi.mocked(employeesApi.findAllForBooking).mockResolvedValue(mockEmployees);
     vi.mocked(clientsApi.findAll).mockResolvedValue({
       content: mockUsers.filter((u) => u.role === 'CLIENTE'),
       totalPages: 1,

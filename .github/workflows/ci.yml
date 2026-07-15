@@ -23,7 +23,7 @@ jobs:
   # Job 1: Detecção de caminhos modificados para economia de minutos no GitHub Actions
   changes:
     name: Detect Changes
-    runs-on: [self-hosted, dsc-selfhosted]
+    runs-on: ubuntu-latest
     outputs:
       backend: ${{ steps.filter.outputs.backend }}
       frontend: ${{ steps.filter.outputs.frontend }}
@@ -46,7 +46,7 @@ jobs:
     name: Backend CI
     needs: changes
     if: ${{ needs.changes.outputs.backend == 'true' }}
-    runs-on: [self-hosted, dsc-selfhosted]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
@@ -69,7 +69,7 @@ jobs:
     name: Frontend CI
     needs: changes
     if: ${{ needs.changes.outputs.frontend == 'true' }}
-    runs-on: [self-hosted, dsc-selfhosted]
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
         uses: actions/checkout@v4
