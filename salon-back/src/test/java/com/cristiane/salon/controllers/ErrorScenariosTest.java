@@ -70,6 +70,8 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private JdbcTemplate jdbcTemplate;
+
+    @MockitoBean
     private AiConfigService aiConfigService;
 
     @MockitoBean
