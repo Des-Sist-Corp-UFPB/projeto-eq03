@@ -1,5 +1,6 @@
 package com.cristiane.salon.config;
 
+import com.cristiane.salon.mcp.security.McpAuthenticationFilter;
 import com.cristiane.salon.security.AuditRequestFilter;
 import com.cristiane.salon.security.JwtAuthenticationFilter;
 import lombok.RequiredArgsConstructor;
@@ -23,12 +24,20 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 public class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthFilter;
+    private final McpAuthenticationFilter mcpAuthFilter;
     private final AuditRequestFilter auditRequestFilter;
     private final AuthenticationProvider authenticationProvider;
 
     @Bean
     public FilterRegistrationBean<JwtAuthenticationFilter> jwtFilterRegistration(JwtAuthenticationFilter filter) {
         FilterRegistrationBean<JwtAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
+        registration.setEnabled(false);
+        return registration;
+    }
+
+    @Bean
+    public FilterRegistrationBean<McpAuthenticationFilter> mcpFilterRegistration(McpAuthenticationFilter filter) {
+        FilterRegistrationBean<McpAuthenticationFilter> registration = new FilterRegistrationBean<>(filter);
         registration.setEnabled(false);
         return registration;
     }
@@ -63,13 +72,19 @@ public class SecurityConfig {
                 
                 // API routes require authentication (except the permitted ones above)
                 .requestMatchers("/v1/**").authenticated()
-                
+
+                // Servidor MCP: autenticado via McpAuthenticationFilter (Bearer token próprio,
+                // gerado/revogado pela Central de IA) — nunca aberto por padrão como o resto
+                // do que não é /v1/**.
+                .requestMatchers("/sse", "/mcp/message").authenticated()
+
                 // Any other request (mostly frontend React routes) is permitted so the SPA config can forward to index.html
                 .anyRequest().permitAll()
             )
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authenticationProvider(authenticationProvider)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+            .addFilterBefore(mcpAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .addFilterAfter(auditRequestFilter, JwtAuthenticationFilter.class);
 
         return http.build();
