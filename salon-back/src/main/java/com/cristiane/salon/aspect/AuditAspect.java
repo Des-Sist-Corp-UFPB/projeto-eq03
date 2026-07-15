@@ -244,7 +244,8 @@ public class AuditAspect {
         
         Set<String> sensitiveKeys = Set.of(
             "password", "senha", "token", "jwt", "refreshtoken", "clientnotes", "client_notes",
-            "card", "cartao", "creditcard", "bank", "banco", "cvv", "cardNumber", "card_number"
+            "card", "cartao", "creditcard", "bank", "banco", "cvv", "cardNumber", "card_number",
+            "apikey", "api_key", "accesstoken", "access_token", "secret"
         );
         
         for (Map.Entry<String, Object> entry : new HashSet<>(map.entrySet())) {

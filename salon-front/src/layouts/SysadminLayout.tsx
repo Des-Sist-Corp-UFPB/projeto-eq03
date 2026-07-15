@@ -8,6 +8,7 @@ import {
   ToggleLeft,
   ShieldAlert,
   Shield,
+  Sparkles,
   LogOut,
   ChevronLeft,
   ChevronRight,
@@ -54,6 +55,7 @@ export const SysadminLayout = () => {
     { to: '/sysadmin/feature-flags', label: 'Feature Flags', icon: ToggleLeft },
     { to: '/sysadmin/audit', label: 'Auditoria', icon: ShieldAlert },
     { to: '/sysadmin/rbac', label: 'Permissões (RBAC)', icon: Shield },
+    { to: '/sysadmin/ai-config', label: 'Central de IA', icon: Sparkles },
   ];
 
   const userName = user?.email ? user.email.split('@')[0] : 'Sysadmin';
