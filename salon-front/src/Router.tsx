@@ -23,6 +23,7 @@ import { PublicAppointment } from './pages/appointments/PublicAppointment';
 import { MyAppointments } from './pages/appointments/MyAppointments';
 import { AdminAppointments } from './pages/admin/appointments/AdminAppointments';
 import { CashFlow } from './pages/admin/cashflow/CashFlow';
+import { Recommendations } from './pages/admin/recommendations/Recommendations';
 import { Reports } from './pages/admin/reports/Reports';
 import { AuditLog } from './pages/admin/audit/AuditLog';
 import { NotFound } from './pages/error/NotFound';
@@ -203,6 +204,14 @@ export const Router = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <Reports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/recommendations"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
+              <Recommendations />
             </ProtectedRoute>
           }
         />

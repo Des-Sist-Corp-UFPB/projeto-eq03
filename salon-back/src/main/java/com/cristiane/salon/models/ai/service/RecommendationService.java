@@ -47,7 +47,9 @@ public class RecommendationService {
     private final AiCallLogRepository callLogRepository;
     private final ObjectMapper objectMapper;
 
-    @Transactional
+    // Sem @Transactional: o registro do log de chamada (logCall) precisa persistir mesmo quando
+    // o método lança exceção (falha do provedor de IA) — uma transação única faria o rollback
+    // também desfazer o log de falha, escondendo exatamente o evento que ele deveria registrar.
     public RecommendationResult generate(RecommendationType type, String callerType, String callerId) {
         AiConfig config = aiConfigService.getDecryptedForInternalUse();
 
