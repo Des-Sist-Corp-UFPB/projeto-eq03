@@ -25,6 +25,13 @@
 
     <dependencies>
 
+        <!-- Servidor MCP (recomendações de IA expostas a clientes MCP como Claude Desktop/Cursor) -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-server-webmvc</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
         <!-- Web -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
