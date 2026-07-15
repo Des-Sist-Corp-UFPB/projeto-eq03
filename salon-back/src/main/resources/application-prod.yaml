@@ -27,6 +27,9 @@ security:
     access-token-expiration-ms: 900000
     refresh-token-expiration-ms: 604800000
 
+ai:
+  config-encryption-key: ${AI_CONFIG_ENCRYPTION_KEY}
+
 springdoc:
   swagger-ui:
     enabled: false
