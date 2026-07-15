@@ -21,3 +21,6 @@ security:
 mercadopago:
   access-token: test-token
   webhook-secret: test_secret
+
+ai:
+  config-encryption-key: dGVzdC1haS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=

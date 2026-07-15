@@ -29,6 +29,10 @@ security:
     access-token-expiration-ms: 900000 # 15 minutos
     refresh-token-expiration-ms: 604800000 # 7 dias
 
+ai:
+  # Chave AES-256 (base64) que cifra a API key de IA armazenada em tb_ai_config — nunca em texto puro no banco.
+  config-encryption-key: ZGV2LWFpLWVuY3J5cHRpb24ta2V5LTMyLWJ5dGVzISE=
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
