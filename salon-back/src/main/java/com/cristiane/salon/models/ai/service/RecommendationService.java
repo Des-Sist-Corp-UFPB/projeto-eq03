@@ -15,6 +15,7 @@ import com.cristiane.salon.models.ai.repository.AiCallLogRepository;
 import com.cristiane.salon.models.ai.repository.AiRecommendationRepository;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
+import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.service.ReportService;
@@ -38,6 +39,7 @@ import java.util.stream.Collectors;
 public class RecommendationService {
 
     private static final int INACTIVITY_THRESHOLD_DAYS = 30;
+    private static final String FEATURE_FLAG = "ENABLE_AI_RECOMMENDATIONS";
 
     private final AiConfigService aiConfigService;
     private final LiteLlmClient liteLlmClient;
@@ -45,12 +47,14 @@ public class RecommendationService {
     private final AppointmentService appointmentService;
     private final AiRecommendationRepository recommendationRepository;
     private final AiCallLogRepository callLogRepository;
+    private final FeatureFlagService featureFlagService;
     private final ObjectMapper objectMapper;
 
     // Sem @Transactional: o registro do log de chamada (logCall) precisa persistir mesmo quando
     // o método lança exceção (falha do provedor de IA) — uma transação única faria o rollback
     // também desfazer o log de falha, escondendo exatamente o evento que ele deveria registrar.
     public RecommendationResult generate(RecommendationType type, String callerType, String callerId) {
+        requireFeatureEnabled();
         AiConfig config = aiConfigService.getDecryptedForInternalUse();
 
         if (!Boolean.TRUE.equals(config.getEnabled())) {
@@ -103,10 +107,17 @@ public class RecommendationService {
 
     @Transactional(readOnly = true)
     public RecommendationResult getLatestCached(RecommendationType type) {
+        requireFeatureEnabled();
         AiRecommendation cached = recommendationRepository.findFirstByTypeOrderByGeneratedAtDesc(type)
                 .orElseThrow(() -> new ResourceNotFoundException("Nenhuma recomendação gerada ainda para " + type));
         List<RecommendationItem> items = deserialize(cached.getPayload());
         return new RecommendationResult(type, items, cached.getGeneratedAt(), true);
+    }
+
+    private void requireFeatureEnabled() {
+        if (!featureFlagService.isEnabled(FEATURE_FLAG)) {
+            throw new BusinessException("O módulo de recomendações de IA ainda não está disponível.");
+        }
     }
 
     private String buildFinanceiroPrompt() {
