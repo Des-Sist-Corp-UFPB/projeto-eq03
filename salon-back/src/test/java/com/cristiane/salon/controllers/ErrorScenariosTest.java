@@ -1,6 +1,7 @@
 package com.cristiane.salon.controllers;
 
 import com.cristiane.salon.models.ai.service.AiConfigService;
+import com.cristiane.salon.models.ai.service.McpTokenService;
 import com.cristiane.salon.models.ai.service.RecommendationService;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import com.cristiane.salon.models.cashflow.service.CashFlowService;
@@ -71,6 +72,9 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private RecommendationService recommendationService;
+
+    @MockitoBean
+    private McpTokenService mcpTokenService;
 
     @Test
     void whenInvalidAppointment_thenReturns400() throws Exception {
