@@ -1,11 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { X, Copy, Check, QrCode, ArrowRight, Loader2 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { appointmentsApi } from '../../pages/appointments/services/appointments';
 import type { AppointmentResponse } from '../../pages/appointments/services/appointments';
+import { pixCpfFormSchema } from './pixPayment.schema';
+import type { PixCpfFormValues } from './pixPayment.schema';
 
 interface PixPaymentModalProps {
   show: boolean;
@@ -21,9 +24,6 @@ interface PixPaymentModalProps {
   onPaymentSuccess?: (updatedAppointment: AppointmentResponse) => void;
 }
 
-interface CpfFormData {
-  cpf: string;
-}
 
 // Máscara ###.###.###-##
 const formatCpf = (value: string) => {
@@ -62,8 +62,9 @@ export const PixPaymentModal = ({
     watch,
     reset,
     formState: { errors },
-  } = useForm<CpfFormData>({
-    defaultValues: { cpf: '' }
+  } = useForm<PixCpfFormValues>({
+    resolver: zodResolver(pixCpfFormSchema),
+    defaultValues: { cpf: '' },
   });
 
   const cpfValue = watch('cpf') || '';
@@ -129,7 +130,7 @@ export const PixPaymentModal = ({
     }
   };
 
-  const handleCpfSubmit = async (data: CpfFormData) => {
+  const handleCpfSubmit = async (data: PixCpfFormValues) => {
     const rawCpf = data.cpf ? data.cpf.replace(/\D/g, '') : '';
     if (!useSavedCpf && !rawCpf) {
       setCpfError('CPF é obrigatório para gerar o PIX');
@@ -241,14 +242,7 @@ export const PixPaymentModal = ({
                       id="pix-cpf-input"
                       placeholder="000.000.000-00"
                       value={cpfValue}
-                      {...register('cpf', {
-                        required: !useSavedCpf ? 'CPF é obrigatório para gerar o PIX' : false,
-                        validate: (v) => {
-                          if (useSavedCpf) return true;
-                          const digits = v.replace(/\D/g, '');
-                          return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
-                        },
-                      })}
+                      {...register('cpf')}
                       onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
                       className={`input-premium ${errors.cpf || cpfError ? 'border-rose-300 focus:border-rose-500' : ''}`}
                       maxLength={14}

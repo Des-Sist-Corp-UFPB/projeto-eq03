@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
@@ -8,6 +9,8 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { salonServicesApi, displayServiceDuration } from '../../services/services/services';
 import type { SalonServiceData, SalonServiceFilter } from '../../services/services/services';
+import { salonServiceFormSchema } from './adminService.schema';
+import type { SalonServiceFormValues } from './adminService.schema';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
@@ -31,7 +34,7 @@ export const AdminServices = () => {
     reset,
     setValue,
     formState: { errors },
-  } = useForm<SalonServiceData>();
+  } = useForm<SalonServiceFormValues>({ resolver: zodResolver(salonServiceFormSchema) });
   const { error: showError } = useAlert();
 
   const fetchServicesData = async (filter: SalonServiceFilter, page: number, size: number) => {
@@ -55,7 +58,7 @@ export const AdminServices = () => {
     setShowForm(true);
   };
 
-  const onSubmit = async (data: SalonServiceData) => {
+  const onSubmit = async (data: SalonServiceFormValues) => {
     const hasEst = (data.durationEstimate ?? '').trim().length > 0;
     const hasMin = data.durationMin != null && Number(data.durationMin) > 0;
     if (!hasEst && !hasMin) {
@@ -213,14 +216,11 @@ export const AdminServices = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Nome do Serviço</label>
+            <label className={labelCls}>Nome do Serviço *</label>
             <input
               type="text"
               className={`${inputCls} ${errors.name ? 'border-rose-300' : ''}`}
-              {...register('name', {
-                required: 'Nome é obrigatório',
-                minLength: { value: 3, message: 'Mín. 3 caracteres' },
-              })}
+              {...register('name')}
             />
             {errors.name && (
               <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>

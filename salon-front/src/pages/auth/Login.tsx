@@ -1,23 +1,21 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { getDefaultAdminPath } from '../../config/adminNav';
 import { AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-
-interface LoginFormData {
-  email: string;
-  password: string;
-}
+import { loginFormSchema } from './login.schema';
+import type { LoginFormValues } from './login.schema';
 
 export const Login = () => {
   const {
     register,
     handleSubmit,
     formState: { errors },
-  } = useForm<LoginFormData>();
+  } = useForm<LoginFormValues>({ resolver: zodResolver(loginFormSchema) });
   const [errorMsg, setErrorMsg] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
@@ -39,7 +37,7 @@ export const Login = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const onSubmit = async (data: LoginFormData, e?: React.BaseSyntheticEvent) => {
+  const onSubmit = async (data: LoginFormValues, e?: React.BaseSyntheticEvent) => {
     e?.preventDefault();
     setIsLoading(true);
     setErrorMsg('');
@@ -177,11 +175,11 @@ export const Login = () => {
 
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-1.5">
-              <label className="label-premium">E-mail</label>
+              <label className="label-premium">E-mail *</label>
               <input
                 type="email"
                 placeholder="seuemail@exemplo.com"
-                {...register('email', { required: 'Email é obrigatório' })}
+                {...register('email')}
                 className={`input-premium ${
                   errors.email ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
@@ -192,12 +190,12 @@ export const Login = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="label-premium">Senha</label>
+              <label className="label-premium">Senha *</label>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Sua senha"
-                  {...register('password', { required: 'Senha é obrigatória' })}
+                  {...register('password')}
                   className={`input-premium pr-10 ${
                     errors.password ? 'border-rose-300 focus:border-rose-500' : ''
                   }`}
