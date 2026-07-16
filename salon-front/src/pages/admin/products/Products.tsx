@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
@@ -8,6 +9,8 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { productsApi } from './services/products';
 import type { ProductData, ProductFilter } from './services/products';
+import { productFormSchema } from './product.schema';
+import type { ProductFormValues } from './product.schema';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { useAlert } from '../../../hooks/useAlert';
 
@@ -31,7 +34,7 @@ export const Products = () => {
     reset,
     setValue,
     formState: { errors },
-  } = useForm<ProductData>();
+  } = useForm<ProductFormValues>({ resolver: zodResolver(productFormSchema) });
   const { error: showError } = useAlert();
 
   const fetchProductsData = async (filter: ProductFilter, page: number, size: number) => {
@@ -43,23 +46,29 @@ export const Products = () => {
     if (product) {
       setEditingProduct(product);
       setValue('name', product.name);
-      setValue('stock', product.stock);
-      setValue('price', product.price);
+      setValue('stock', String(product.stock));
+      setValue('price', String(product.price));
       setValue('active', product.active !== false);
     } else {
       setEditingProduct(null);
-      setValue('stock', 0);
+      setValue('stock', '0');
       setValue('active', true);
     }
     setShowForm(true);
   };
 
-  const onSubmit = async (data: ProductData) => {
+  const onSubmit = async (data: ProductFormValues) => {
     try {
+      const payload: ProductData = {
+        name: data.name,
+        stock: Number(data.stock),
+        price: Number(data.price),
+        active: data.active,
+      };
       if (editingProduct?.id) {
-        await productsApi.update(editingProduct.id, data);
+        await productsApi.update(editingProduct.id, payload);
       } else {
-        await productsApi.create(data);
+        await productsApi.create(payload);
       }
       setShowForm(false);
       setRefreshTrigger((prev) => prev + 1);
@@ -189,43 +198,34 @@ export const Products = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Nome do Produto</label>
+            <label className={labelCls}>Nome do Produto *</label>
             <input
               type="text"
               className={`${inputCls} ${errors.name ? 'border-rose-300' : ''}`}
-              {...register('name', {
-                required: 'Nome é obrigatório',
-                minLength: { value: 3, message: 'Mín. 3 caracteres' },
-              })}
+              {...register('name')}
             />
             {errors.name && (
               <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
             )}
           </div>
           <div>
-            <label className={labelCls}>Estoque Inicial</label>
+            <label className={labelCls}>Estoque Inicial *</label>
             <input
               type="number"
               className={`${inputCls} ${errors.stock ? 'border-rose-300' : ''}`}
-              {...register('stock', {
-                required: 'Estoque é obrigatório',
-                min: { value: 0, message: 'Não pode ser negativo' },
-              })}
+              {...register('stock')}
             />
             {errors.stock && (
               <span className="text-xs text-rose-500 font-semibold">{errors.stock.message}</span>
             )}
           </div>
           <div>
-            <label className={labelCls}>Preço (R$)</label>
+            <label className={labelCls}>Preço (R$) *</label>
             <input
               type="number"
               step="0.01"
               className={`${inputCls} ${errors.price ? 'border-rose-300' : ''}`}
-              {...register('price', {
-                required: 'Preço é obrigatório',
-                min: { value: 0, message: 'Não pode ser negativo' },
-              })}
+              {...register('price')}
             />
             {errors.price && (
               <span className="text-xs text-rose-500 font-semibold">{errors.price.message}</span>

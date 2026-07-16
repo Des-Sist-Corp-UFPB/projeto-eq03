@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Trash2 } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ModalForm } from '../../../components/modal/ModalForm';
@@ -7,6 +8,8 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { cashFlowApi } from './services/cashflow';
 import type { CashFlowData } from './services/cashflow';
+import { cashFlowFormSchema } from './cashflow.schema';
+import type { CashFlowFormValues } from './cashflow.schema';
 import { productsApi } from '../products/services/products';
 import type { ProductData } from '../products/services/products';
 import { salonServicesApi } from '../../services/services/services';
@@ -35,7 +38,7 @@ export const CashFlow = () => {
     setValue,
     watch,
     formState: { errors },
-  } = useForm<CashFlowData>();
+  } = useForm<CashFlowFormValues>({ resolver: zodResolver(cashFlowFormSchema) });
   const { error: showError } = useAlert();
 
   // New States for Products/Services Sales
@@ -98,7 +101,7 @@ export const CashFlow = () => {
   };
 
   const handleOpenForm = () => {
-    reset({ type: 'INCOME', date: getLocalDateString(), amount: 0, description: '' });
+    reset({ type: 'INCOME', date: getLocalDateString(), amount: '0', description: '' });
     setSourceType('OTHER');
     setCart([]);
     setProductSearch('');
@@ -143,7 +146,7 @@ export const CashFlow = () => {
   };
 
   const handleSelectService = (service: SalonServiceData) => {
-    setValue('amount', service.price || 0);
+    setValue('amount', String(service.price || 0));
     setValue('description', `Serviço: ${service.name}`);
     setServiceSearch(service.name);
     setShowSvcDropdown(false);
@@ -154,13 +157,13 @@ export const CashFlow = () => {
   // Sync React Hook Form values reactively when product cart updates
   useEffect(() => {
     if (sourceType === 'PRODUCT') {
-      setValue('amount', cartTotal);
+      setValue('amount', String(cartTotal));
       const summary = cart.map((item) => `${item.quantity}x ${item.product.name}`).join(', ');
       setValue('description', cart.length > 0 ? `Venda de Produtos: ${summary}` : '');
     }
   }, [cart, cartTotal, sourceType, setValue]);
 
-  const onSubmit = async (data: CashFlowData) => {
+  const onSubmit = async (data: CashFlowFormValues) => {
     try {
       let payload: CashFlowData = {
         type: data.type,
@@ -338,8 +341,8 @@ export const CashFlow = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>Tipo</label>
-            <select className={inputCls} {...register('type', { required: 'Tipo é obrigatório' })}>
+            <label className={labelCls}>Tipo *</label>
+            <select className={inputCls} {...register('type')}>
               <option value="INCOME">Entrada (Receita)</option>
               <option value="EXPENSE">Saída (Despesa)</option>
             </select>
@@ -364,7 +367,7 @@ export const CashFlow = () => {
                         setCart([]);
                         setProductSearch('');
                         setServiceSearch('');
-                        setValue('amount', 0);
+                        setValue('amount', '0');
                         setValue('description', '');
                       }}
                       className={`px-4 py-2 text-xs font-semibold rounded-xl border transition-all duration-200 cursor-pointer ${
@@ -548,16 +551,13 @@ export const CashFlow = () => {
           )}
 
           <div>
-            <label className={labelCls}>Valor (R$)</label>
+            <label className={labelCls}>Valor (R$) *</label>
             <input
               type="number"
               step="0.01"
               disabled={sourceType === 'PRODUCT'}
               className={`${inputCls} ${errors.amount ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
-              {...register('amount', {
-                required: 'Valor é obrigatório',
-                min: { value: 0.01, message: 'Valor inválido' },
-              })}
+              {...register('amount')}
             />
             {errors.amount && (
               <span className="text-xs text-rose-500 font-semibold mt-1 block">
@@ -567,12 +567,12 @@ export const CashFlow = () => {
           </div>
 
           <div>
-            <label className={labelCls}>Descrição</label>
+            <label className={labelCls}>Descrição *</label>
             <input
               type="text"
               disabled={sourceType === 'PRODUCT'}
               className={`${inputCls} ${errors.description ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
-              {...register('description', { required: 'Descrição é obrigatória' })}
+              {...register('description')}
             />
             {errors.description && (
               <span className="text-xs text-rose-500 font-semibold mt-1 block">
@@ -582,11 +582,11 @@ export const CashFlow = () => {
           </div>
 
           <div>
-            <label className={labelCls}>Data</label>
+            <label className={labelCls}>Data *</label>
             <input
               type="date"
               className={`${inputCls} ${errors.date ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
-              {...register('date', { required: 'Data é obrigatória' })}
+              {...register('date')}
             />
             {errors.date && (
               <span className="text-xs text-rose-500 font-semibold mt-1 block">

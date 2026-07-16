@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
@@ -8,6 +9,8 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { employeesApi } from './services/employees';
 import type { EmployeeData, EmployeeFilter } from './services/employees';
+import { employeeFormSchema } from './employee.schema';
+import type { EmployeeFormValues } from './employee.schema';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
@@ -34,7 +37,7 @@ export const Employees = () => {
     watch,
     clearErrors,
     formState: { errors },
-  } = useForm<EmployeeData>();
+  } = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeFormSchema) });
   const remunerationType = watch('remunerationType');
   const { error: showError } = useAlert();
 
@@ -57,19 +60,25 @@ export const Employees = () => {
     reset();
     if (employee) {
       setEditingEmployee(employee);
-      setValue('userId', employee.userId);
+      setValue('userId', String(employee.userId));
       setValue('bio', employee.bio || '');
-      setValue('remunerationType', employee.remunerationType);
-      setValue('commissionScope', employee.commissionScope);
-      setValue('remunerationValue', employee.remunerationValue);
-      setValue('commissionValue', employee.commissionValue);
+      setValue('remunerationType', employee.remunerationType ?? '');
+      setValue('commissionScope', employee.commissionScope ?? '');
+      setValue(
+        'remunerationValue',
+        employee.remunerationValue != null ? String(employee.remunerationValue) : undefined
+      );
+      setValue(
+        'commissionValue',
+        employee.commissionValue != null ? String(employee.commissionValue) : undefined
+      );
     } else {
       setEditingEmployee(null);
     }
     setShowForm(true);
   };
 
-  const onSubmit = async (data: EmployeeData) => {
+  const onSubmit = async (data: EmployeeFormValues) => {
     const payload: EmployeeData = {
       userId: Number(data.userId),
       bio: data.bio || undefined,
@@ -82,11 +91,11 @@ export const Employees = () => {
       payload.commissionValue = undefined;
     } else if (data.remunerationType === 'COMISSIONADO') {
       payload.remunerationValue = Number(data.remunerationValue);
-      payload.commissionScope = data.commissionScope;
+      payload.commissionScope = data.commissionScope || undefined;
       payload.commissionValue = undefined;
     } else if (data.remunerationType === 'FIXO_E_COMISSIONADO') {
       payload.remunerationValue = Number(data.remunerationValue);
-      payload.commissionScope = data.commissionScope;
+      payload.commissionScope = data.commissionScope || undefined;
       payload.commissionValue = Number(data.commissionValue);
     } else {
       payload.remunerationValue = undefined;
@@ -241,11 +250,11 @@ export const Employees = () => {
       >
         <div className="space-y-4">
           <div>
-            <label className={labelCls}>ID do Usuário</label>
+            <label className={labelCls}>ID do Usuário *</label>
             <input
               type="number"
               className={`${inputCls} ${errors.userId ? 'border-rose-300' : ''} ${editingEmployee ? 'opacity-60 cursor-not-allowed' : ''}`}
-              {...register('userId', { required: 'ID do usuário é obrigatório' })}
+              {...register('userId')}
               disabled={!!editingEmployee}
             />
             <p className="text-xs text-gray-400 mt-1">
@@ -278,16 +287,10 @@ export const Employees = () => {
               {(remunerationType === 'COMISSIONADO' ||
                 remunerationType === 'FIXO_E_COMISSIONADO') && (
                 <div>
-                  <label className={labelCls}>Escopo da Comissão</label>
+                  <label className={labelCls}>Escopo da Comissão *</label>
                   <select
                     className={`${inputCls} ${errors.commissionScope ? 'border-rose-300' : ''}`}
-                    {...register('commissionScope', {
-                      required:
-                        remunerationType === 'COMISSIONADO' ||
-                        remunerationType === 'FIXO_E_COMISSIONADO'
-                          ? 'O escopo da comissão é obrigatório'
-                          : false,
-                    })}
+                    {...register('commissionScope')}
                   >
                     <option value="">Selecione o escopo...</option>
                     <option value="INDIVIDUAL">
@@ -309,28 +312,14 @@ export const Employees = () => {
                 <div>
                   <label className={labelCls}>
                     {remunerationType === 'COMISSIONADO'
-                      ? 'Porcentagem da Comissão (%)'
-                      : 'Valor do Salário Fixo (R$)'}
+                      ? 'Porcentagem da Comissão (%) *'
+                      : 'Valor do Salário Fixo (R$) *'}
                   </label>
                   <input
                     type="number"
                     step="0.01"
                     className={`${inputCls} ${errors.remunerationValue ? 'border-rose-300' : ''}`}
-                    {...register('remunerationValue', {
-                      required:
-                        remunerationType === 'COMISSIONADO'
-                          ? 'A porcentagem da comissão é obrigatória'
-                          : 'O salário fixo é obrigatório',
-                      min: { value: 0, message: 'O valor não pode ser negativo' },
-                      validate: {
-                        commissionLimit: (value) => {
-                          if (remunerationType === 'COMISSIONADO' && Number(value) > 100) {
-                            return 'A comissão não pode passar de 100%';
-                          }
-                          return true;
-                        },
-                      },
-                    })}
+                    {...register('remunerationValue')}
                   />
                   {errors.remunerationValue && (
                     <span className="text-xs text-rose-500 font-semibold">
@@ -342,16 +331,12 @@ export const Employees = () => {
 
               {remunerationType === 'FIXO_E_COMISSIONADO' && (
                 <div>
-                  <label className={labelCls}>Porcentagem da Comissão (%)</label>
+                  <label className={labelCls}>Porcentagem da Comissão (%) *</label>
                   <input
                     type="number"
                     step="0.01"
                     className={`${inputCls} ${errors.commissionValue ? 'border-rose-300' : ''}`}
-                    {...register('commissionValue', {
-                      required: 'A porcentagem da comissão é obrigatória',
-                      min: { value: 0, message: 'O valor não pode ser negativo' },
-                      max: { value: 100, message: 'A comissão não pode passar de 100%' },
-                    })}
+                    {...register('commissionValue')}
                   />
                   {errors.commissionValue && (
                     <span className="text-xs text-rose-500 font-semibold">

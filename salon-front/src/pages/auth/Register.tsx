@@ -1,18 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { useNavigate, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
-
-interface RegisterFormData {
-  name: string;
-  email: string;
-  phone?: string;
-  password: string;
-  confirmPassword?: string;
-}
+import { registerFormSchema } from './register.schema';
+import type { RegisterFormValues } from './register.schema';
 
 export const Register = () => {
   const {
@@ -20,7 +15,7 @@ export const Register = () => {
     handleSubmit,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<RegisterFormData>();
+  } = useForm<RegisterFormValues>({ resolver: zodResolver(registerFormSchema) });
   const [errorMsg, setErrorMsg] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
@@ -42,7 +37,7 @@ export const Register = () => {
     return () => clearInterval(interval);
   }, []);
 
-  const onSubmit = async (data: RegisterFormData) => {
+  const onSubmit = async (data: RegisterFormValues) => {
     setErrorMsg('');
     try {
       const response = await api.post('/auth/register', data);
@@ -157,10 +152,7 @@ export const Register = () => {
               <input
                 type="text"
                 placeholder="Seu nome completo"
-                {...register('name', {
-                  required: 'Nome é obrigatório',
-                  minLength: { value: 3, message: 'Mínimo 3 caracteres' },
-                })}
+                {...register('name')}
                 className={`input-premium ${
                   errors.name ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
@@ -175,13 +167,7 @@ export const Register = () => {
               <input
                 type="email"
                 placeholder="seuemail@exemplo.com"
-                {...register('email', {
-                  required: 'Email é obrigatório',
-                  pattern: {
-                    value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                    message: 'Formato de e-mail inválido',
-                  },
-                })}
+                {...register('email')}
                 className={`input-premium ${
                   errors.email ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
@@ -196,12 +182,7 @@ export const Register = () => {
               <input
                 type="text"
                 placeholder="(83) 99999-9999"
-                {...register('phone', {
-                  pattern: {
-                    value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
-                    message: 'Formato inválido. Use (XX) XXXXX-XXXX ou (XX) XXXX-XXXX',
-                  },
-                })}
+                {...register('phone')}
                 className={`input-premium ${
                   errors.phone ? 'border-rose-300 focus:border-rose-500' : ''
                 }`}
@@ -217,14 +198,7 @@ export const Register = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Mínimo 8 caracteres com 1 número"
-                  {...register('password', {
-                    required: 'Senha é obrigatória',
-                    minLength: { value: 8, message: 'A senha deve ter no mínimo 8 caracteres' },
-                    pattern: {
-                      value: /^(?=.*\d).*$/,
-                      message: 'A senha deve conter pelo menos um número',
-                    },
-                  })}
+                  {...register('password')}
                   className={`input-premium pr-10 ${
                     errors.password ? 'border-rose-300 focus:border-rose-500' : ''
                   }`}
@@ -250,14 +224,7 @@ export const Register = () => {
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirme sua senha"
-                  {...register('confirmPassword', {
-                    required: 'Confirmação de senha é obrigatória',
-                    validate: (val, formValues) => {
-                      if (val !== formValues.password) {
-                        return 'As senhas não coincidem';
-                      }
-                    },
-                  })}
+                  {...register('confirmPassword')}
                   className={`input-premium pr-10 ${
                     errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''
                   }`}
