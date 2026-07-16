@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Edit, Trash2, Plus, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
@@ -10,6 +11,8 @@ import { clientsApi } from './services/clients';
 import type { ClientFilter } from './services/clients';
 import { usersApi } from '../users/services/users';
 import type { UserData, UserCreateRequest, UserUpdateRequest } from '../users/services/users';
+import { clientFormSchema } from './client.schema';
+import type { ClientFormValues } from './client.schema';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { ClientDrawer } from './components/ClientDrawer';
@@ -41,35 +44,37 @@ export const Clients = () => {
     setValue,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }>();
+  } = useForm<ClientFormValues>({ resolver: zodResolver(clientFormSchema) });
   const { error: showError } = useAlert();
 
   const handleOpenForm = (client?: UserData) => {
     reset();
     if (client) {
       setEditingClient(client);
+      setValue('_isEdit', true);
       setValue('name', client.name);
       setValue('email', client.email);
       setValue('phone', client.phone);
       setValue('cpf', client.cpf || '');
       setValue('active', client.active);
-      setValue('roleId', 4); // Client role ID
+      setValue('roleId', 4);
     } else {
       setEditingClient(null);
+      setValue('_isEdit', false);
       setValue('active', true);
-      setValue('roleId', 4); // Client role ID
+      setValue('roleId', 4);
     }
     setShowForm(true);
   };
 
-  const onSubmit = async (data: UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }) => {
+  const onSubmit = async (data: ClientFormValues) => {
     try {
-      // Force roleId to be 4 (Cliente)
-      const payload = {
+      const payload: any = {
         ...data,
         roleId: 4,
       };
 
+      delete payload._isEdit;
       delete payload.confirmPassword;
 
       if (editingClient?.id && !payload.password) {
@@ -260,10 +265,7 @@ export const Clients = () => {
             <input
               type="text"
               className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('name', {
-                required: 'Nome é obrigatório',
-                minLength: { value: 3, message: 'Mínimo 3 caracteres' },
-              })}
+              {...register('name')}
             />
             {errors.name && (
               <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
@@ -274,13 +276,7 @@ export const Clients = () => {
             <input
               type="email"
               className={`input-premium ${errors.email ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('email', {
-                required: 'Email é obrigatório',
-                pattern: {
-                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                  message: 'Formato de e-mail inválido',
-                },
-              })}
+              {...register('email')}
             />
             {errors.email && (
               <span className="text-xs text-rose-500 font-semibold">{errors.email.message}</span>
@@ -291,12 +287,7 @@ export const Clients = () => {
             <input
               type="text"
               className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('phone', {
-                pattern: {
-                  value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
-                  message: 'Formato inválido. Use (XX) XXXXX-XXXX',
-                },
-              })}
+              {...register('phone')}
             />
             {errors.phone && (
               <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
@@ -307,12 +298,7 @@ export const Clients = () => {
             <input
               type="text"
               className={`input-premium ${errors.cpf ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('cpf', {
-                pattern: {
-                  value: /^$|^\d{11}$/,
-                  message: 'O CPF deve conter exatamente 11 dígitos numéricos',
-                },
-              })}
+              {...register('cpf')}
             />
             {errors.cpf && (
               <span className="text-xs text-rose-500 font-semibold">{errors.cpf.message}</span>
@@ -327,18 +313,7 @@ export const Clients = () => {
                 type={showPassword ? 'text' : 'password'}
                 className={`input-premium pr-10 ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
                 placeholder={editingClient?.id ? 'Deixe em branco para manter' : 'Mínimo 8 caracteres com 1 número'}
-                {...register('password', {
-                  validate: (val, formValues) => {
-                    const isEdit = !!editingClient?.id;
-                    const isRequired = !isEdit || !!formValues.confirmPassword;
-                    if (!val) {
-                      return isRequired ? 'Senha é obrigatória' : true;
-                    }
-                    if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
-                    if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
-                    return true;
-                  },
-                })}
+                {...register('password')}
               />
               <button
                 type="button"
@@ -363,17 +338,7 @@ export const Clients = () => {
                 type={showConfirmPassword ? 'text' : 'password'}
                 className={`input-premium pr-10 ${errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''}`}
                 placeholder="Confirme a senha"
-                {...register('confirmPassword', {
-                  validate: (val, formValues) => {
-                    const isEdit = !!editingClient?.id;
-                    const isRequired = !isEdit || !!formValues.password;
-
-                    if (!isRequired) return true;
-                    if (!val) return 'Confirmação de senha é obrigatória';
-                    if (val !== formValues.password) return 'As senhas não coincidem';
-                    return true;
-                  },
-                })}
+                {...register('confirmPassword')}
               />
               <button
                 type="button"

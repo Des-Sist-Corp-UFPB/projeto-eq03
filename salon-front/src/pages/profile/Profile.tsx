@@ -1,16 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { profileApi } from './services/profile';
 import { useAuth } from '../../hooks/useAuth';
 import type { UserUpdateRequest } from '../admin/users/services/users';
 import { Save, User as UserIcon, Eye, EyeOff } from 'lucide-react';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
-
-interface ProfileFormData extends UserUpdateRequest {
-  cpf?: string;
-  confirmPassword?: string;
-}
+import { profileFormSchema } from './profile.schema';
+import type { ProfileFormValues } from './profile.schema';
 
 // Aplica máscara ###.###.###-## enquanto o usuário digita
 const formatCpf = (value: string) => {
@@ -35,7 +33,7 @@ export const Profile = () => {
     watch,
     setError,
     formState: { errors },
-  } = useForm<ProfileFormData>();
+  } = useForm<ProfileFormValues>({ resolver: zodResolver(profileFormSchema) });
 
   const { error: showError, success: showSuccess } = useAlert();
 
@@ -62,7 +60,7 @@ export const Profile = () => {
     loadProfile();
   }, [user, setValue]);
 
-  const onSubmit = async (data: ProfileFormData) => {
+  const onSubmit = async (data: ProfileFormValues) => {
     if (!user?.userId) return;
 
     setIsSaving(true);
@@ -135,10 +133,7 @@ export const Profile = () => {
               </label>
               <input
                 type="text"
-                {...register('name', {
-                  required: 'Nome é obrigatório',
-                  minLength: { value: 3, message: 'Mínimo 3 caracteres' },
-                })}
+                {...register('name')}
                 className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
               {errors.name && (
@@ -150,12 +145,7 @@ export const Profile = () => {
               <label className="label-premium">Telefone</label>
               <input
                 type="tel"
-                {...register('phone', {
-                  pattern: {
-                    value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
-                    message: 'Formato inválido. Use (XX) XXXXX-XXXX',
-                  },
-                })}
+                {...register('phone')}
                 placeholder="(11) 99999-9999"
                 className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
@@ -190,14 +180,8 @@ export const Profile = () => {
               type="text"
               placeholder="000.000.000-00"
               value={cpfValue}
-              {...register('cpf', {
-                validate: (v) => {
-                  if (!v) return true;
-                  const digits = v.replace(/\D/g, '');
-                  return digits.length === 11 || 'CPF deve ter exatamente 11 dígitos';
-                },
-              })}
-              onChange={(e) => setValue('cpf', formatCpf(e.target.value))}
+              {...register('cpf')}
+              onChange={(e) => setValue('cpf', formatCpf(e.target.value), { shouldValidate: true })}
               className={`input-premium ${errors.cpf ? 'border-rose-300 focus:border-rose-500' : ''}`}
               maxLength={14}
             />
@@ -213,14 +197,7 @@ export const Profile = () => {
                 <input
                   type={showPassword ? 'text' : 'password'}
                   placeholder="Deixe em branco para não alterar"
-                  {...register('password', {
-                    validate: (val) => {
-                      if (!val) return true;
-                      if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
-                      if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
-                      return true;
-                    },
-                  })}
+                  {...register('password')}
                   className={`input-premium pr-10 ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
                 />
                 <button
@@ -242,14 +219,7 @@ export const Profile = () => {
                 <input
                   type={showConfirmPassword ? 'text' : 'password'}
                   placeholder="Confirme sua nova senha"
-                  {...register('confirmPassword', {
-                    validate: (val, formValues) => {
-                      if (!formValues.password) return true;
-                      if (!val) return 'Confirmação de senha é obrigatória';
-                      if (val !== formValues.password) return 'As senhas não coincidem';
-                      return true;
-                    },
-                  })}
+                  {...register('confirmPassword')}
                   className={`input-premium pr-10 ${errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''}`}
                 />
                 <button

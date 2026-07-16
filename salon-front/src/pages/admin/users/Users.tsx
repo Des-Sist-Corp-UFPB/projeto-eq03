@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Edit, Trash2, Plus, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
@@ -7,7 +8,9 @@ import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { usersApi } from './services/users';
-import type { UserData, UserCreateRequest, UserUpdateRequest, UserFilter } from './services/users';
+import type { UserData, UserCreateRequest, UserFilter } from './services/users';
+import { userFormSchema } from './user-form.schema';
+import type { UserFormValues } from './user-form.schema';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
@@ -33,13 +36,14 @@ export const Users = () => {
     setValue,
     setError,
     formState: { errors, isSubmitting },
-  } = useForm<UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }>();
+  } = useForm<UserFormValues>({ resolver: zodResolver(userFormSchema) });
   const { error: showError } = useAlert();
 
   const handleOpenForm = (user?: UserData) => {
     reset();
     if (user) {
       setEditingUser(user);
+      setValue('_isEdit', true);
       setValue('name', user.name);
       setValue('email', user.email);
       setValue('phone', user.phone);
@@ -47,8 +51,9 @@ export const Users = () => {
       setValue('roleId', getRoleIdByName(user.role));
     } else {
       setEditingUser(null);
+      setValue('_isEdit', false);
       setValue('active', true);
-      setValue('roleId', 3); // Default to Funcionária (3)
+      setValue('roleId', 3);
     }
     setShowForm(true);
   };
@@ -68,10 +73,10 @@ export const Users = () => {
     }
   };
 
-  const onSubmit = async (data: UserCreateRequest & UserUpdateRequest & { confirmPassword?: string }) => {
+  const onSubmit = async (data: UserFormValues) => {
     try {
-      // Se a senha estiver vazia (opcional em edição), remove para não validar no backend
-      const payload = { ...data };
+      const payload: any = { ...data };
+      delete payload._isEdit;
       delete payload.confirmPassword;
       if (editingUser?.id && !payload.password) {
         delete payload.password;
@@ -80,7 +85,7 @@ export const Users = () => {
       if (editingUser?.id) {
         await usersApi.update(editingUser.id, payload);
       } else {
-        await usersApi.create(payload as UserCreateRequest);
+        await usersApi.create(payload as unknown as UserCreateRequest);
       }
       setShowForm(false);
       setRefreshTrigger((prev) => prev + 1);
@@ -266,10 +271,7 @@ export const Users = () => {
             <input
               type="text"
               className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('name', {
-                required: 'Nome é obrigatório',
-                minLength: { value: 3, message: 'Mínimo 3 caracteres' },
-              })}
+              {...register('name')}
             />
             {errors.name && (
               <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>
@@ -280,13 +282,7 @@ export const Users = () => {
             <input
               type="email"
               className={`input-premium ${errors.email ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('email', {
-                required: 'Email é obrigatório',
-                pattern: {
-                  value: /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                  message: 'Formato de e-mail inválido',
-                },
-              })}
+              {...register('email')}
             />
             {errors.email && (
               <span className="text-xs text-rose-500 font-semibold">{errors.email.message}</span>
@@ -296,7 +292,7 @@ export const Users = () => {
             <label className={labelCls}>Cargo (Papel) *</label>
             <select
               className={`input-premium ${errors.roleId ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('roleId', { required: 'Cargo é obrigatório' })}
+              {...register('roleId')}
             >
               <option value="3">Funcionário(a)</option>
               <option value="2">Gerente</option>
@@ -311,12 +307,7 @@ export const Users = () => {
             <input
               type="text"
               className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('phone', {
-                pattern: {
-                  value: /^$|^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/,
-                  message: 'Formato inválido. Use (XX) XXXXX-XXXX',
-                },
-              })}
+              {...register('phone')}
             />
             {errors.phone && (
               <span className="text-xs text-rose-500 font-semibold">{errors.phone.message}</span>
@@ -331,18 +322,7 @@ export const Users = () => {
                 type={showPassword ? 'text' : 'password'}
                 className={`input-premium pr-10 ${errors.password ? 'border-rose-300 focus:border-rose-500' : ''}`}
                 placeholder={editingUser?.id ? 'Deixe em branco para manter' : 'Mínimo 8 caracteres com 1 número'}
-                {...register('password', {
-                  validate: (val, formValues) => {
-                    const isEdit = !!editingUser?.id;
-                    const isRequired = !isEdit || !!formValues.confirmPassword;
-                    if (!val) {
-                      return isRequired ? 'Senha é obrigatória' : true;
-                    }
-                    if (val.length < 8) return 'A senha deve ter no mínimo 8 caracteres';
-                    if (!/\d/.test(val)) return 'A senha deve conter pelo menos um número';
-                    return true;
-                  },
-                })}
+                {...register('password')}
               />
               <button
                 type="button"
@@ -367,17 +347,7 @@ export const Users = () => {
                 type={showConfirmPassword ? 'text' : 'password'}
                 className={`input-premium pr-10 ${errors.confirmPassword ? 'border-rose-300 focus:border-rose-500' : ''}`}
                 placeholder="Confirme a senha"
-                {...register('confirmPassword', {
-                  validate: (val, formValues) => {
-                    const isEdit = !!editingUser?.id;
-                    const isRequired = !isEdit || !!formValues.password;
-
-                    if (!isRequired) return true;
-                    if (!val) return 'Confirmação de senha é obrigatória';
-                    if (val !== formValues.password) return 'As senhas não coincidem';
-                    return true;
-                  },
-                })}
+                {...register('confirmPassword')}
               />
               <button
                 type="button"

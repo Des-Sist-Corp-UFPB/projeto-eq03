@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { Sparkles, Eye, EyeOff, PlugZap, CheckCircle2, XCircle } from 'lucide-react';
 import {
   aiConfigService,
@@ -11,19 +12,11 @@ import {
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { McpTokensSection } from './McpTokensSection';
+import { aiConfigFormSchema } from './aiConfig.schema';
+import type { AiConfigFormValues } from './aiConfig.schema';
 
 const inputCls = 'input-premium';
 const labelCls = 'label-premium';
-
-interface AiConfigFormData {
-  baseUrl: string;
-  model: string;
-  apiKey: string;
-  temperature: number;
-  maxTokens: number;
-  enabled: boolean;
-  dailyCallBudget: number;
-}
 
 export const AiConfig = () => {
   const [config, setConfig] = useState<AiConfigData | null>(null);
@@ -41,7 +34,7 @@ export const AiConfig = () => {
     reset,
     getValues,
     formState: { errors },
-  } = useForm<AiConfigFormData>();
+  } = useForm<AiConfigFormValues>({ resolver: zodResolver(aiConfigFormSchema) });
 
   const loadConfig = useCallback(async () => {
     setIsLoading(true);
@@ -68,7 +61,7 @@ export const AiConfig = () => {
     loadConfig();
   }, [loadConfig]);
 
-  const onSubmit = async (data: AiConfigFormData) => {
+  const onSubmit = async (data: AiConfigFormValues) => {
     setIsSaving(true);
     try {
       const payload: AiConfigUpdatePayload = {
@@ -152,14 +145,11 @@ export const AiConfig = () => {
         className="bg-white rounded-2xl border border-[#eae1e1]/80 p-6 space-y-5 shadow-sm"
       >
         <div className="space-y-1.5">
-          <label className={labelCls}>URL base do provedor</label>
+          <label className={labelCls}>URL base do provedor *</label>
           <input
             type="text"
             placeholder="https://llm.rodrigor.com"
-            {...register('baseUrl', {
-              required: 'A URL base é obrigatória',
-              pattern: { value: /^https:\/\//, message: 'A URL deve começar com https://' },
-            })}
+            {...register('baseUrl')}
             className={`${inputCls} ${errors.baseUrl ? 'border-rose-300 focus:border-rose-500' : ''}`}
           />
           {errors.baseUrl && (
@@ -168,8 +158,8 @@ export const AiConfig = () => {
         </div>
 
         <div className="space-y-1.5">
-          <label className={labelCls}>Modelo</label>
-          <select {...register('model', { required: true })} className={inputCls}>
+          <label className={labelCls}>Modelo *</label>
+          <select {...register('model')} className={inputCls}>
             {AI_MODELS.map((model) => (
               <option key={model} value={model}>
                 {model}
@@ -206,32 +196,32 @@ export const AiConfig = () => {
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
-            <label className={labelCls}>Temperatura (0–1)</label>
+            <label className={labelCls}>Temperatura (0–1) *</label>
             <input
               type="number"
               step="0.1"
               min="0"
               max="1"
-              {...register('temperature', { required: true, min: 0, max: 1 })}
+              {...register('temperature')}
               className={inputCls}
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelCls}>Máx. de tokens</label>
+            <label className={labelCls}>Máx. de tokens *</label>
             <input
               type="number"
               min="50"
               max="4000"
-              {...register('maxTokens', { required: true, min: 50, max: 4000 })}
+              {...register('maxTokens')}
               className={inputCls}
             />
           </div>
           <div className="space-y-1.5">
-            <label className={labelCls}>Orçamento diário (chamadas)</label>
+            <label className={labelCls}>Orçamento diário (chamadas) *</label>
             <input
               type="number"
               min="1"
-              {...register('dailyCallBudget', { required: true, min: 1 })}
+              {...register('dailyCallBudget')}
               className={inputCls}
             />
           </div>
