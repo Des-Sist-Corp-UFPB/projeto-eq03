@@ -2,6 +2,7 @@ package com.cristiane.salon.models.ai.controller;
 
 import com.cristiane.salon.controllers.BaseControllerTest;
 import com.cristiane.salon.models.ai.dto.AiConfigResponse;
+import com.cristiane.salon.models.ai.dto.AiConfigTestResponse;
 import com.cristiane.salon.models.ai.service.AiConfigService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,6 +18,7 @@ import java.time.LocalDateTime;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -80,6 +82,39 @@ class AiConfigControllerTest extends BaseControllerTest {
         String body = "{}";
 
         mvc.perform(put("/v1/sysadmin/ai-config")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = { "SYSADMIN" })
+    void testConnection_returnsResultFromService() throws Exception {
+        AiConfigTestResponse response = new AiConfigTestResponse(true, "Conexão estabelecida com sucesso", 42L);
+        when(aiConfigService.testConnection(any())).thenReturn(response);
+
+        String body = """
+                {
+                  "baseUrl": "https://llm.rodrigor.com",
+                  "model": "gpt-4o-mini",
+                  "apiKey": "sk-test"
+                }
+                """;
+
+        mvc.perform(post("/v1/sysadmin/ai-config/test")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.latencyMs").value(42));
+    }
+
+    @Test
+    @WithMockUser(roles = { "SYSADMIN" })
+    void testConnection_returns400_whenMissingRequiredFields() throws Exception {
+        String body = "{}";
+
+        mvc.perform(post("/v1/sysadmin/ai-config/test")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
                 .andExpect(status().isBadRequest());

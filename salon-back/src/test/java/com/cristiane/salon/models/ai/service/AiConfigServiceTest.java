@@ -2,8 +2,12 @@ package com.cristiane.salon.models.ai.service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.ai.client.ChatCompletionResult;
+import com.cristiane.salon.models.ai.client.OpenAiCompatibleChatClient;
 import com.cristiane.salon.models.ai.dto.AiConfigRequest;
 import com.cristiane.salon.models.ai.dto.AiConfigResponse;
+import com.cristiane.salon.models.ai.dto.AiConfigTestRequest;
+import com.cristiane.salon.models.ai.dto.AiConfigTestResponse;
 import com.cristiane.salon.models.ai.entity.AiConfig;
 import com.cristiane.salon.models.ai.repository.AiConfigRepository;
 import com.cristiane.salon.security.crypto.AiEncryptionUtil;
@@ -21,6 +25,9 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -28,6 +35,9 @@ class AiConfigServiceTest {
 
     @Mock
     private AiConfigRepository repository;
+
+    @Mock
+    private OpenAiCompatibleChatClient chatClient;
 
     private AiEncryptionUtil encryptionUtil;
 
@@ -37,7 +47,7 @@ class AiConfigServiceTest {
     void setUp() {
         String key32Bytes = Base64.getEncoder().encodeToString("unit-test-key-with-32-bytes-len!".getBytes());
         encryptionUtil = new AiEncryptionUtil(key32Bytes);
-        service = new AiConfigService(repository, encryptionUtil);
+        service = new AiConfigService(repository, encryptionUtil, chatClient);
     }
 
     private AiConfig existingConfig() {
@@ -140,6 +150,84 @@ class AiConfigServiceTest {
         );
 
         assertThatThrownBy(() -> service.update(request)).isInstanceOf(BadRequestException.class);
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testConnection_withApiKeyInRequest_neverReadsSavedConfig() {
+        when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
+                .thenReturn(new ChatCompletionResult("{\"pong\":true}", 5));
+
+        AiConfigTestRequest request = new AiConfigTestRequest("https://llm.rodrigor.com", "gpt-4o-mini", "sk-provided");
+
+        AiConfigTestResponse response = service.testConnection(request);
+
+        assertThat(response.success()).isTrue();
+        assertThat(response.latencyMs()).isNotNull();
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testConnection_withBlankApiKey_usesSavedConfigKey() {
+        AiConfig config = existingConfig();
+        config.setApiKeyEncrypted(encryptionUtil.encrypt("sk-saved-key"));
+        when(repository.findById(AiConfig.SINGLETON_ID)).thenReturn(Optional.of(config));
+        when(chatClient.complete(anyString(), eq("sk-saved-key"), anyString(), any(), anyInt(), anyString(), anyString()))
+                .thenReturn(new ChatCompletionResult("{\"pong\":true}", 5));
+
+        AiConfigTestRequest request = new AiConfigTestRequest("https://llm.rodrigor.com", "gpt-4o-mini", "");
+
+        AiConfigTestResponse response = service.testConnection(request);
+
+        assertThat(response.success()).isTrue();
+    }
+
+    @Test
+    void testConnection_withNoKeyAvailable_returnsFailureWithoutCallingClient() {
+        AiConfig config = existingConfig();
+        when(repository.findById(AiConfig.SINGLETON_ID)).thenReturn(Optional.of(config));
+
+        AiConfigTestRequest request = new AiConfigTestRequest("https://llm.rodrigor.com", "gpt-4o-mini", "");
+
+        AiConfigTestResponse response = service.testConnection(request);
+
+        assertThat(response.success()).isFalse();
+        verifyNoInteractions(chatClient);
+    }
+
+    @Test
+    void testConnection_whenProviderThrows_returnsFailureWithMessageAndLatency() {
+        when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
+                .thenThrow(new IllegalStateException("timeout"));
+
+        AiConfigTestRequest request = new AiConfigTestRequest("https://llm.rodrigor.com", "gpt-4o-mini", "sk-key");
+
+        AiConfigTestResponse response = service.testConnection(request);
+
+        assertThat(response.success()).isFalse();
+        assertThat(response.message()).contains("timeout");
+        assertThat(response.latencyMs()).isNotNull();
+    }
+
+    @Test
+    void testConnection_withNonHttpsBaseUrl_returnsFailureWithoutCallingClient() {
+        AiConfigTestRequest request = new AiConfigTestRequest("http://llm.rodrigor.com", "gpt-4o-mini", "sk-key");
+
+        AiConfigTestResponse response = service.testConnection(request);
+
+        assertThat(response.success()).isFalse();
+        verifyNoInteractions(chatClient);
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testConnection_withUnsupportedModel_returnsFailureWithoutCallingClient() {
+        AiConfigTestRequest request = new AiConfigTestRequest("https://llm.rodrigor.com", "modelo-inexistente", "sk-key");
+
+        AiConfigTestResponse response = service.testConnection(request);
+
+        assertThat(response.success()).isFalse();
+        verifyNoInteractions(chatClient);
         verifyNoInteractions(repository);
     }
 }

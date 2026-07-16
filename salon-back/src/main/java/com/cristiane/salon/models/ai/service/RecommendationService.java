@@ -2,8 +2,8 @@ package com.cristiane.salon.models.ai.service;
 
 import com.cristiane.salon.exception.BusinessException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
-import com.cristiane.salon.models.ai.client.LiteLlmClient;
-import com.cristiane.salon.models.ai.client.LiteLlmCompletionResult;
+import com.cristiane.salon.models.ai.client.OpenAiCompatibleChatClient;
+import com.cristiane.salon.models.ai.client.ChatCompletionResult;
 import com.cristiane.salon.models.ai.dto.RecommendationItem;
 import com.cristiane.salon.models.ai.dto.RecommendationLlmResponse;
 import com.cristiane.salon.models.ai.dto.RecommendationResult;
@@ -42,7 +42,7 @@ public class RecommendationService {
     private static final String FEATURE_FLAG = "ENABLE_AI_RECOMMENDATIONS";
 
     private final AiConfigService aiConfigService;
-    private final LiteLlmClient liteLlmClient;
+    private final OpenAiCompatibleChatClient chatClient;
     private final ReportService reportService;
     private final AppointmentService appointmentService;
     private final AiRecommendationRepository recommendationRepository;
@@ -77,7 +77,7 @@ public class RecommendationService {
 
         long startedAt = System.currentTimeMillis();
         try {
-            LiteLlmCompletionResult completion = liteLlmClient.complete(
+            ChatCompletionResult completion = chatClient.complete(
                     config.getBaseUrl(),
                     apiKey,
                     config.getModel(),
