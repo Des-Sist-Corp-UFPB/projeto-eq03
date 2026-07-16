@@ -13,7 +13,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-class LiteLlmClientTest {
+class OpenAiCompatibleChatClientTest {
 
     private HttpServer server;
     private String baseUrl;
@@ -22,7 +22,7 @@ class LiteLlmClientTest {
     private String responseToSend;
     private int statusToSend = 200;
 
-    private final LiteLlmClient client = new LiteLlmClient();
+    private final OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient();
 
     @BeforeEach
     void setUp() throws Exception {
@@ -55,7 +55,7 @@ class LiteLlmClientTest {
                 }
                 """;
 
-        LiteLlmCompletionResult result = client.complete(
+        ChatCompletionResult result = client.complete(
                 baseUrl, "sk-test-key", "gpt-4o-mini", new BigDecimal("0.3"), 500,
                 "system prompt", "user prompt"
         );
