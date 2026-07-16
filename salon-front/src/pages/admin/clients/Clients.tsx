@@ -10,7 +10,7 @@ import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { clientsApi } from './services/clients';
 import type { ClientFilter } from './services/clients';
 import { usersApi } from '../users/services/users';
-import type { UserData, UserCreateRequest, UserUpdateRequest } from '../users/services/users';
+import type { UserData, UserCreateRequest } from '../users/services/users';
 import { clientFormSchema } from './client.schema';
 import type { ClientFormValues } from './client.schema';
 import { useAlert } from '../../../hooks/useAlert';
