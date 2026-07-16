@@ -8,10 +8,24 @@ export interface ProductData {
   active?: boolean;
 }
 
+export interface ProductFilter {
+  name?: string;
+  active?: boolean;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export const productsApi = {
-  findAll: async (active?: boolean) => {
-    const params = active !== undefined ? { active } : {};
-    const { data } = await api.get<ProductData[]>('/products', { params });
+  findAll: async (filter: ProductFilter = {}, page = 0, size = 10) => {
+    const { data } = await api.get<PageResponse<ProductData>>('/products', {
+      params: { ...filter, page, size },
+    });
     return data;
   },
 

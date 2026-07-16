@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
-import { Table } from '../../../components/table/Table';
+import { DataTable } from '../../../components/table/DataTable';
+import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { productsApi } from './services/products';
-import type { ProductData } from './services/products';
+import type { ProductData, ProductFilter } from './services/products';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import { useAlert } from '../../../hooks/useAlert';
 
@@ -14,9 +15,7 @@ const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
 export const Products = () => {
-  const [products, setProducts] = useState<ProductData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState<ProductData | null>(null);
@@ -35,22 +34,9 @@ export const Products = () => {
   } = useForm<ProductData>();
   const { error: showError } = useAlert();
 
-  const loadProducts = async () => {
-    setIsLoading(true);
-    try {
-      const data = await productsApi.findAll(filterActive);
-      setProducts(data);
-    } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao carregar produtos');
-      await showError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchProductsData = async (filter: ProductFilter, page: number, size: number) => {
+    return productsApi.findAll(filter, page, size);
   };
-
-  useEffect(() => {
-    loadProducts();
-  }, [filterActive]);
 
   const handleOpenForm = (product?: ProductData) => {
     reset();
@@ -76,7 +62,7 @@ export const Products = () => {
         await productsApi.create(data);
       }
       setShowForm(false);
-      loadProducts();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       const msg = getApiErrorMessage(
         err,
@@ -95,7 +81,7 @@ export const Products = () => {
         await productsApi.reactivate(productTargetId);
       }
       setShowConfirm(false);
-      loadProducts();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       const fallbackMsg =
         confirmAction === 'delete' ? 'Erro ao excluir produto.' : 'Erro ao reativar produto.';
@@ -165,39 +151,35 @@ export const Products = () => {
     },
   ];
 
+  const filtersConfig: FilterField[] = [
+    { key: 'name', label: 'Nome', type: 'text' },
+    { key: 'active', label: 'Status', type: 'boolean' },
+  ];
+
+  const initialFilters: ProductFilter = {
+    name: '',
+    active: undefined,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Gerenciar Produtos</h2>
-        <div className="flex gap-3">
-          <select
-            value={filterActive === undefined ? 'ALL' : filterActive ? 'ACTIVE' : 'INACTIVE'}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFilterActive(val === 'ALL' ? undefined : val === 'ACTIVE');
-            }}
-            className="input-premium py-2 text-sm w-auto cursor-pointer"
-          >
-            <option value="ALL">Todos os Registros</option>
-            <option value="ACTIVE">Apenas Ativos</option>
-            <option value="INACTIVE">Apenas Inativos</option>
-          </select>
-          <PermissionGate method="POST" endpoint="/v1/products">
-            <button onClick={() => handleOpenForm()} className="btn-premium">
-              <Plus size={18} /> Novo Produto
-            </button>
-          </PermissionGate>
-        </div>
+        <PermissionGate method="POST" endpoint="/v1/products">
+          <button onClick={() => handleOpenForm()} className="btn-premium">
+            <Plus size={18} /> Novo Produto
+          </button>
+        </PermissionGate>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#3b3036]/60 py-8">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
-          Carregando produtos...
-        </div>
-      ) : (
-        <Table columns={columns} data={products} keyExtractor={(item) => item.id!} />
-      )}
+      <DataTable
+        columns={columns}
+        fetchData={fetchProductsData}
+        filtersConfig={filtersConfig}
+        keyExtractor={(item) => item.id!}
+        refreshTrigger={refreshTrigger}
+        initialFilters={initialFilters}
+      />
 
       <ModalForm
         show={showForm}

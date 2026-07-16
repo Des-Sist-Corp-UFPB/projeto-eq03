@@ -13,8 +13,8 @@ export const PublicServices = () => {
   useEffect(() => {
     const loadServices = async () => {
       try {
-        const data = await salonServicesApi.findAll();
-        setServices(data.filter((s) => s.active));
+        const data = await salonServicesApi.findAll({ active: true }, 0, 1000);
+        setServices(data.content);
       } catch (err) {
         const msg = getApiErrorMessage(err, 'Erro ao carregar serviços');
         await showError(msg);

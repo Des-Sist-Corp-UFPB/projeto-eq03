@@ -32,10 +32,18 @@ const mockServices = [
   { id: 2, name: 'Pintura', description: 'Tintura premium', price: 100.0, durationMin: 60, durationEstimate: '1h', active: false },
 ];
 
+const mockPage = (content: typeof mockServices) => ({
+  content,
+  totalPages: 1,
+  totalElements: content.length,
+  size: 10,
+  number: 0,
+});
+
 describe('AdminServices Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServices);
+    vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockPage(mockServices));
   });
 
   it('renders services and handles filter changes', async () => {
@@ -49,14 +57,22 @@ describe('AdminServices Page', () => {
 
     const select = screen.getByRole('combobox');
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'ACTIVE' } });
+      fireEvent.change(select, { target: { value: 'true' } });
     });
-    expect(salonServicesApi.findAll).toHaveBeenCalledWith(true);
+    expect(salonServicesApi.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({ active: true }),
+      0,
+      10
+    );
 
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'INACTIVE' } });
+      fireEvent.change(select, { target: { value: 'false' } });
     });
-    expect(salonServicesApi.findAll).toHaveBeenCalledWith(false);
+    expect(salonServicesApi.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({ active: false }),
+      0,
+      10
+    );
   });
 
   it('triggers reactivate flow when RotateCcw button is clicked and confirmed', async () => {

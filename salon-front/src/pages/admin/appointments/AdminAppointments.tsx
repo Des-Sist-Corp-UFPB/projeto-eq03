@@ -84,7 +84,8 @@ export const AdminAppointments = () => {
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
-      const data = await appointmentsApi.findAll();
+      const response = await appointmentsApi.findAll({}, 0, 1000);
+      const data = response.content;
       data.sort((a, b) => {
         const ta = a.scheduledAt
           ? parseDate(a.scheduledAt)
@@ -108,11 +109,12 @@ export const AdminAppointments = () => {
 
   const loadFormData = async () => {
     try {
-      const [clientsResponse, servicesData, employeesData] = await Promise.all([
+      const [clientsResponse, servicesResponse, employeesData] = await Promise.all([
         clientsApi.findAll({ active: true }, 0, 1000),
-        salonServicesApi.findAll(),
+        salonServicesApi.findAll({}, 0, 1000),
         employeesApi.findAllForBooking(),
       ]);
+      const servicesData = servicesResponse.content;
       setClients(clientsResponse.content);
       setServices(servicesData.filter((s) => s.active));
       setAllServices(servicesData);

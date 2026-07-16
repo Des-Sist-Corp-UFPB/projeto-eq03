@@ -109,17 +109,19 @@ class AppointmentControllerTest extends BaseControllerTest {
 
     @Test
     @WithMockUser
-    void findAllReturnsList() throws Exception {
+    void findAllReturnsPageOfAppointments() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
                 1L, 1L, "Client", 2L, "Employee", 3L, "Service",
                 LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
         );
-        when(appointmentService.findAll()).thenReturn(List.of(response));
+        org.springframework.data.domain.Page<AppointmentResponse> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(response));
+        when(appointmentService.findAll(any(), any())).thenReturn(page);
 
         mvc.perform(get("/v1/appointments")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].clientName").value("Client"));
+                .andExpect(jsonPath("$.content[0].clientName").value("Client"));
     }
 
     @Test
