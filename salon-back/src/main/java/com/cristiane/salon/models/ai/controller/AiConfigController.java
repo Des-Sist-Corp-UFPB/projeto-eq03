@@ -3,6 +3,8 @@ package com.cristiane.salon.models.ai.controller;
 import com.cristiane.salon.annotation.Auditable;
 import com.cristiane.salon.models.ai.dto.AiConfigRequest;
 import com.cristiane.salon.models.ai.dto.AiConfigResponse;
+import com.cristiane.salon.models.ai.dto.AiConfigTestRequest;
+import com.cristiane.salon.models.ai.dto.AiConfigTestResponse;
 import com.cristiane.salon.models.ai.service.AiConfigService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -33,5 +35,13 @@ public class AiConfigController {
     @Operation(summary = "Atualiza a configuração de IA (Sysadmin)")
     public ResponseEntity<AiConfigResponse> update(@Valid @RequestBody AiConfigRequest request) {
         return ResponseEntity.ok(aiConfigService.update(request));
+    }
+
+    @PostMapping("/test")
+    @PreAuthorize("hasAnyRole('SYSADMIN')")
+    @Auditable(action = "AI_CONFIG_TESTED", entityType = "AiConfig", captureArgs = false)
+    @Operation(summary = "Testa a conectividade com o provedor de IA usando os valores atuais do formulário (Sysadmin)")
+    public ResponseEntity<AiConfigTestResponse> testConnection(@Valid @RequestBody AiConfigTestRequest request) {
+        return ResponseEntity.ok(aiConfigService.testConnection(request));
     }
 }
