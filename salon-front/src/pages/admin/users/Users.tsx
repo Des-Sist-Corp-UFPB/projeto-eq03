@@ -292,7 +292,7 @@ export const Users = () => {
             <label className={labelCls}>Cargo (Papel) *</label>
             <select
               className={`input-premium ${errors.roleId ? 'border-rose-300 focus:border-rose-500' : ''}`}
-              {...register('roleId')}
+              {...register('roleId', { setValueAs: (v) => Number(v) })}
             >
               <option value="3">Funcionário(a)</option>
               <option value="2">Gerente</option>

@@ -21,7 +21,7 @@ export const userFormSchema = z
     password: z.string().optional(),
     confirmPassword: z.string().optional(),
     active: z.boolean().optional(),
-    roleId: z.coerce.number().optional(),
+    roleId: z.number().optional(),
   })
   .superRefine((data, ctx) => {
     const isEdit = !!data._isEdit;

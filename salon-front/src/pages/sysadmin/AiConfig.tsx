@@ -202,7 +202,7 @@ export const AiConfig = () => {
               step="0.1"
               min="0"
               max="1"
-              {...register('temperature')}
+              {...register('temperature', { valueAsNumber: true })}
               className={inputCls}
             />
           </div>
@@ -212,7 +212,7 @@ export const AiConfig = () => {
               type="number"
               min="50"
               max="4000"
-              {...register('maxTokens')}
+              {...register('maxTokens', { valueAsNumber: true })}
               className={inputCls}
             />
           </div>
@@ -221,7 +221,7 @@ export const AiConfig = () => {
             <input
               type="number"
               min="1"
-              {...register('dailyCallBudget')}
+              {...register('dailyCallBudget', { valueAsNumber: true })}
               className={inputCls}
             />
           </div>
