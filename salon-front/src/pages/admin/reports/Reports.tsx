@@ -5,6 +5,7 @@ import type {
   AppointmentReportResponse,
   PayrollReportResponse,
 } from './services/reports';
+import { EmployeeFinancialHistorySection } from './EmployeeFinancialHistorySection';
 import { cashFlowApi } from '../cashflow/services/cashflow';
 import type { CashFlowData } from '../cashflow/services/cashflow';
 import {
@@ -557,6 +558,13 @@ export const Reports = () => {
                   </div>
                 </div>
               )}
+
+              {/* Per-professional financial history */}
+              <EmployeeFinancialHistorySection
+                employees={financial?.employeeFinanceDetails ?? []}
+                dateFrom={dateFrom}
+                dateTo={dateTo}
+              />
 
               {/* Revenue Chart */}
               <div>

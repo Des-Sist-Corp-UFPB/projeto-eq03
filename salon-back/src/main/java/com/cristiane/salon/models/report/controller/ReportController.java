@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.report.controller;
 
+import com.cristiane.salon.models.report.dto.AppointmentFinancialResponse;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.PayrollReportResponse;
@@ -7,10 +8,15 @@ import com.cristiane.salon.models.report.service.ReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -50,5 +56,16 @@ public class ReportController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to) {
         return ResponseEntity.ok(reportService.generatePayrollReport(from, to));
+    }
+
+    @GetMapping("/financial/employees/{employeeId}")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Histórico financeiro de agendamentos de um profissional específico (Admin/Gerente)")
+    public ResponseEntity<Page<AppointmentFinancialResponse>> getEmployeeFinancialHistory(
+            @PathVariable Long employeeId,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate from,
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate to,
+            @PageableDefault(size = 20, sort = "scheduledAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(reportService.getEmployeeFinancialHistory(employeeId, from, to, pageable));
     }
 }

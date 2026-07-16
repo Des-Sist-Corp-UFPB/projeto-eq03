@@ -3,6 +3,7 @@ package com.cristiane.salon.models.report.controller;
 import com.cristiane.salon.controllers.BaseControllerTest;
 
 import com.cristiane.salon.models.report.controller.ReportController;
+import com.cristiane.salon.models.report.dto.AppointmentFinancialResponse;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.PayrollReportResponse;
@@ -72,5 +73,21 @@ class ReportControllerTest extends BaseControllerTest {
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.period").value("Period"));
+    }
+
+    @Test
+    @WithMockUser(roles = { "ADMIN" })
+    void getEmployeeFinancialHistoryReturns200() throws Exception {
+        AppointmentFinancialResponse response = new AppointmentFinancialResponse(
+                1L, null, null, "Corte", new BigDecimal("85.00"), "DONE", "PAID"
+        );
+        org.springframework.data.domain.Page<AppointmentFinancialResponse> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(response));
+        when(reportService.getEmployeeFinancialHistory(any(), any(), any(), any())).thenReturn(page);
+
+        mvc.perform(get("/v1/reports/financial/employees/7")
+                .contentType(MediaType.APPLICATION_JSON))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].serviceName").value("Corte"));
     }
 }
