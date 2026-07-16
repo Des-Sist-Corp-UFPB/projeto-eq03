@@ -30,6 +30,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -482,6 +483,50 @@ class ReportServiceTest {
         // Then
         assertEquals(0, report.totalSalaryPaid().compareTo(BigDecimal.ZERO));
         assertEquals(0, report.totalCommissionPaid().compareTo(BigDecimal.ZERO));
+    }
+
+    @Test
+    void getEmployeeFinancialHistory_whenEmployeeExists_returnsMappedPage() {
+        Employee employee = new Employee();
+        employee.setId(7L);
+
+        SalonService service = new SalonService();
+        service.setName("Corte");
+        service.setPrice(new BigDecimal("85.00"));
+
+        Appointment appointment = new Appointment();
+        appointment.setId(1L);
+        appointment.setEmployee(employee);
+        appointment.setSalonService(service);
+        appointment.setStatus(AppointmentStatus.DONE);
+        appointment.setScheduledAt(LocalDateTime.now());
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+        org.springframework.data.domain.Page<Appointment> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(appointment));
+
+        when(employeeRepository.existsById(7L)).thenReturn(true);
+        when(appointmentRepository.findByEmployeeIdForFinancialHistory(eq(7L), any(), any(), eq(pageable)))
+                .thenReturn(page);
+
+        org.springframework.data.domain.Page<com.cristiane.salon.models.report.dto.AppointmentFinancialResponse> result =
+                reportService.getEmployeeFinancialHistory(7L, null, null, pageable);
+
+        assertEquals(1, result.getContent().size());
+        assertEquals("Corte", result.getContent().get(0).serviceName());
+        assertEquals(0, result.getContent().get(0).price().compareTo(new BigDecimal("85.00")));
+    }
+
+    @Test
+    void getEmployeeFinancialHistory_whenEmployeeDoesNotExist_throwsResourceNotFound() {
+        when(employeeRepository.existsById(99L)).thenReturn(false);
+
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+
+        org.junit.jupiter.api.Assertions.assertThrows(
+                com.cristiane.salon.exception.ResourceNotFoundException.class,
+                () -> reportService.getEmployeeFinancialHistory(99L, null, null, pageable)
+        );
     }
 }
 
