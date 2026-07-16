@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.appointment.controller;
 
 import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.appointment.dto.AppointmentFilter;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.dto.ConfirmAppointmentRequest;
@@ -10,6 +11,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -60,9 +65,11 @@ public class AppointmentController {
 
     @GetMapping
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
-    @Operation(summary = "Lista todos os agendamentos (Admin/Gerente)")
-    public ResponseEntity<List<AppointmentResponse>> findAll() {
-        return ResponseEntity.ok(appointmentService.findAll());
+    @Operation(summary = "Lista todos os agendamentos com filtros e paginação (Admin/Gerente)")
+    public ResponseEntity<Page<AppointmentResponse>> findAll(
+            @Valid AppointmentFilter filter,
+            @PageableDefault(size = 20, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
+        return ResponseEntity.ok(appointmentService.findAll(filter, pageable));
     }
 
     @GetMapping("/{id}")

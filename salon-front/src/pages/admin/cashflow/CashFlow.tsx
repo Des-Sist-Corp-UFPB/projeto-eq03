@@ -65,11 +65,11 @@ export const CashFlow = () => {
   const loadSuggestions = async () => {
     try {
       const [prodsData, svcsData] = await Promise.all([
-        productsApi.findAll(true),
-        salonServicesApi.findAll(true),
+        productsApi.findAll({ active: true }, 0, 1000),
+        salonServicesApi.findAll({ active: true }, 0, 1000),
       ]);
-      setProducts(prodsData);
-      setServices(svcsData);
+      setProducts(prodsData.content);
+      setServices(svcsData.content);
     } catch (err) {
       console.error('Erro ao carregar produtos/serviços para sugestão', err);
     }

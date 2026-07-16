@@ -3,6 +3,7 @@ package com.cristiane.salon.models.employee.service;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.employee.dto.EmployeeBookingResponse;
+import com.cristiane.salon.models.employee.dto.EmployeeFilter;
 import com.cristiane.salon.models.employee.dto.EmployeeRequest;
 import com.cristiane.salon.models.employee.dto.EmployeeResponse;
 import com.cristiane.salon.models.employee.entity.CommissionScope;
@@ -18,6 +19,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.List;
@@ -26,6 +32,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -65,16 +72,19 @@ class EmployeeServiceTest {
     }
 
     @Test
-    void findAll_shouldReturnAllEmployees() {
+    void findAll_shouldReturnPageFromRepository() {
         // Arrange
-        when(employeeRepository.findAll()).thenReturn(List.of(employee));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Employee> page = new PageImpl<>(List.of(employee));
+        when(employeeRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
         // Act
-        List<EmployeeResponse> result = employeeService.findAll();
+        Page<EmployeeResponse> result = employeeService.findAll(new EmployeeFilter(null, null), pageable);
 
         // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).id()).isEqualTo(1L);
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
+        verify(employeeRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test

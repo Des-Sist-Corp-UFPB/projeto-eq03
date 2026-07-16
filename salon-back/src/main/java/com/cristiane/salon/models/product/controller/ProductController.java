@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.product.controller;
 
 import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.product.dto.ProductFilter;
 import com.cristiane.salon.models.product.dto.ProductRequest;
 import com.cristiane.salon.models.product.dto.ProductResponse;
 import com.cristiane.salon.models.product.service.ProductService;
@@ -8,12 +9,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/v1/products")
@@ -24,9 +27,11 @@ public class ProductController {
     private final ProductService productService;
 
     @GetMapping
-    @Operation(summary = "Lista todos os produtos (Público)")
-    public ResponseEntity<List<ProductResponse>> findAll(@RequestParam(required = false) Boolean active) {
-        return ResponseEntity.ok(productService.findAll(active));
+    @Operation(summary = "Lista todos os produtos com filtros e paginação (Público)")
+    public ResponseEntity<Page<ProductResponse>> findAll(
+            @Valid ProductFilter filter,
+            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(productService.findAll(filter, pageable));
     }
 
     @GetMapping("/{id}")

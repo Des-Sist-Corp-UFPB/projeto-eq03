@@ -62,18 +62,20 @@ class EmployeeControllerTest extends BaseControllerTest {
 
     @Test
     @WithMockUser
-    void findAllReturnsEmployees() throws Exception {
+    void findAllReturnsPageOfEmployees() throws Exception {
         EmployeeResponse response = new EmployeeResponse(
                 1L, 1L, "Alice", "alice@example.com", "Bio details",
                 RemunerationType.COMISSIONADO, CommissionScope.INDIVIDUAL,
                 BigDecimal.ZERO, BigDecimal.TEN
         );
-        when(employeeService.findAll()).thenReturn(List.of(response));
+        org.springframework.data.domain.Page<EmployeeResponse> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(response));
+        when(employeeService.findAll(any(), any())).thenReturn(page);
 
         mvc.perform(get("/v1/employees")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Alice"));
+                .andExpect(jsonPath("$.content[0].name").value("Alice"));
     }
 
     @Test

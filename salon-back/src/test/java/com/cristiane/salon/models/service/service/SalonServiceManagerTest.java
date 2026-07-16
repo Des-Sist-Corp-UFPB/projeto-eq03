@@ -2,6 +2,7 @@ package com.cristiane.salon.models.service.service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.service.dto.SalonServiceFilter;
 import com.cristiane.salon.models.service.dto.SalonServiceRequest;
 import com.cristiane.salon.models.service.dto.SalonServiceResponse;
 import com.cristiane.salon.models.service.entity.SalonService;
@@ -11,6 +12,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -19,6 +25,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -31,49 +39,22 @@ class SalonServiceManagerTest {
     private SalonServiceRepository salonServiceRepository;
 
     @Test
-    void findAll_shouldReturnAllServices_whenActiveFilterIsNull() {
+    void findAll_shouldReturnPageFromRepository() {
         // Arrange
         SalonService s1 = new SalonService(1L, "Corte", "Desc", new BigDecimal("50.0"), 30, "30 min", true);
         SalonService s2 = new SalonService(2L, "Barba", "Desc", new BigDecimal("30.0"), 20, "20 min", false);
-        when(salonServiceRepository.findAll()).thenReturn(Arrays.asList(s1, s2));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<SalonService> page = new PageImpl<>(Arrays.asList(s1, s2));
+        when(salonServiceRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
         // Act
-        List<SalonServiceResponse> result = salonServiceManager.findAll(null);
+        Page<SalonServiceResponse> result = salonServiceManager.findAll(new SalonServiceFilter(null, null), pageable);
 
         // Assert
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).name()).isEqualTo("Corte");
-        assertThat(result.get(1).name()).isEqualTo("Barba");
-    }
-
-    @Test
-    void findAll_shouldReturnActiveServicesOnly_whenActiveFilterIsTrue() {
-        // Arrange
-        SalonService s1 = new SalonService(1L, "Corte", "Desc", new BigDecimal("50.0"), 30, "30 min", true);
-        SalonService s2 = new SalonService(2L, "Barba", "Desc", new BigDecimal("30.0"), 20, "20 min", false);
-        when(salonServiceRepository.findAll()).thenReturn(Arrays.asList(s1, s2));
-
-        // Act
-        List<SalonServiceResponse> result = salonServiceManager.findAll(true);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).name()).isEqualTo("Corte");
-    }
-
-    @Test
-    void findAll_shouldReturnInactiveServicesOnly_whenActiveFilterIsFalse() {
-        // Arrange
-        SalonService s1 = new SalonService(1L, "Corte", "Desc", new BigDecimal("50.0"), 30, "30 min", true);
-        SalonService s2 = new SalonService(2L, "Barba", "Desc", new BigDecimal("30.0"), 20, "20 min", false);
-        when(salonServiceRepository.findAll()).thenReturn(Arrays.asList(s1, s2));
-
-        // Act
-        List<SalonServiceResponse> result = salonServiceManager.findAll(false);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).name()).isEqualTo("Barba");
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).name()).isEqualTo("Corte");
+        assertThat(result.getContent().get(1).name()).isEqualTo("Barba");
+        verify(salonServiceRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test

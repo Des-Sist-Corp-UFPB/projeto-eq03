@@ -2,6 +2,7 @@ package com.cristiane.salon.models.employee.controller;
 
 import com.cristiane.salon.annotation.Auditable;
 import com.cristiane.salon.models.employee.dto.EmployeeBookingResponse;
+import com.cristiane.salon.models.employee.dto.EmployeeFilter;
 import com.cristiane.salon.models.employee.dto.EmployeeRequest;
 import com.cristiane.salon.models.employee.dto.EmployeeResponse;
 import com.cristiane.salon.models.employee.service.EmployeeService;
@@ -9,6 +10,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,9 +31,11 @@ public class EmployeeController {
 
     @GetMapping
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
-    @Operation(summary = "Lista todas as funcionárias (Admin/Gerente)")
-    public ResponseEntity<List<EmployeeResponse>> findAll() {
-        return ResponseEntity.ok(employeeService.findAll());
+    @Operation(summary = "Lista todas as funcionárias com filtros e paginação (Admin/Gerente)")
+    public ResponseEntity<Page<EmployeeResponse>> findAll(
+            @Valid EmployeeFilter filter,
+            @PageableDefault(size = 10, sort = "id", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(employeeService.findAll(filter, pageable));
     }
 
     @GetMapping("/booking")

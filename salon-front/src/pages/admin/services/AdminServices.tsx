@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, RotateCcw } from 'lucide-react';
-import { Table } from '../../../components/table/Table';
+import { DataTable } from '../../../components/table/DataTable';
+import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { salonServicesApi, displayServiceDuration } from '../../services/services/services';
-import type { SalonServiceData } from '../../services/services/services';
+import type { SalonServiceData, SalonServiceFilter } from '../../services/services/services';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
@@ -14,9 +15,7 @@ const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
 export const AdminServices = () => {
-  const [services, setServices] = useState<SalonServiceData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [filterActive, setFilterActive] = useState<boolean | undefined>(undefined);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [showForm, setShowForm] = useState(false);
   const [editingService, setEditingService] = useState<SalonServiceData | null>(null);
@@ -35,22 +34,9 @@ export const AdminServices = () => {
   } = useForm<SalonServiceData>();
   const { error: showError } = useAlert();
 
-  const loadServices = async () => {
-    setIsLoading(true);
-    try {
-      const data = await salonServicesApi.findAll(filterActive);
-      setServices(data);
-    } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao carregar serviços');
-      await showError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchServicesData = async (filter: SalonServiceFilter, page: number, size: number) => {
+    return salonServicesApi.findAll(filter, page, size);
   };
-
-  useEffect(() => {
-    loadServices();
-  }, [filterActive]);
 
   const handleOpenForm = (service?: SalonServiceData) => {
     reset();
@@ -91,7 +77,7 @@ export const AdminServices = () => {
         await salonServicesApi.create(payload);
       }
       setShowForm(false);
-      loadServices();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       const msg = getApiErrorMessage(
         err,
@@ -110,7 +96,7 @@ export const AdminServices = () => {
         await salonServicesApi.reactivate(serviceTargetId);
       }
       setShowConfirm(false);
-      loadServices();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       const fallbackMsg =
         confirmAction === 'delete' ? 'Erro ao excluir serviço.' : 'Erro ao reativar serviço.';
@@ -189,39 +175,35 @@ export const AdminServices = () => {
     },
   ];
 
+  const filtersConfig: FilterField[] = [
+    { key: 'name', label: 'Nome', type: 'text' },
+    { key: 'active', label: 'Status', type: 'boolean' },
+  ];
+
+  const initialFilters: SalonServiceFilter = {
+    name: '',
+    active: undefined,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <h2 className="font-heading text-2xl font-bold text-[#3b3036]">Gerenciar Serviços</h2>
-        <div className="flex gap-3">
-          <select
-            value={filterActive === undefined ? 'ALL' : filterActive ? 'ACTIVE' : 'INACTIVE'}
-            onChange={(e) => {
-              const val = e.target.value;
-              setFilterActive(val === 'ALL' ? undefined : val === 'ACTIVE');
-            }}
-            className="input-premium py-2 text-sm w-auto cursor-pointer"
-          >
-            <option value="ALL">Todos os Registros</option>
-            <option value="ACTIVE">Apenas Ativos</option>
-            <option value="INACTIVE">Apenas Inativos</option>
-          </select>
-          <PermissionGate method="POST" endpoint="/v1/services">
-            <button onClick={() => handleOpenForm()} className="btn-premium">
-              <Plus size={18} /> Novo Serviço
-            </button>
-          </PermissionGate>
-        </div>
+        <PermissionGate method="POST" endpoint="/v1/services">
+          <button onClick={() => handleOpenForm()} className="btn-premium">
+            <Plus size={18} /> Novo Serviço
+          </button>
+        </PermissionGate>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#3b3036]/60 py-8">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
-          Carregando serviços...
-        </div>
-      ) : (
-        <Table columns={columns} data={services} keyExtractor={(item) => item.id!} />
-      )}
+      <DataTable
+        columns={columns}
+        fetchData={fetchServicesData}
+        filtersConfig={filtersConfig}
+        keyExtractor={(item) => item.id!}
+        refreshTrigger={refreshTrigger}
+        initialFilters={initialFilters}
+      />
 
       <ModalForm
         show={showForm}

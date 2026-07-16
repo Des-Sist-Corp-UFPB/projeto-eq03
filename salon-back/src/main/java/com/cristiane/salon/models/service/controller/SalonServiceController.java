@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.service.controller;
 
 import com.cristiane.salon.annotation.Auditable;
+import com.cristiane.salon.models.service.dto.SalonServiceFilter;
 import com.cristiane.salon.models.service.dto.SalonServiceRequest;
 import com.cristiane.salon.models.service.dto.SalonServiceResponse;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
@@ -8,12 +9,14 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.web.PageableDefault;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
 
 @RestController
 @RequestMapping("/v1/services")
@@ -24,9 +27,11 @@ public class SalonServiceController {
     private final SalonServiceManager salonServiceManager;
 
     @GetMapping
-    @Operation(summary = "Lista todos os serviços (Público)")
-    public ResponseEntity<List<SalonServiceResponse>> findAll(@RequestParam(required = false) Boolean active) {
-        return ResponseEntity.ok(salonServiceManager.findAll(active));
+    @Operation(summary = "Lista todos os serviços com filtros e paginação (Público)")
+    public ResponseEntity<Page<SalonServiceResponse>> findAll(
+            @Valid SalonServiceFilter filter,
+            @PageableDefault(size = 10, sort = "name", direction = Sort.Direction.ASC) Pageable pageable) {
+        return ResponseEntity.ok(salonServiceManager.findAll(filter, pageable));
     }
 
     @GetMapping("/{id}")

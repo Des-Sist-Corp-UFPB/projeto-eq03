@@ -1,12 +1,13 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { Plus, Edit, Trash2, Eye } from 'lucide-react';
-import { Table } from '../../../components/table/Table';
+import { DataTable } from '../../../components/table/DataTable';
+import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { employeesApi } from './services/employees';
-import type { EmployeeData } from './services/employees';
+import type { EmployeeData, EmployeeFilter } from './services/employees';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
@@ -14,8 +15,7 @@ const inputCls = 'input-premium';
 const labelCls = 'label-premium';
 
 export const Employees = () => {
-  const [employees, setEmployees] = useState<EmployeeData[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
 
   const [showForm, setShowForm] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<EmployeeData | null>(null);
@@ -49,22 +49,9 @@ export const Employees = () => {
     setShowDetails(true);
   };
 
-  const loadEmployees = async () => {
-    setIsLoading(true);
-    try {
-      const data = await employeesApi.findAll();
-      setEmployees(data);
-    } catch (err) {
-      const msg = getApiErrorMessage(err, 'Erro ao carregar funcionários(as)');
-      await showError(msg);
-    } finally {
-      setIsLoading(false);
-    }
+  const fetchEmployeesData = async (filter: EmployeeFilter, page: number, size: number) => {
+    return employeesApi.findAll(filter, page, size);
   };
-
-  useEffect(() => {
-    loadEmployees();
-  }, []);
 
   const handleOpenForm = (employee?: EmployeeData) => {
     reset();
@@ -114,7 +101,7 @@ export const Employees = () => {
         await employeesApi.create(payload);
       }
       setShowForm(false);
-      loadEmployees();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       const msg = getApiErrorMessage(
         err,
@@ -129,7 +116,7 @@ export const Employees = () => {
     try {
       await employeesApi.delete(employeeToDelete);
       setShowConfirm(false);
-      loadEmployees();
+      setRefreshTrigger((prev) => prev + 1);
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Erro ao desvincular funcionário(a).');
       await showError(msg);
@@ -216,6 +203,16 @@ export const Employees = () => {
     },
   ];
 
+  const filtersConfig: FilterField[] = [
+    { key: 'name', label: 'Nome', type: 'text' },
+    { key: 'active', label: 'Status', type: 'boolean' },
+  ];
+
+  const initialFilters: EmployeeFilter = {
+    name: '',
+    active: undefined,
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -227,14 +224,14 @@ export const Employees = () => {
         </PermissionGate>
       </div>
 
-      {isLoading ? (
-        <div className="flex items-center gap-2 text-sm text-[#3b3036]/60 py-8">
-          <div className="animate-spin rounded-full h-5 w-5 border-t-2 border-b-2 border-[#be8a83]"></div>
-          Carregando funcionários(as)...
-        </div>
-      ) : (
-        <Table columns={columns} data={employees} keyExtractor={(item) => item.id!} />
-      )}
+      <DataTable
+        columns={columns}
+        fetchData={fetchEmployeesData}
+        filtersConfig={filtersConfig}
+        keyExtractor={(item) => item.id!}
+        refreshTrigger={refreshTrigger}
+        initialFilters={initialFilters}
+      />
 
       <ModalForm
         show={showForm}

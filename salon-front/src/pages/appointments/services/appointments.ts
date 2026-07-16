@@ -64,6 +64,21 @@ export interface GeneratePixRequest {
   cpf?: string;
 }
 
+export interface AppointmentFilter {
+  status?: string;
+  paymentStatus?: string;
+  employeeId?: number;
+  clientId?: number;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export const appointmentsApi = {
   create: async (request: AppointmentRequestBody) => {
     const { data } = await api.post<AppointmentResponse>(
@@ -90,8 +105,10 @@ export const appointmentsApi = {
     return data;
   },
 
-  findAll: async () => {
-    const { data } = await api.get<AppointmentResponse[]>('/appointments');
+  findAll: async (filter: AppointmentFilter = {}, page = 0, size = 20) => {
+    const { data } = await api.get<PageResponse<AppointmentResponse>>('/appointments', {
+      params: { ...filter, page, size },
+    });
     return data;
   },
 

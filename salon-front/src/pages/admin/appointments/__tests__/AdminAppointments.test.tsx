@@ -126,8 +126,20 @@ const renderAdminAppointments = () => {
 describe('AdminAppointments Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(appointmentsApi.findAll).mockResolvedValue(mockAppointments);
-    vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServices);
+    vi.mocked(appointmentsApi.findAll).mockResolvedValue({
+      content: mockAppointments,
+      totalPages: 1,
+      totalElements: mockAppointments.length,
+      size: 1000,
+      number: 0,
+    } as any);
+    vi.mocked(salonServicesApi.findAll).mockResolvedValue({
+      content: mockServices,
+      totalPages: 1,
+      totalElements: mockServices.length,
+      size: 1000,
+      number: 0,
+    } as any);
     vi.mocked(employeesApi.findAllForBooking).mockResolvedValue(mockEmployees);
     vi.mocked(clientsApi.findAll).mockResolvedValue({
       content: mockUsers.filter((u) => u.role === 'CLIENTE'),

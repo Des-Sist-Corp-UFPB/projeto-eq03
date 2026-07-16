@@ -12,9 +12,24 @@ export interface EmployeeData {
   commissionValue?: number;
 }
 
+export interface EmployeeFilter {
+  name?: string;
+  active?: boolean;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export const employeesApi = {
-  findAll: async () => {
-    const { data } = await api.get<EmployeeData[]>('/employees');
+  findAll: async (filter: EmployeeFilter = {}, page = 0, size = 10) => {
+    const { data } = await api.get<PageResponse<EmployeeData>>('/employees', {
+      params: { ...filter, page, size },
+    });
     return data;
   },
 

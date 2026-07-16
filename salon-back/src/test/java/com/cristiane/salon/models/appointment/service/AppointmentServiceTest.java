@@ -595,7 +595,31 @@ class AppointmentServiceTest {
     // --- findAll ---
 
     @Test
-    void findAll_shouldReturnAllAppointments() {
+    void findAll_shouldReturnPageFromRepository() {
+        // Arrange
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        apt.setSalonService(salonService);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+        org.springframework.data.domain.Page<Appointment> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(apt));
+        when(appointmentRepository.findAll(
+                any(org.springframework.data.jpa.domain.Specification.class), eq(pageable)))
+                .thenReturn(page);
+
+        // Act
+        org.springframework.data.domain.Page<AppointmentResponse> result = appointmentService.findAll(
+                new com.cristiane.salon.models.appointment.dto.AppointmentFilter(null, null, null, null), pageable);
+
+        // Assert
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).id()).isEqualTo(1L);
+    }
+
+    @Test
+    void findAllInternal_shouldReturnAllAppointmentsUnpaginated() {
         // Arrange
         Appointment apt = new Appointment();
         apt.setId(1L);
@@ -605,7 +629,7 @@ class AppointmentServiceTest {
         when(appointmentRepository.findAll()).thenReturn(List.of(apt));
 
         // Act
-        List<AppointmentResponse> result = appointmentService.findAll();
+        List<AppointmentResponse> result = appointmentService.findAllInternal();
 
         // Assert
         assertThat(result).hasSize(1);

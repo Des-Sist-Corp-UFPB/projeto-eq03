@@ -78,11 +78,11 @@ export const PublicAppointment = () => {
     const fetchInitialData = async () => {
       try {
         const [servicesData, employeesData, flagsData] = await Promise.all([
-          salonServicesApi.findAll(),
+          salonServicesApi.findAll({ active: true }, 0, 1000),
           employeesApi.findAllForBooking(),
           featureFlagsService.getPublicFlags().catch(() => [] as any[]),
         ]);
-        setServices(servicesData.filter((s) => s.active));
+        setServices(servicesData.content);
         setEmployees(employeesData);
         const bookingFlag = flagsData.find((f) => f.name === 'CLIENT_BOOKING');
         if (bookingFlag && !bookingFlag.enabled) setIsBookingEnabled(false);
