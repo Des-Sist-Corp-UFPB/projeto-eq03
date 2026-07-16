@@ -1,16 +1,17 @@
 package com.cristiane.salon.models.product.service;
 
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.product.dto.ProductFilter;
 import com.cristiane.salon.models.product.dto.ProductRequest;
 import com.cristiane.salon.models.product.dto.ProductResponse;
 import com.cristiane.salon.models.product.entity.Product;
 import com.cristiane.salon.models.product.repository.ProductRepository;
+import com.cristiane.salon.models.product.specification.ProductSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -19,11 +20,9 @@ public class ProductService {
     private final ProductRepository productRepository;
 
     @Transactional(readOnly = true)
-    public List<ProductResponse> findAll(Boolean active) {
-        return productRepository.findAll().stream()
-                .filter(product -> active == null || product.getActive().equals(active))
-                .map(ProductResponse::fromEntity)
-                .collect(Collectors.toList());
+    public Page<ProductResponse> findAll(ProductFilter filter, Pageable pageable) {
+        return productRepository.findAll(ProductSpecifications.filter(filter), pageable)
+                .map(ProductResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)

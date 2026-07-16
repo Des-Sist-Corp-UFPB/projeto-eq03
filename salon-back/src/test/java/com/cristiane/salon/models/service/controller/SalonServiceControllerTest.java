@@ -71,17 +71,19 @@ class SalonServiceControllerTest extends BaseControllerTest {
 
     @Test
     @WithMockUser
-    void findAllReturnsServices() throws Exception {
+    void findAllReturnsPageOfServices() throws Exception {
         SalonServiceResponse response = new SalonServiceResponse(
                 1L, "Haircut", "Classic trim", new BigDecimal("45.00"), 30, "30m", true
         );
-        when(salonServiceManager.findAll(eq(true))).thenReturn(List.of(response));
+        org.springframework.data.domain.Page<SalonServiceResponse> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(response));
+        when(salonServiceManager.findAll(any(), any())).thenReturn(page);
 
         mvc.perform(get("/v1/services")
                 .param("active", "true")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Haircut"));
+                .andExpect(jsonPath("$.content[0].name").value("Haircut"));
     }
 
     @Test

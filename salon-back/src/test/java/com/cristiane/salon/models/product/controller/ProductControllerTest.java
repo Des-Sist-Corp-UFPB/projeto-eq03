@@ -69,15 +69,17 @@ class ProductControllerTest extends BaseControllerTest {
 
     @Test
     @WithMockUser
-    void findAllReturnsProducts() throws Exception {
+    void findAllReturnsPageOfProducts() throws Exception {
         ProductResponse response = new ProductResponse(1L, "Hair Spray", 20, new BigDecimal("15.50"), true);
-        when(productService.findAll(eq(true))).thenReturn(List.of(response));
+        org.springframework.data.domain.Page<ProductResponse> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(response));
+        when(productService.findAll(any(), any())).thenReturn(page);
 
         mvc.perform(get("/v1/products")
                 .param("active", "true")
                 .contentType(MediaType.APPLICATION_JSON))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].name").value("Hair Spray"));
+                .andExpect(jsonPath("$.content[0].name").value("Hair Spray"));
     }
 
     @Test

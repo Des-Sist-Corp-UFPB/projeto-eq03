@@ -131,7 +131,7 @@ public class RecommendationService {
     }
 
     private String buildRetencaoPrompt() {
-        List<AppointmentResponse> appointments = appointmentService.findAll();
+        List<AppointmentResponse> appointments = appointmentService.findAllInternal();
         LocalDateTime now = LocalDateTime.now();
 
         Map<String, LocalDateTime> lastVisitByClient = appointments.stream()

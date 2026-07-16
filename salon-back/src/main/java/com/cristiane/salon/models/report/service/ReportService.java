@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.report.service;
 
+import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
@@ -10,11 +11,14 @@ import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.entity.RemunerationType;
 import com.cristiane.salon.models.employee.entity.CommissionScope;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
+import com.cristiane.salon.models.report.dto.AppointmentFinancialResponse;
 import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.EmployeeFinanceResponse;
 import com.cristiane.salon.models.report.dto.PayrollReportResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,6 +38,21 @@ public class ReportService {
     private final CashFlowRepository cashFlowRepository;
     private final AppointmentRepository appointmentRepository;
     private final EmployeeRepository employeeRepository;
+
+    @Transactional(readOnly = true)
+    public Page<AppointmentFinancialResponse> getEmployeeFinancialHistory(
+            Long employeeId, LocalDate from, LocalDate to, Pageable pageable) {
+        if (!employeeRepository.existsById(employeeId)) {
+            throw new ResourceNotFoundException("Funcionária não encontrada");
+        }
+
+        LocalDateTime fromDateTime = from != null ? from.atStartOfDay() : null;
+        LocalDateTime toDateTime = to != null ? to.atTime(LocalTime.MAX) : null;
+
+        return appointmentRepository
+                .findByEmployeeIdForFinancialHistory(employeeId, fromDateTime, toDateTime, pageable)
+                .map(AppointmentFinancialResponse::fromEntity);
+    }
 
     @Transactional(readOnly = true)
     public FinancialReportResponse generateFinancialReport(LocalDate from, LocalDate to) {

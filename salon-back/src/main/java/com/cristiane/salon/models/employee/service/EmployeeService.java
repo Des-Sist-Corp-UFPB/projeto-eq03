@@ -3,15 +3,19 @@ package com.cristiane.salon.models.employee.service;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.employee.dto.EmployeeBookingResponse;
+import com.cristiane.salon.models.employee.dto.EmployeeFilter;
 import com.cristiane.salon.models.employee.dto.EmployeeRequest;
 import com.cristiane.salon.models.employee.dto.EmployeeResponse;
 import com.cristiane.salon.models.employee.entity.Employee;
 import com.cristiane.salon.models.employee.entity.RemunerationType;
 import com.cristiane.salon.models.employee.entity.CommissionScope;
 import com.cristiane.salon.models.employee.repository.EmployeeRepository;
+import com.cristiane.salon.models.employee.specification.EmployeeSpecifications;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,10 +30,9 @@ public class EmployeeService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public List<EmployeeResponse> findAll() {
-        return employeeRepository.findAll().stream()
-                .map(EmployeeResponse::fromEntity)
-                .collect(Collectors.toList());
+    public Page<EmployeeResponse> findAll(EmployeeFilter filter, Pageable pageable) {
+        return employeeRepository.findAll(EmployeeSpecifications.filter(filter), pageable)
+                .map(EmployeeResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)

@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.product.service;
 
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.product.dto.ProductFilter;
 import com.cristiane.salon.models.product.dto.ProductRequest;
 import com.cristiane.salon.models.product.dto.ProductResponse;
 import com.cristiane.salon.models.product.entity.Product;
@@ -10,6 +11,11 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
 import java.math.BigDecimal;
 import java.util.Arrays;
@@ -18,6 +24,8 @@ import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -30,49 +38,22 @@ class ProductServiceTest {
     private ProductRepository productRepository;
 
     @Test
-    void findAll_shouldReturnAllProducts_whenActiveFilterIsNull() {
+    void findAll_shouldReturnPageFromRepository() {
         // Arrange
         Product p1 = new Product(1L, "P1", 5, new BigDecimal("10.0"), true);
         Product p2 = new Product(2L, "P2", 2, new BigDecimal("20.0"), false);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
+        Pageable pageable = PageRequest.of(0, 10);
+        Page<Product> page = new PageImpl<>(Arrays.asList(p1, p2));
+        when(productRepository.findAll(any(Specification.class), eq(pageable))).thenReturn(page);
 
         // Act
-        List<ProductResponse> result = productService.findAll(null);
+        Page<ProductResponse> result = productService.findAll(new ProductFilter(null, null), pageable);
 
         // Assert
-        assertThat(result).hasSize(2);
-        assertThat(result.get(0).name()).isEqualTo("P1");
-        assertThat(result.get(1).name()).isEqualTo("P2");
-    }
-
-    @Test
-    void findAll_shouldReturnActiveProductsOnly_whenActiveFilterIsTrue() {
-        // Arrange
-        Product p1 = new Product(1L, "P1", 5, new BigDecimal("10.0"), true);
-        Product p2 = new Product(2L, "P2", 2, new BigDecimal("20.0"), false);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
-
-        // Act
-        List<ProductResponse> result = productService.findAll(true);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).name()).isEqualTo("P1");
-    }
-
-    @Test
-    void findAll_shouldReturnInactiveProductsOnly_whenActiveFilterIsFalse() {
-        // Arrange
-        Product p1 = new Product(1L, "P1", 5, new BigDecimal("10.0"), true);
-        Product p2 = new Product(2L, "P2", 2, new BigDecimal("20.0"), false);
-        when(productRepository.findAll()).thenReturn(Arrays.asList(p1, p2));
-
-        // Act
-        List<ProductResponse> result = productService.findAll(false);
-
-        // Assert
-        assertThat(result).hasSize(1);
-        assertThat(result.get(0).name()).isEqualTo("P2");
+        assertThat(result.getContent()).hasSize(2);
+        assertThat(result.getContent().get(0).name()).isEqualTo("P1");
+        assertThat(result.getContent().get(1).name()).isEqualTo("P2");
+        verify(productRepository).findAll(any(Specification.class), eq(pageable));
     }
 
     @Test

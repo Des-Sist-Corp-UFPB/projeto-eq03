@@ -47,6 +47,24 @@ export interface PayrollReportResponse {
   period: string;
 }
 
+export interface AppointmentFinancialResponse {
+  id: number;
+  scheduledAt: string | null;
+  preferredDate: string | null;
+  serviceName: string;
+  price: number | null;
+  status: string;
+  paymentStatus: string | null;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export const reportsApi = {
   getFinancialReport: async (from?: string, to?: string) => {
     const params: Record<string, string> = {};
@@ -69,6 +87,23 @@ export const reportsApi = {
     if (from) params.from = from;
     if (to) params.to = to;
     const { data } = await api.get<PayrollReportResponse>('/reports/payroll', { params });
+    return data;
+  },
+
+  getEmployeeFinancialHistory: async (
+    employeeId: number,
+    from: string | undefined,
+    to: string | undefined,
+    page: number,
+    size: number
+  ) => {
+    const params: Record<string, string | number> = { page, size };
+    if (from) params.from = from;
+    if (to) params.to = to;
+    const { data } = await api.get<PageResponse<AppointmentFinancialResponse>>(
+      `/reports/financial/employees/${employeeId}`,
+      { params }
+    );
     return data;
   },
 };

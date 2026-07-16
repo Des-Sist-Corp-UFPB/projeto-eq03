@@ -62,9 +62,17 @@ const mockServices = [
 
 const mockEmployees = [{ id: 10, userId: 100, name: 'Mariana', bio: 'Cabelos e Penteados' }];
 
+const mockServicesPage = (content: typeof mockServices) => ({
+  content,
+  totalPages: 1,
+  totalElements: content.length,
+  size: 1000,
+  number: 0,
+});
+
 describe('PublicAppointment Wizard Integration', () => {
   beforeEach(() => {
-    vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServices);
+    vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServicesPage(mockServices) as any);
     vi.mocked(employeesApi.findAllForBooking).mockResolvedValue(mockEmployees);
     vi.mocked(featureFlagsService.getPublicFlags).mockResolvedValue([
       { name: 'CLIENT_BOOKING', enabled: true, description: 'Client booking feature' },
@@ -217,7 +225,7 @@ describe('PublicAppointment Wizard Integration', () => {
   });
 
   it('should show empty states when services or employees lists are empty', async () => {
-    vi.mocked(salonServicesApi.findAll).mockResolvedValue([]);
+    vi.mocked(salonServicesApi.findAll).mockResolvedValue(mockServicesPage([]) as any);
     vi.mocked(employeesApi.findAllForBooking).mockResolvedValue([]);
 
     await act(async () => {

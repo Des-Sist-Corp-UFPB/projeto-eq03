@@ -2,16 +2,17 @@ package com.cristiane.salon.models.service.service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
+import com.cristiane.salon.models.service.dto.SalonServiceFilter;
 import com.cristiane.salon.models.service.dto.SalonServiceRequest;
 import com.cristiane.salon.models.service.dto.SalonServiceResponse;
 import com.cristiane.salon.models.service.entity.SalonService;
 import com.cristiane.salon.models.service.repository.SalonServiceRepository;
+import com.cristiane.salon.models.service.specification.SalonServiceSpecifications;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -20,11 +21,9 @@ public class SalonServiceManager {
     private final SalonServiceRepository salonServiceRepository;
 
     @Transactional(readOnly = true)
-    public List<SalonServiceResponse> findAll(Boolean active) {
-        return salonServiceRepository.findAll().stream()
-                .filter(service -> active == null || service.getActive().equals(active))
-                .map(SalonServiceResponse::fromEntity)
-                .collect(Collectors.toList());
+    public Page<SalonServiceResponse> findAll(SalonServiceFilter filter, Pageable pageable) {
+        return salonServiceRepository.findAll(SalonServiceSpecifications.filter(filter), pageable)
+                .map(SalonServiceResponse::fromEntity);
     }
 
     @Transactional(readOnly = true)

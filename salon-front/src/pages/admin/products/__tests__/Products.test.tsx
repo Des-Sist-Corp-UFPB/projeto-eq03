@@ -31,10 +31,18 @@ const mockProducts = [
   { id: 2, name: 'Condicionador', price: 28.0, stock: 3, active: false },
 ];
 
+const mockPage = (content: typeof mockProducts) => ({
+  content,
+  totalPages: 1,
+  totalElements: content.length,
+  size: 10,
+  number: 0,
+});
+
 describe('Products Page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    vi.mocked(productsApi.findAll).mockResolvedValue(mockProducts);
+    vi.mocked(productsApi.findAll).mockResolvedValue(mockPage(mockProducts));
   });
 
   it('renders products and handles filter changes', async () => {
@@ -48,14 +56,22 @@ describe('Products Page', () => {
 
     const select = screen.getByRole('combobox');
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'ACTIVE' } });
+      fireEvent.change(select, { target: { value: 'true' } });
     });
-    expect(productsApi.findAll).toHaveBeenCalledWith(true);
+    expect(productsApi.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({ active: true }),
+      0,
+      10
+    );
 
     await act(async () => {
-      fireEvent.change(select, { target: { value: 'INACTIVE' } });
+      fireEvent.change(select, { target: { value: 'false' } });
     });
-    expect(productsApi.findAll).toHaveBeenCalledWith(false);
+    expect(productsApi.findAll).toHaveBeenCalledWith(
+      expect.objectContaining({ active: false }),
+      0,
+      10
+    );
   });
 
   it('triggers reactivate flow when RotateCcw button is clicked and confirmed', async () => {
@@ -90,7 +106,7 @@ describe('Products Page', () => {
 
     expect(productsApi.reactivate).toHaveBeenCalledWith(2);
     await waitFor(() => {
-      expect(productsApi.findAll).toHaveBeenCalledTimes(2); // Initial + reload
+      expect(productsApi.findAll).toHaveBeenCalledTimes(2); // Initial + refresh
     });
   });
 

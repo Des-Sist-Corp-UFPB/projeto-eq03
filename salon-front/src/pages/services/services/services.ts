@@ -22,10 +22,24 @@ export function displayServiceDuration(
   return 'Tempo a combinar';
 }
 
+export interface SalonServiceFilter {
+  name?: string;
+  active?: boolean;
+}
+
+export interface PageResponse<T> {
+  content: T[];
+  totalPages: number;
+  totalElements: number;
+  size: number;
+  number: number;
+}
+
 export const salonServicesApi = {
-  findAll: async (active?: boolean) => {
-    const params = active !== undefined ? { active } : {};
-    const { data } = await api.get<SalonServiceData[]>('/services', { params });
+  findAll: async (filter: SalonServiceFilter = {}, page = 0, size = 10) => {
+    const { data } = await api.get<PageResponse<SalonServiceData>>('/services', {
+      params: { ...filter, page, size },
+    });
     return data;
   },
 

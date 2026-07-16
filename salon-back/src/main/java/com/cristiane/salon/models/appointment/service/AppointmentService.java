@@ -7,12 +7,16 @@ import com.cristiane.salon.exception.BusinessException;
 import com.cristiane.salon.models.appointment.dto.GeneratePixRequest;
 import com.cristiane.salon.utils.CpfValidator;
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
+import com.cristiane.salon.models.appointment.dto.AppointmentFilter;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.enums.PaymentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
+import com.cristiane.salon.models.appointment.specification.AppointmentSpecifications;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import com.cristiane.salon.models.cashflow.entity.CashFlow;
 import com.cristiane.salon.models.cashflow.enums.CashFlowType;
 import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
@@ -240,7 +244,14 @@ public class AppointmentService {
     }
 
     @Transactional(readOnly = true)
-    public List<AppointmentResponse> findAll() {
+    public Page<AppointmentResponse> findAll(AppointmentFilter filter, Pageable pageable) {
+        return appointmentRepository.findAll(AppointmentSpecifications.filter(filter), pageable)
+                .map(AppointmentResponse::fromEntity);
+    }
+
+    /** Usado internamente (ex.: motor de recomendações) quando é preciso o conjunto completo, sem paginação. */
+    @Transactional(readOnly = true)
+    public List<AppointmentResponse> findAllInternal() {
         return appointmentRepository.findAll().stream()
                 .map(AppointmentResponse::fromEntity)
                 .collect(Collectors.toList());
