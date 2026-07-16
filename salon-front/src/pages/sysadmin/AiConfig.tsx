@@ -254,7 +254,7 @@ export const AiConfig = () => {
 
         {testResult && (
           <div
-            className={`flex items-start gap-2 rounded-xl p-3 text-sm font-medium ${
+            className={`flex items-start gap-2 rounded-xl p-3 text-sm font-medium min-w-0 ${
               testResult.success
                 ? 'bg-emerald-50 text-emerald-700'
                 : 'bg-rose-50 text-rose-700'
@@ -265,7 +265,7 @@ export const AiConfig = () => {
             ) : (
               <XCircle size={18} className="shrink-0 mt-0.5" />
             )}
-            <span>
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
               {testResult.message}
               {testResult.latencyMs != null ? ` (${testResult.latencyMs}ms)` : ''}
             </span>
