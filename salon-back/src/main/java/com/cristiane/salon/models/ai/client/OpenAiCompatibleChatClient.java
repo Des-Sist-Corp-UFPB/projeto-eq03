@@ -9,15 +9,18 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Casca fina sobre a API OpenAI-compatible do LiteLLM — só monta e envia a chamada de
- * chat/completions. Nenhuma regra de negócio aqui; quem decide o que perguntar é o
- * {@link com.cristiane.salon.models.ai.service.RecommendationService}.
+ * Casca fina sobre o contrato OpenAI-compatible de chat/completions — não é específica de
+ * nenhum provedor. {@code baseUrl}/{@code model}/{@code apiKey} vêm da Central de IA e podem
+ * apontar pra qualquer backend que fale esse formato (OpenAI, Azure OpenAI, Groq, OpenRouter,
+ * Ollama, vLLM, ou um proxy como o LiteLLM na frente de outra coisa qualquer, incluindo
+ * provedores que nativamente não falam esse formato). Nenhuma regra de negócio aqui; quem
+ * decide o que perguntar é o {@link com.cristiane.salon.models.ai.service.RecommendationService}.
  */
 @Component
-public class LiteLlmClient {
+public class OpenAiCompatibleChatClient {
 
     @SuppressWarnings("unchecked")
-    public LiteLlmCompletionResult complete(
+    public ChatCompletionResult complete(
             String baseUrl,
             String apiKey,
             String model,
@@ -67,6 +70,6 @@ public class LiteLlmClient {
             totalTokens = number.intValue();
         }
 
-        return new LiteLlmCompletionResult(content, totalTokens);
+        return new ChatCompletionResult(content, totalTokens);
     }
 }

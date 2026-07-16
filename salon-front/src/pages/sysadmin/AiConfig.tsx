@@ -1,7 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
-import { Sparkles, Eye, EyeOff } from 'lucide-react';
-import { aiConfigService, AI_MODELS, type AiConfigData, type AiConfigUpdatePayload } from '../../services/aiConfig';
+import { Sparkles, Eye, EyeOff, PlugZap, CheckCircle2, XCircle } from 'lucide-react';
+import {
+  aiConfigService,
+  AI_MODELS,
+  type AiConfigData,
+  type AiConfigUpdatePayload,
+  type AiConfigTestResult,
+} from '../../services/aiConfig';
 import { useAlert } from '../../hooks/useAlert';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { McpTokensSection } from './McpTokensSection';
@@ -24,6 +30,8 @@ export const AiConfig = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showApiKey, setShowApiKey] = useState(false);
+  const [isTesting, setIsTesting] = useState(false);
+  const [testResult, setTestResult] = useState<AiConfigTestResult | null>(null);
 
   const { error: showError, success: showSuccess } = useAlert();
 
@@ -31,6 +39,7 @@ export const AiConfig = () => {
     register,
     handleSubmit,
     reset,
+    getValues,
     formState: { errors },
   } = useForm<AiConfigFormData>();
 
@@ -87,6 +96,28 @@ export const AiConfig = () => {
       showError(getApiErrorMessage(err, 'Erro ao salvar a configuração de IA.'));
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleTestConnection = async () => {
+    const { baseUrl, model, apiKey } = getValues();
+    setIsTesting(true);
+    setTestResult(null);
+    try {
+      const result = await aiConfigService.testConnection({
+        baseUrl,
+        model,
+        apiKey: apiKey ? apiKey : null,
+      });
+      setTestResult(result);
+    } catch (err) {
+      setTestResult({
+        success: false,
+        message: getApiErrorMessage(err, 'Erro ao testar a conexão.'),
+        latencyMs: null,
+      });
+    } finally {
+      setIsTesting(false);
     }
   };
 
@@ -221,13 +252,44 @@ export const AiConfig = () => {
           </p>
         )}
 
-        <button
-          type="submit"
-          disabled={isSaving}
-          className="w-full py-3 bg-[#be8a83] hover:bg-[#a1706a] text-[#fcf9f9] font-semibold rounded-xl text-sm transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-        >
-          {isSaving ? 'Salvando...' : 'Salvar configuração'}
-        </button>
+        {testResult && (
+          <div
+            className={`flex items-start gap-2 rounded-xl p-3 text-sm font-medium ${
+              testResult.success
+                ? 'bg-emerald-50 text-emerald-700'
+                : 'bg-rose-50 text-rose-700'
+            }`}
+          >
+            {testResult.success ? (
+              <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+            ) : (
+              <XCircle size={18} className="shrink-0 mt-0.5" />
+            )}
+            <span>
+              {testResult.message}
+              {testResult.latencyMs != null ? ` (${testResult.latencyMs}ms)` : ''}
+            </span>
+          </div>
+        )}
+
+        <div className="flex gap-3">
+          <button
+            type="button"
+            onClick={handleTestConnection}
+            disabled={isTesting}
+            className="flex-1 py-3 bg-white border border-[#be8a83] hover:bg-[#fdf6f5] text-[#be8a83] font-semibold rounded-xl text-sm transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer flex items-center justify-center gap-2"
+          >
+            <PlugZap size={16} />
+            {isTesting ? 'Testando...' : 'Testar conexão'}
+          </button>
+          <button
+            type="submit"
+            disabled={isSaving}
+            className="flex-1 py-3 bg-[#be8a83] hover:bg-[#a1706a] text-[#fcf9f9] font-semibold rounded-xl text-sm transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            {isSaving ? 'Salvando...' : 'Salvar configuração'}
+          </button>
+        </div>
       </form>
 
       <McpTokensSection />

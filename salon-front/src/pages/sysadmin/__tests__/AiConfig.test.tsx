@@ -8,6 +8,7 @@ vi.mock('../../../services/aiConfig', () => ({
   aiConfigService: {
     get: vi.fn(),
     update: vi.fn(),
+    testConnection: vi.fn(),
   },
 }));
 
@@ -87,5 +88,46 @@ describe('AiConfig page', () => {
     expect(aiConfigService.update).toHaveBeenCalledWith(
       expect.objectContaining({ apiKey: null })
     );
+  });
+
+  it('tests the connection with current form values and shows success feedback', async () => {
+    vi.mocked(aiConfigService.testConnection).mockResolvedValue({
+      success: true,
+      message: 'Conexão estabelecida com sucesso',
+      latencyMs: 42,
+    });
+
+    await act(async () => {
+      renderAiConfig();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /testar conexão/i }));
+    });
+
+    expect(aiConfigService.testConnection).toHaveBeenCalledWith(
+      expect.objectContaining({ baseUrl: 'https://llm.rodrigor.com', model: 'gpt-4o-mini' })
+    );
+    expect(screen.getByText(/Conexão estabelecida com sucesso/)).toBeInTheDocument();
+    expect(screen.getByText(/42ms/)).toBeInTheDocument();
+  });
+
+  it('shows failure feedback when the connection test fails', async () => {
+    vi.mocked(aiConfigService.testConnection).mockResolvedValue({
+      success: false,
+      message: 'Falha ao conectar: timeout',
+      latencyMs: null,
+    });
+
+    await act(async () => {
+      renderAiConfig();
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /testar conexão/i }));
+    });
+
+    expect(screen.getByText(/Falha ao conectar: timeout/)).toBeInTheDocument();
+    expect(aiConfigService.update).not.toHaveBeenCalled();
   });
 });

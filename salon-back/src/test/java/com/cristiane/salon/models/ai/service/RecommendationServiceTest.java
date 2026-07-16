@@ -2,8 +2,8 @@ package com.cristiane.salon.models.ai.service;
 
 import com.cristiane.salon.exception.BusinessException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
-import com.cristiane.salon.models.ai.client.LiteLlmClient;
-import com.cristiane.salon.models.ai.client.LiteLlmCompletionResult;
+import com.cristiane.salon.models.ai.client.OpenAiCompatibleChatClient;
+import com.cristiane.salon.models.ai.client.ChatCompletionResult;
 import com.cristiane.salon.models.ai.dto.RecommendationResult;
 import com.cristiane.salon.models.ai.entity.AiCallLog;
 import com.cristiane.salon.models.ai.entity.AiConfig;
@@ -44,7 +44,7 @@ import static org.mockito.Mockito.*;
 class RecommendationServiceTest {
 
     @Mock private AiConfigService aiConfigService;
-    @Mock private LiteLlmClient liteLlmClient;
+    @Mock private OpenAiCompatibleChatClient chatClient;
     @Mock private ReportService reportService;
     @Mock private AppointmentService appointmentService;
     @Mock private AiRecommendationRepository recommendationRepository;
@@ -57,7 +57,7 @@ class RecommendationServiceTest {
     void setUp() {
         lenient().when(featureFlagService.isEnabled("ENABLE_AI_RECOMMENDATIONS")).thenReturn(true);
         service = new RecommendationService(
-                aiConfigService, liteLlmClient, reportService, appointmentService,
+                aiConfigService, chatClient, reportService, appointmentService,
                 recommendationRepository, callLogRepository, featureFlagService, new ObjectMapper()
         );
     }
@@ -81,7 +81,7 @@ class RecommendationServiceTest {
 
         assertThatThrownBy(() -> service.generate(RecommendationType.FINANCEIRO, "USER", "1"))
                 .isInstanceOf(BusinessException.class);
-        verifyNoInteractions(aiConfigService, liteLlmClient, callLogRepository);
+        verifyNoInteractions(aiConfigService, chatClient, callLogRepository);
     }
 
     @Test
@@ -102,7 +102,7 @@ class RecommendationServiceTest {
         assertThatThrownBy(() -> service.generate(RecommendationType.FINANCEIRO, "USER", "1"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("desativadas");
-        verifyNoInteractions(liteLlmClient);
+        verifyNoInteractions(chatClient);
     }
 
     @Test
@@ -114,7 +114,7 @@ class RecommendationServiceTest {
         assertThatThrownBy(() -> service.generate(RecommendationType.FINANCEIRO, "USER", "1"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("API key");
-        verifyNoInteractions(liteLlmClient);
+        verifyNoInteractions(chatClient);
     }
 
     @Test
@@ -127,7 +127,7 @@ class RecommendationServiceTest {
         assertThatThrownBy(() -> service.generate(RecommendationType.FINANCEIRO, "USER", "1"))
                 .isInstanceOf(BusinessException.class)
                 .hasMessageContaining("Orçamento");
-        verifyNoInteractions(liteLlmClient);
+        verifyNoInteractions(chatClient);
     }
 
     @Test
@@ -146,8 +146,8 @@ class RecommendationServiceTest {
         String llmJson = """
                 {"recommendations":[{"title":"Ociosidade nas terças","description":"40% de vagas livres.","suggestedAction":"Criar promoção","priority":"ALTA"}]}
                 """;
-        when(liteLlmClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
-                .thenReturn(new LiteLlmCompletionResult(llmJson, 123));
+        when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
+                .thenReturn(new ChatCompletionResult(llmJson, 123));
 
         RecommendationResult result = service.generate(RecommendationType.FINANCEIRO, "USER", "5");
 
@@ -172,8 +172,8 @@ class RecommendationServiceTest {
         when(aiConfigService.getDecryptedApiKey(config)).thenReturn("sk-test");
         when(callLogRepository.countSuccessfulSince(any())).thenReturn(0L);
         when(appointmentService.findAll()).thenReturn(List.of());
-        when(liteLlmClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
-                .thenReturn(new LiteLlmCompletionResult("isto não é json", null));
+        when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
+                .thenReturn(new ChatCompletionResult("isto não é json", null));
 
         assertThatThrownBy(() -> service.generate(RecommendationType.RETENCAO, "USER", "5"))
                 .isInstanceOf(BusinessException.class);
@@ -195,8 +195,8 @@ class RecommendationServiceTest {
         String llmJson = """
                 {"recommendations":[{"title":"","description":"desc","suggestedAction":"acao","priority":"ALTA"}]}
                 """;
-        when(liteLlmClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
-                .thenReturn(new LiteLlmCompletionResult(llmJson, null));
+        when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
+                .thenReturn(new ChatCompletionResult(llmJson, null));
 
         assertThatThrownBy(() -> service.generate(RecommendationType.RETENCAO, "USER", "5"))
                 .isInstanceOf(BusinessException.class);
@@ -252,8 +252,8 @@ class RecommendationServiceTest {
                 {"recommendations":[{"title":"T","description":"D","suggestedAction":"A","priority":"BAIXA"}]}
                 """;
         ArgumentCaptor<String> userPromptCaptor = ArgumentCaptor.forClass(String.class);
-        when(liteLlmClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), userPromptCaptor.capture()))
-                .thenReturn(new LiteLlmCompletionResult(llmJson, null));
+        when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), userPromptCaptor.capture()))
+                .thenReturn(new ChatCompletionResult(llmJson, null));
 
         service.generate(RecommendationType.RETENCAO, "USER", "1");
 
