@@ -26,6 +26,7 @@ interface SectionConfig {
   title: string;
   description: string;
   icon: typeof DollarSign;
+  details?: string[];
 }
 
 const sections: SectionConfig[] = [
@@ -38,8 +39,14 @@ const sections: SectionConfig[] = [
   {
     type: 'RETENCAO',
     title: 'Retenção de clientes',
-    description: 'Clientes sem agendamento há bastante tempo e sugestões de reengajamento.',
+    description:
+      'Analisa clientes com último agendamento concluído há mais de 30 dias e sugere ações de reengajamento.',
     icon: Users,
+    details: [
+      'Quais clientes estão em risco de abandono e há quantos dias estão inativos',
+      'Priorização por tempo de inatividade (quanto mais tempo, maior a urgência)',
+      'Sugestões de ação: contato ativo, promoções personalizadas ou lembretes de retorno',
+    ],
   },
 ];
 
@@ -100,6 +107,22 @@ const RecommendationSection = ({ config }: { config: SectionConfig }) => {
           {isGenerating ? 'Gerando...' : result ? 'Atualizar' : 'Gerar'}
         </button>
       </div>
+
+      {config.details && (
+        <div className="bg-[#fdf6f5] border border-[#eae1e1] rounded-xl px-4 py-3 space-y-1.5">
+          <p className="text-xs font-semibold text-[#3b3036]/70 uppercase tracking-wide">
+            Esta análise identifica
+          </p>
+          <ul className="space-y-1">
+            {config.details.map((line, i) => (
+              <li key={i} className="flex items-start gap-2 text-xs text-[#3b3036]/60">
+                <span className="mt-1 w-1.5 h-1.5 rounded-full bg-[#be8a83] shrink-0" />
+                {line}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
 
       {isLoading ? (
         <div className="flex justify-center py-8">

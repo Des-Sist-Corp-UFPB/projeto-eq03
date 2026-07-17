@@ -152,6 +152,13 @@ public class RecommendationService {
                 .limit(30)
                 .toList();
 
+        if (inactivity.isEmpty()) {
+            throw new BusinessException(
+                "Nenhum cliente inativo há mais de " + INACTIVITY_THRESHOLD_DAYS +
+                " dias encontrado. Não há dados suficientes para gerar recomendações de retenção."
+            );
+        }
+
         return RecommendationPromptBuilder.retencaoUserPrompt(toJson(inactivity));
     }
 

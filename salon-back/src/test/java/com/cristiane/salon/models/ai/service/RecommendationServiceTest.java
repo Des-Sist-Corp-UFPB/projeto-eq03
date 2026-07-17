@@ -165,13 +165,21 @@ class RecommendationServiceTest {
         assertThat(logCaptor.getValue().getTokensUsed()).isEqualTo(123);
     }
 
+    private AppointmentResponse inactiveAppointment(String clientName, int daysAgo) {
+        return new AppointmentResponse(
+                1L, 10L, clientName, 5L, "Mariana", 100L, "Corte",
+                LocalDateTime.now().minusDays(daysAgo), null,
+                null, "DONE", "PAID", null, null, true, null
+        );
+    }
+
     @Test
     void generate_whenLlmReturnsMalformedJson_throwsBusinessExceptionAndLogsFailure() {
         AiConfig config = enabledConfig();
         when(aiConfigService.getDecryptedForInternalUse()).thenReturn(config);
         when(aiConfigService.getDecryptedApiKey(config)).thenReturn("sk-test");
         when(callLogRepository.countSuccessfulSince(any())).thenReturn(0L);
-        when(appointmentService.findAllInternal()).thenReturn(List.of());
+        when(appointmentService.findAllInternal()).thenReturn(List.of(inactiveAppointment("Cliente Teste", 45)));
         when(chatClient.complete(anyString(), anyString(), anyString(), any(), anyInt(), anyString(), anyString()))
                 .thenReturn(new ChatCompletionResult("isto não é json", null));
 
@@ -190,7 +198,7 @@ class RecommendationServiceTest {
         when(aiConfigService.getDecryptedForInternalUse()).thenReturn(config);
         when(aiConfigService.getDecryptedApiKey(config)).thenReturn("sk-test");
         when(callLogRepository.countSuccessfulSince(any())).thenReturn(0L);
-        when(appointmentService.findAllInternal()).thenReturn(List.of());
+        when(appointmentService.findAllInternal()).thenReturn(List.of(inactiveAppointment("Cliente Teste", 45)));
 
         String llmJson = """
                 {"recommendations":[{"title":"","description":"desc","suggestedAction":"acao","priority":"ALTA"}]}
