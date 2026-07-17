@@ -1,24 +1,30 @@
 import http from 'k6/http';
-import { check, sleep, group } from 'k6';
-import { Counter } from 'k6/metrics';
-import exec from 'k6/execution';
+import { check, group } from 'k6';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Teste de Carga e Performance — EQ03
 //
-// Três cenários sequenciais e independentes. Cada um começa com 1 VU e sobe
-// automaticamente até 60 VUs ao longo de 90s (ramp), depois sustenta por 30s.
-// A métrica principal é quantas requisições HTTP 2xx o sistema entregou dentro
-// do budget de tempo de cada cenário (≤1s, ≤2s, ≤3s).
+// Estratégia: ramping-arrival-rate — o k6 controla diretamente o RPS (requisições
+// por segundo), não o número de VUs. Cada cenário aumenta o RPS até o alvo e o
+// threshold p(95)<Xs revela se o sistema aguenta aquela taxa dentro do budget.
 //
-// Rotas exercitadas: todas as rotas protegidas da API (GET, POST, PUT, PATCH,
-// DELETE) — relatórios, agendamentos, caixa, funcionárias, produtos, serviços,
-// usuários e ping.
+// Isso responde objetivamente: "qual é o máximo de RPS que o sistema entrega
+// com 95% das respostas dentro de 1s / 2s / 3s?"
 //
-// Comando:
+// Três cenários independentes e sequenciais:
+//   sla_1s — sobe até MAX_RPS_1S req/s; passa se p(95) < 1 000 ms
+//   sla_2s — sobe até MAX_RPS_2S req/s; passa se p(95) < 2 000 ms
+//   sla_3s — sobe até MAX_RPS_3S req/s; passa se p(95) < 3 000 ms
+//
+// Rotas: GET /ping, relatórios financeiro/agendamentos/folha/por-profissional,
+//        agendamentos, cashflow, usuários, clientes, employees/booking, produtos,
+//        serviços + escritas: POST /appointments, POST/DELETE cashflow,
+//        POST+PATCH cancel, PUT products, PATCH users.
+//
+// Comando local:
 //   docker run --rm -i --network projeto-eq03_salon-network \
-//     -v "%CD%:/app" -w //app --env-file .env \
+//     -v "${PWD}:/app" -w /app --env-file .env \
 //     -e BASE_URL=http://salon-app:8080 \
 //     grafana/k6 run loadtest/carga.js
 // ─────────────────────────────────────────────────────────────────────────────
@@ -27,81 +33,76 @@ const BASE_URL       = __ENV.BASE_URL       || 'http://localhost:8080';
 const ADMIN_EMAIL    = __ENV.ADMIN_EMAIL;
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD;
 
+// RPS máximo que cada cenário tenta atingir na rampa.
+// Se o sistema aguentar com p(95) dentro do budget → threshold passa.
+// Se o sistema saturar antes → threshold falha e o relatório mostra onde quebrou.
+const MAX_RPS_1S = parseInt(__ENV.MAX_RPS_1S) || 60;
+const MAX_RPS_2S = parseInt(__ENV.MAX_RPS_2S) || 100;
+const MAX_RPS_3S = parseInt(__ENV.MAX_RPS_3S) || 150;
+
 // Duração real de cada cenário: 90s ramp + 30s sustentado = 120s
 const SCENARIO_DURATION_S = 120;
-
-const countOk1s = new Counter('count_ok_1s');
-const countOk2s = new Counter('count_ok_2s');
-const countOk3s = new Counter('count_ok_3s');
 
 export const options = {
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
 
   scenarios: {
-    // Cenário 1: budget ≤ 1s
+    // Cenário 1: descobre o máximo de RPS com p(95) ≤ 1s
     sla_1s: {
-      executor:  'ramping-vus',
-      startVUs:  1,
+      executor:        'ramping-arrival-rate',
+      startRate:       1,
+      timeUnit:        '1s',
+      preAllocatedVUs: 50,
+      maxVUs:          300,
       stages: [
-        { duration: '90s', target: 60 },
-        { duration: '30s', target: 60 },
+        { duration: '90s', target: MAX_RPS_1S },
+        { duration: '30s', target: MAX_RPS_1S },
       ],
       startTime: '0s',
     },
-    // Cenário 2: budget ≤ 2s (começa após sla_1s + 10s de gap)
+    // Cenário 2: descobre o máximo de RPS com p(95) ≤ 2s
     sla_2s: {
-      executor:  'ramping-vus',
-      startVUs:  1,
+      executor:        'ramping-arrival-rate',
+      startRate:       1,
+      timeUnit:        '1s',
+      preAllocatedVUs: 100,
+      maxVUs:          500,
       stages: [
-        { duration: '90s', target: 60 },
-        { duration: '30s', target: 60 },
+        { duration: '90s', target: MAX_RPS_2S },
+        { duration: '30s', target: MAX_RPS_2S },
       ],
       startTime: '2m10s',
     },
-    // Cenário 3: budget ≤ 3s (começa após sla_2s + 10s de gap)
+    // Cenário 3: descobre o máximo de RPS com p(95) ≤ 3s
     sla_3s: {
-      executor:  'ramping-vus',
-      startVUs:  1,
+      executor:        'ramping-arrival-rate',
+      startRate:       1,
+      timeUnit:        '1s',
+      preAllocatedVUs: 150,
+      maxVUs:          700,
       stages: [
-        { duration: '90s', target: 60 },
-        { duration: '30s', target: 60 },
+        { duration: '90s', target: MAX_RPS_3S },
+        { duration: '30s', target: MAX_RPS_3S },
       ],
       startTime: '4m20s',
     },
   },
 
   thresholds: {
-    // Taxa de erro HTTP global
+    // Taxa de erro global
     http_req_failed: ['rate<0.01'],
 
-    // Submetrics por cenário — necessários para p(95)/p(99) no relatório
-    // (limite de 60s é apenas para forçar a criação da métrica, nunca dispara)
-    'http_req_duration{scenario:sla_1s}': ['p(99)<60000'],
-    'http_req_duration{scenario:sla_2s}': ['p(99)<60000'],
-    'http_req_duration{scenario:sla_3s}': ['p(99)<60000'],
+    // Estes são os thresholds reais de SLA — passam ou falham conforme a carga
+    'http_req_duration{scenario:sla_1s}': ['p(95)<1000'],
+    'http_req_duration{scenario:sla_2s}': ['p(95)<2000'],
+    'http_req_duration{scenario:sla_3s}': ['p(95)<3000'],
 
-    // Meta principal: > 1000 requisições HTTP-OK dentro do budget
-    count_ok_1s: ['count>1000'],
-    count_ok_2s: ['count>1000'],
-    count_ok_3s: ['count>1000'],
-
-    // Cria submetrics por cenário (necessário para scenarioRps no handleSummary)
+    // Garante submetrics no relatório
     'http_reqs{scenario:sla_1s}': ['count>0'],
     'http_reqs{scenario:sla_2s}': ['count>0'],
     'http_reqs{scenario:sla_3s}': ['count>0'],
   },
 };
-
-// Conta requisições 2xx dentro do budget do cenário atual
-function trackResponseSla(res) {
-  if (!res || !res.timings) return;
-  if (res.status < 200 || res.status >= 300) return;
-  const d = res.timings.duration;
-  const s = exec.scenario.name;
-  if (s === 'sla_1s' && d < 1000) countOk1s.add(1);
-  if (s === 'sla_2s' && d < 2000) countOk2s.add(1);
-  if (s === 'sla_3s' && d < 3000) countOk3s.add(1);
-}
 
 export function setup() {
   console.log('Setup contra ' + BASE_URL);
@@ -120,7 +121,7 @@ export function setup() {
 
   const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
 
-  // serviceId — endpoint paginado: resposta é {content: [...], totalElements: N, ...}
+  // serviceId — endpoint paginado: {content: [...], ...}
   let serviceId = 1;
   const svcRes = http.get(BASE_URL + '/v1/services', { headers: h });
   if (svcRes.status === 200) {
@@ -176,7 +177,7 @@ export function setup() {
     }
   }
 
-  // testUserId — usuário criado para o PUT /v1/users/{id} (não o admin)
+  // testUserId — usuário separado para PATCH /v1/users/{id}
   let testUserId = null;
   const regU = http.post(BASE_URL + '/v1/users', JSON.stringify({
     name: 'User k6 Update', email: 'k6_upd_' + Date.now() + '@teste.com',
@@ -201,7 +202,6 @@ export default function (data) {
     // ── GET /ping ─────────────────────────────────────────────────────────
     group('GET Ping', () => {
       const res = http.get(BASE_URL + '/ping', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Ping': (v) => v.status === 200 });
     });
 
@@ -209,7 +209,6 @@ export default function (data) {
     // ── GET /v1/reports/financial ─────────────────────────────────────────
     group('GET Financial Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/financial?from=2026-06-01&to=2026-06-30', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Financial Report': (v) => v.status === 200 });
     });
 
@@ -217,7 +216,6 @@ export default function (data) {
     // ── GET /v1/reports/appointments ──────────────────────────────────────
     group('GET Appointments Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/appointments?from=2026-06-01&to=2026-06-30', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Appointments Report': (v) => v.status === 200 });
     });
 
@@ -225,7 +223,6 @@ export default function (data) {
     // ── GET /v1/reports/payroll ───────────────────────────────────────────
     group('GET Payroll Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/payroll?from=2026-06-01&to=2026-06-30', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Payroll Report': (v) => v.status === 200 });
     });
 
@@ -233,7 +230,6 @@ export default function (data) {
     // ── GET /v1/reports/financial/employees/{id} ──────────────────────────
     group('GET Financial Report by Employee', () => {
       const res = http.get(BASE_URL + '/v1/reports/financial/employees/' + data.employeeId + '?from=2026-06-01&to=2026-06-30', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Financial Report by Employee': (v) => v.status === 200 });
     });
 
@@ -241,7 +237,6 @@ export default function (data) {
     // ── GET /v1/appointments ──────────────────────────────────────────────
     group('GET All Appointments', () => {
       const res = http.get(BASE_URL + '/v1/appointments', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - List Appointments': (v) => v.status === 200 });
     });
 
@@ -249,7 +244,6 @@ export default function (data) {
     // ── GET /v1/cashflow ──────────────────────────────────────────────────
     group('GET CashFlow', () => {
       const res = http.get(BASE_URL + '/v1/cashflow', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - CashFlow': (v) => v.status === 200 });
     });
 
@@ -257,7 +251,6 @@ export default function (data) {
     // ── GET /v1/users ─────────────────────────────────────────────────────
     group('GET Users', () => {
       const res = http.get(BASE_URL + '/v1/users', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Users': (v) => v.status === 200 });
     });
 
@@ -265,7 +258,6 @@ export default function (data) {
     // ── GET /v1/clients ───────────────────────────────────────────────────
     group('GET Clients', () => {
       const res = http.get(BASE_URL + '/v1/clients', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Clients': (v) => v.status === 200 });
     });
 
@@ -273,7 +265,6 @@ export default function (data) {
     // ── GET /v1/employees/booking ─────────────────────────────────────────
     group('GET Employees Booking', () => {
       const res = http.get(BASE_URL + '/v1/employees/booking', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Employees Booking': (v) => v.status === 200 });
     });
 
@@ -281,7 +272,6 @@ export default function (data) {
     // ── GET /v1/products ──────────────────────────────────────────────────
     group('GET Products', () => {
       const res = http.get(BASE_URL + '/v1/products', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Products': (v) => v.status === 200 });
     });
 
@@ -289,7 +279,6 @@ export default function (data) {
     // ── GET /v1/services ──────────────────────────────────────────────────
     group('GET Services', () => {
       const res = http.get(BASE_URL + '/v1/services', { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Services': (v) => v.status === 200 });
     });
 
@@ -299,10 +288,9 @@ export default function (data) {
       const res = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
-        preferredDate: '2026-09-15',
-        clientNotes:   'k6 VU' + __VU + ' iter' + __ITER,
+        preferredDate: '2026-10-15',
+        clientNotes:   'k6 iter',
       }), { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 201 - Create Appointment': (v) => v.status === 201 });
     });
 
@@ -312,10 +300,9 @@ export default function (data) {
       const res = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
         type:        Math.random() < 0.5 ? 'INCOME' : 'EXPENSE',
         amount:      parseFloat((Math.random() * 100 + 1).toFixed(2)),
-        description: 'k6 VU' + __VU + ' iter' + __ITER,
+        description: 'k6 entry',
         date:        '2026-07-01',
       }), { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 201 - CashFlow Entry': (v) => v.status === 201 });
     });
 
@@ -323,14 +310,10 @@ export default function (data) {
     // ── POST + DELETE /v1/cashflow/{id} ───────────────────────────────────
     group('POST+DELETE CashFlow', () => {
       const cr = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
-        type: 'EXPENSE', amount: 1.00,
-        description: 'k6 del VU' + __VU, date: '2026-07-01',
+        type: 'EXPENSE', amount: 1.00, description: 'k6 del', date: '2026-07-01',
       }), { headers: h });
       if (cr.status === 201) {
-        const id = cr.json('id');
-        const dr = http.del(BASE_URL + '/v1/cashflow/' + id, null, { headers: h });
-        trackResponseSla(dr);
-        check(dr, { 'status 2xx - Delete CashFlow': (v) => v.status >= 200 && v.status < 300 });
+        http.del(BASE_URL + '/v1/cashflow/' + cr.json('id'), null, { headers: h });
       }
     });
 
@@ -340,14 +323,11 @@ export default function (data) {
       const cr = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
-        preferredDate: '2026-09-20',
-        clientNotes:   'k6 cancel VU' + __VU,
+        preferredDate: '2026-10-20',
+        clientNotes:   'k6 cancel',
       }), { headers: h });
       if (cr.status === 201) {
-        const id = cr.json('id');
-        const pr = http.patch(BASE_URL + '/v1/appointments/' + id + '/cancel', null, { headers: h });
-        trackResponseSla(pr);
-        check(pr, { 'status 2xx - Cancel Appointment': (v) => v.status >= 200 && v.status < 300 });
+        http.patch(BASE_URL + '/v1/appointments/' + cr.json('id') + '/cancel', null, { headers: h });
       }
     });
 
@@ -355,12 +335,11 @@ export default function (data) {
     // ── PUT /v1/products/{id} ─────────────────────────────────────────────
     group('PUT Update Product', () => {
       const res = http.put(BASE_URL + '/v1/products/' + data.productId, JSON.stringify({
-        name:  'Produto k6 VU' + __VU,
+        name:  'Produto k6',
         stock: 9999,
         price: parseFloat((Math.random() * 50 + 10).toFixed(2)),
         active: true,
       }), { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Update Product': (v) => v.status === 200 });
     });
 
@@ -371,35 +350,35 @@ export default function (data) {
       const res = http.patch(BASE_URL + '/v1/users/' + data.testUserId, JSON.stringify({
         phone: '839' + String(Math.floor(Math.random() * 90000000 + 10000000)),
       }), { headers: h });
-      trackResponseSla(res);
       check(res, { 'status 200 - Update User': (v) => v.status === 200 });
     });
   }
-
-  sleep(0.1);
 }
 
 export function handleSummary(data) {
   const mv  = (key) => (data.metrics[key] ? data.metrics[key].values : null);
-  const fmt = (n) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, '.');
-
-  const ok1s = mv('count_ok_1s') ? mv('count_ok_1s').count : 0;
-  const ok2s = mv('count_ok_2s') ? mv('count_ok_2s').count : 0;
-  const ok3s = mv('count_ok_3s') ? mv('count_ok_3s').count : 0;
+  const fmt = (n)   => (n == null ? 'N/A' : String(Math.round(n)));
 
   function scenarioDur(scenario) {
     const d = mv('http_req_duration{scenario:' + scenario + '}');
+    if (!d) return { p95: 'N/A', p99: 'N/A', avg: 'N/A', max: 'N/A' };
     return {
-      p95: d && d['p(95)'] != null ? d['p(95)'].toFixed(2) : 'N/A',
-      p99: d && d['p(99)'] != null ? d['p(99)'].toFixed(2) : 'N/A',
-      avg: d && d.avg      != null ? d.avg.toFixed(2)      : 'N/A',
-      max: d && d.max      != null ? d.max.toFixed(2)      : 'N/A',
+      p95: d['p(95)'] != null ? d['p(95)'].toFixed(0) : 'N/A',
+      p99: d['p(99)'] != null ? d['p(99)'].toFixed(0) : 'N/A',
+      avg: d.avg      != null ? d.avg.toFixed(0)      : 'N/A',
+      max: d.max      != null ? d.max.toFixed(0)      : 'N/A',
     };
   }
 
   function scenarioRps(scenario) {
     const r = mv('http_reqs{scenario:' + scenario + '}');
-    return r ? (r.count / SCENARIO_DURATION_S).toFixed(2) : '0.00';
+    return r ? (r.count / SCENARIO_DURATION_S).toFixed(1) : '0.0';
+  }
+
+  function slaResult(scenario, budgetMs) {
+    const d = mv('http_req_duration{scenario:' + scenario + '}');
+    if (!d || d['p(95)'] == null) return '❓';
+    return d['p(95)'] <= budgetMs ? '✅ PASSOU' : '❌ FALHOU';
   }
 
   const d1 = scenarioDur('sla_1s');
@@ -407,40 +386,44 @@ export function handleSummary(data) {
   const d3 = scenarioDur('sla_3s');
 
   const failRate  = mv('http_req_failed') ? (mv('http_req_failed').rate * 100).toFixed(2) : '0.00';
-  const totalReqs = mv('http_reqs')       ? mv('http_reqs').count : 0;
-
-  const icon = (n, threshold) => n >= threshold ? '✅' : '❌';
+  const totalReqs = mv('http_reqs')       ? fmt(mv('http_reqs').count) : '0';
 
   const reportContent =
 `# Relatório de Carga e Performance — EQ03 (k6)
+
+## Estratégia
+O teste usa **ramping-arrival-rate**: o k6 controla diretamente o RPS
+(requisições por segundo) e descobre quantos VUs precisa. O threshold
+\`p(95) < Xs\` responde objetivamente se o sistema sustenta aquela taxa
+dentro do budget de tempo.
 
 ## Configuração
 | Parâmetro | Valor |
 |-----------|-------|
 | Ferramenta | k6 |
-| Executor | ramping-vus (auto: 1 → 60 VUs por cenário) |
-| Duração por cenário | 120 s (90 s ramp + 30 s sustentado) |
+| Executor | ramping-arrival-rate (1 → alvo RPS em 90s + 30s sustentado) |
+| Duração por cenário | 120 s |
+| Alvo sla_1s | ${MAX_RPS_1S} req/s |
+| Alvo sla_2s | ${MAX_RPS_2S} req/s |
+| Alvo sla_3s | ${MAX_RPS_3S} req/s |
 | Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /reports/financial/employees/{id} · GET /appointments · GET /cashflow · GET /users · GET /clients · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
 
-## Resultado Principal — Requisições HTTP-OK por Budget de Tempo
+## Resultado por Budget de Tempo
 
-Cada cenário é **independente**: roda com seus próprios VUs e conta apenas
-requisições com status HTTP 2xx **e** tempo de resposta dentro do budget.
-
-| Budget | RPS real | Req. OK no Budget | p(95) | p(99) | Meta >1.000 |
-|--------|----------|-------------------|-------|-------|-------------|
-| **≤ 1 s** | ${scenarioRps('sla_1s')} req/s | **${fmt(ok1s)}** | ${d1.p95} ms | ${d1.p99} ms | ${icon(ok1s, 1000)} |
-| **≤ 2 s** | ${scenarioRps('sla_2s')} req/s | **${fmt(ok2s)}** | ${d2.p95} ms | ${d2.p99} ms | ${icon(ok2s, 1000)} |
-| **≤ 3 s** | ${scenarioRps('sla_3s')} req/s | **${fmt(ok3s)}** | ${d3.p95} ms | ${d3.p99} ms | ${icon(ok3s, 1000)} |
+| Budget | RPS médio | p(95) | p(99) | Máx | SLA |
+|--------|-----------|-------|-------|-----|-----|
+| **≤ 1 s** | ${scenarioRps('sla_1s')} req/s | **${d1.p95} ms** | ${d1.p99} ms | ${d1.max} ms | ${slaResult('sla_1s', 1000)} |
+| **≤ 2 s** | ${scenarioRps('sla_2s')} req/s | **${d2.p95} ms** | ${d2.p99} ms | ${d2.max} ms | ${slaResult('sla_2s', 2000)} |
+| **≤ 3 s** | ${scenarioRps('sla_3s')} req/s | **${d3.p95} ms** | ${d3.p99} ms | ${d3.max} ms | ${slaResult('sla_3s', 3000)} |
 
 ## Saúde Global
-* **Total de requisições (todos os cenários):** ${fmt(totalReqs)}
+* **Total de requisições (todos os cenários):** ${totalReqs}
 * **Taxa de falha HTTP:** ${failRate}% (máximo permitido: 1,00%)
 
 ## Interpretação
-O teste rampa automaticamente de 1 até 60 VUs durante cada cenário.
-As colunas "Req. OK no Budget" mostram quantas requisições o sistema entregou
-dentro do limite de tempo daquele cenário, independentemente dos outros.
+- **SLA PASSOU**: o sistema sustenta o RPS alvo com 95% das respostas dentro do budget.
+- **SLA FALHOU**: o sistema satura antes de atingir o RPS alvo para esse budget;
+  o máximo real está em algum ponto durante a rampa onde p(95) ainda estava abaixo do limite.
 
 ---
 *Relatório gerado automaticamente via k6 em ${new Date().toISOString()}*

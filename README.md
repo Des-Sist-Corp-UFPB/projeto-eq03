@@ -159,7 +159,13 @@ Os artefatos completos do teste (script, relatório e saída JSON) estão em [`l
 
 ### 1. Estratégia e rotas testadas
 
-Adotamos **3 cenários independentes com ramping de VUs** (1 → 60 usuários virtuais ao longo de 90s, sustentado por mais 30s — 120s por cenário). Cada cenário conta somente as requisições HTTP 2xx entregues dentro do seu orçamento de tempo (≤1s, ≤2s, ≤3s), permitindo responder objetivamente: _"quantas requisições o sistema entrega com latência aceitável?"_
+Adotamos **3 cenários independentes com ramping-arrival-rate** — o k6 controla diretamente o RPS (taxa de requisições por segundo) e aloca quantos VUs forem necessários para atingir essa taxa. Cada cenário tem um alvo de RPS e um threshold `p(95) < Xs`; se o sistema não conseguir entregar aquele volume dentro do orçamento de tempo, o cenário **falha** — o que revela exatamente o ponto de saturação.
+
+| Cenário | Alvo RPS | Threshold | Duração |
+|---|---|---|---|
+| `sla_1s` | 60 req/s | p(95) < 1 000 ms | 120 s |
+| `sla_2s` | 100 req/s | p(95) < 2 000 ms | 120 s |
+| `sla_3s` | 150 req/s | p(95) < 3 000 ms | 120 s |
 
 Simulamos o **caminho crítico da aplicação** com fluxo autenticado (JWT via admin) misturando leitura e escrita em **18 rotas**, com distribuição probabilística:
 
@@ -186,22 +192,22 @@ Simulamos o **caminho crítico da aplicação** com fluxo autenticado (JWT via a
 
 ---
 
-### 2. Resultados — Requisições OK por orçamento de tempo
+### 2. Resultados — SLA por taxa de requisições
 
-| Orçamento | RPS real | Req. OK no budget | p(95) | p(99) | Meta >1.000 |
+| Cenário | Alvo | RPS médio real | p(95) | p(99) | SLA |
 |---|---|---|---|---|---|
-| **≤ 1 s** | 53,73 req/s | **4.479** | 2.988 ms | 4.335 ms | ✅ |
-| **≤ 2 s** | 49,00 req/s | **4.572** | 3.135 ms | 4.601 ms | ✅ |
-| **≤ 3 s** | 50,12 req/s | **5.056** | 3.173 ms | 4.533 ms | ✅ |
+| `sla_1s` (≤ 1 s) | 60 req/s | **41,6 req/s** | 990 ms | 2.308 ms | ✅ PASSOU |
+| `sla_2s` (≤ 2 s) | 100 req/s | **51,6 req/s** | 11.761 ms | 14.319 ms | ❌ FALHOU |
+| `sla_3s` (≤ 3 s) | 150 req/s | **57,0 req/s** | 16.516 ms | 19.719 ms | ❌ FALHOU |
 
 **Saúde global (todos os cenários somados):**
 
 | Métrica | Resultado | Status |
 |---|---|---|
-| Total de requisições | 18.346 | — |
-| Taxa de erro HTTP | 0,01% | ✅ Abaixo de 1% |
+| Total de requisições | 18.031 | — |
+| Taxa de erro HTTP | 2,76% | ❌ (acima do limite de 1% — causado pela saturação nos cenários 2 e 3) |
 
-> Os valores de p(95)/p(99) refletem o pico de carga com 60 VUs simultâneos. As requisições contabilizadas no budget (ex.: 4.479 dentro de 1s) correspondem principalmente à fase de ramp-up, quando a concorrência ainda era baixa e as respostas rápidas.
+> **Interpretação:** O sistema sustenta ~42 RPS com p(95) abaixo de 1s. Ao tentar 100 RPS (cenário 2), os VUs acumulam fila e o p(95) dispara para mais de 11s — o sistema fica completamente saturado. O limite operacional real está em torno de **40–60 req/s** com latência aceitável para o mix de 18 rotas.
 
 ---
 
