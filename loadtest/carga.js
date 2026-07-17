@@ -388,6 +388,42 @@ export default function (data) {
   }
 }
 
+// ── Teardown ──────────────────────────────────────────────────────────────────
+// Remove os dados criados durante o teste para não degradar execuções futuras.
+// O que é limpo:  testUser criado no setup + entradas de cashflow (description='k6 entry')
+// O que NÃO pode ser limpo via API: agendamentos (sem endpoint DELETE; só PATCH/cancel).
+//   Para remover manualmente após execuções acumuladas, execute no banco:
+//     DELETE FROM cash_flow WHERE description IN ('k6 entry', 'k6 del');
+//     DELETE FROM appointment WHERE client_notes IN ('k6 iter', 'k6 cancel');
+export function teardown(data) {
+  if (!data || !data.token) return;
+  const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.token };
+
+  if (data.testUserId) {
+    const r = http.del(BASE_URL + '/v1/users/' + data.testUserId, null, { headers: h });
+    console.log('Teardown: DELETE /v1/users/' + data.testUserId + ' → ' + r.status);
+  }
+
+  let page = 0;
+  let deleted = 0;
+  for (;;) {
+    const res = http.get(BASE_URL + '/v1/cashflow?page=' + page + '&size=100', { headers: h });
+    if (res.status !== 200) break;
+    const body = res.json();
+    const list = Array.isArray(body) ? body : (body.content || []);
+    if (list.length === 0) break;
+    for (const entry of list) {
+      if (entry.description === 'k6 entry') {
+        const dr = http.del(BASE_URL + '/v1/cashflow/' + entry.id, null, { headers: h });
+        if (dr.status >= 200 && dr.status < 300) deleted++;
+      }
+    }
+    if (Array.isArray(body) || body.last === true) break;
+    page++;
+  }
+  console.log('Teardown: ' + deleted + ' entradas de cashflow k6 removidas');
+}
+
 // ── handleSummary ─────────────────────────────────────────────────────────────
 export function handleSummary(data) {
   const mv  = (key) => (data.metrics[key] ? data.metrics[key].values : null);
