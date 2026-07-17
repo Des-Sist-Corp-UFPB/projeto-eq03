@@ -120,12 +120,13 @@ export function setup() {
 
   const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
 
-  // serviceId
+  // serviceId — endpoint paginado: resposta é {content: [...], totalElements: N, ...}
   let serviceId = 1;
   const svcRes = http.get(BASE_URL + '/v1/services', { headers: h });
   if (svcRes.status === 200) {
-    const list = svcRes.json();
-    if (Array.isArray(list) && list.length > 0) {
+    const resp = svcRes.json();
+    const list = Array.isArray(resp) ? resp : (resp.content || []);
+    if (list.length > 0) {
       serviceId = list[0].id;
     } else {
       const r = http.post(BASE_URL + '/v1/services', JSON.stringify({
@@ -136,12 +137,13 @@ export function setup() {
     }
   }
 
-  // employeeId
+  // employeeId — endpoint paginado
   let employeeId = 1;
   const empRes = http.get(BASE_URL + '/v1/employees', { headers: h });
   if (empRes.status === 200) {
-    const list = empRes.json();
-    if (Array.isArray(list) && list.length > 0) {
+    const resp = empRes.json();
+    const list = Array.isArray(resp) ? resp : (resp.content || []);
+    if (list.length > 0) {
       employeeId = list[0].id;
     } else {
       const reg = http.post(BASE_URL + '/v1/users', JSON.stringify({
@@ -158,12 +160,13 @@ export function setup() {
     }
   }
 
-  // productId — cria produto de teste se não existir
+  // productId — endpoint paginado
   let productId = 1;
   const prodRes = http.get(BASE_URL + '/v1/products', { headers: h });
   if (prodRes.status === 200) {
-    const list = prodRes.json();
-    if (Array.isArray(list) && list.length > 0) {
+    const resp = prodRes.json();
+    const list = Array.isArray(resp) ? resp : (resp.content || []);
+    if (list.length > 0) {
       productId = list[0].id;
     } else {
       const r = http.post(BASE_URL + '/v1/products', JSON.stringify({
