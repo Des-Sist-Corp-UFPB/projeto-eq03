@@ -35,13 +35,14 @@ const BASE_URL       = __ENV.BASE_URL       || 'http://localhost:8080';
 const ADMIN_EMAIL    = __ENV.ADMIN_EMAIL;
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD;
 
-// Alvo de RPS por cenário. Deve ser o máximo que o sistema aguenta mantendo
-// p(95) dentro do orçamento e taxa de erro < 1%.
-// Valores padrão são conservadores para garantir aprovação mesmo com dados
-// acumulados no banco. Ajuste para cima via env vars em um banco mais limpo.
-const MAX_RPS_1S = parseInt(__ENV.MAX_RPS_1S) || 20;
-const MAX_RPS_2S = parseInt(__ENV.MAX_RPS_2S) || 25;
-const MAX_RPS_3S = parseInt(__ENV.MAX_RPS_3S) || 30;
+// Alvo de RPS por cenário — propositalmente agressivo para descobrir o limite
+// real do sistema. O ramp começa em 1 RPS e sobe até o alvo; quando o sistema
+// não aguenta mais, p(95) estoura o budget e/ou erros surgem → SLA FALHOU.
+// O req_ok_sla_Xs mostra quantas requisições foram entregues com tudo OK antes
+// e durante a saturação. Ajuste via env vars para calibrar.
+const MAX_RPS_1S = parseInt(__ENV.MAX_RPS_1S) || 80;
+const MAX_RPS_2S = parseInt(__ENV.MAX_RPS_2S) || 100;
+const MAX_RPS_3S = parseInt(__ENV.MAX_RPS_3S) || 120;
 
 const SCENARIO_DURATION_S = 120; // 90s ramp + 30s sustentado
 
@@ -210,9 +211,21 @@ export function setup() {
   }), { headers: h });
   if (regU.status === 200 || regU.status === 201) testUserId = regU.json('id');
 
+  // testClientId — cliente cujos agendamentos são criados durante o teste.
+  // Usar clientId explícito nas criações de appointments permite ao teardown
+  // listar e cancelar todos via ?clientId=testClientId, sem depender de
+  // clientNotes ou datas específicas.
+  let testClientId = null;
+  const regC = http.post(BASE_URL + '/v1/users', JSON.stringify({
+    name: 'Cliente k6 Test', email: 'k6_cli_' + Date.now() + '@teste.com',
+    password: 'ClienteK6@123', phone: '83933330000', active: true, roleId: 2,
+  }), { headers: h });
+  if (regC.status === 200 || regC.status === 201) testClientId = regC.json('id');
+
   console.log('Setup OK — serviceId=' + serviceId + ' employeeId=' + employeeId +
-              ' productId=' + productId + ' testUserId=' + testUserId);
-  return { token, serviceId, employeeId, productId, testUserId };
+              ' productId=' + productId + ' testUserId=' + testUserId +
+              ' testClientId=' + testClientId);
+  return { token, serviceId, employeeId, productId, testUserId, testClientId };
 }
 
 // ── Default function ──────────────────────────────────────────────────────────
@@ -318,8 +331,8 @@ export default function (data) {
       const res = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
-        preferredDate: '2026-10-15',
-        clientNotes:   'k6 iter',
+        clientId:      data.testClientId,
+        preferredDate: '2099-10-15',
       }), { headers: h });
       check(res, { 'status 201 - Create Appointment': (v) => v.status === 201 });
       trackOk(res);
@@ -331,7 +344,7 @@ export default function (data) {
         type:        Math.random() < 0.5 ? 'INCOME' : 'EXPENSE',
         amount:      parseFloat((Math.random() * 100 + 1).toFixed(2)),
         description: 'k6 entry',
-        date:        '2026-07-01',
+        date:        '2099-01-01',
       }), { headers: h });
       check(res, { 'status 201 - CashFlow Entry': (v) => v.status === 201 });
       trackOk(res);
@@ -340,7 +353,7 @@ export default function (data) {
   } else if (r < 0.86) {
     group('POST+DELETE CashFlow', () => {
       const cr = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
-        type: 'EXPENSE', amount: 1.00, description: 'k6 del', date: '2026-07-01',
+        type: 'EXPENSE', amount: 1.00, description: 'k6 del', date: '2099-01-01',
       }), { headers: h });
       trackOk(cr);
       if (cr.status === 201) {
@@ -354,8 +367,8 @@ export default function (data) {
       const cr = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
-        preferredDate: '2026-10-20',
-        clientNotes:   'k6 cancel',
+        clientId:      data.testClientId,
+        preferredDate: '2099-10-20',
       }), { headers: h });
       trackOk(cr);
       if (cr.status === 201) {
@@ -389,39 +402,65 @@ export default function (data) {
 }
 
 // ── Teardown ──────────────────────────────────────────────────────────────────
-// Remove os dados criados durante o teste para não degradar execuções futuras.
-// O que é limpo:  testUser criado no setup + entradas de cashflow (description='k6 entry')
-// O que NÃO pode ser limpo via API: agendamentos (sem endpoint DELETE; só PATCH/cancel).
-//   Para remover manualmente após execuções acumuladas, execute no banco:
-//     DELETE FROM cash_flow WHERE description IN ('k6 entry', 'k6 del');
-//     DELETE FROM appointment WHERE client_notes IN ('k6 iter', 'k6 cancel');
+// Limpa todos os dados criados pelo teste para não degradar execuções futuras.
+//
+// Estratégia de isolamento adotada:
+//   • Agendamentos: criados com clientId=testClientId (usuário exclusivo do teste)
+//     → teardown lista por clientId e cancela todos os PENDING/CONFIRMED.
+//     (A API não tem DELETE de agendamento — soft-delete via cancel é o máximo possível.)
+//   • Cashflow: criados com date=2099-01-01 (data impossível em produção)
+//     → teardown filtra por período e deleta todos.
+//   • testUserId e testClientId: deletados ao final.
 export function teardown(data) {
   if (!data || !data.token) return;
   const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.token };
 
-  if (data.testUserId) {
-    const r = http.del(BASE_URL + '/v1/users/' + data.testUserId, null, { headers: h });
-    console.log('Teardown: DELETE /v1/users/' + data.testUserId + ' → ' + r.status);
-  }
-
-  let page = 0;
-  let deleted = 0;
-  for (;;) {
-    const res = http.get(BASE_URL + '/v1/cashflow?page=' + page + '&size=100', { headers: h });
-    if (res.status !== 200) break;
-    const body = res.json();
-    const list = Array.isArray(body) ? body : (body.content || []);
-    if (list.length === 0) break;
-    for (const entry of list) {
-      if (entry.description === 'k6 entry') {
-        const dr = http.del(BASE_URL + '/v1/cashflow/' + entry.id, null, { headers: h });
-        if (dr.status >= 200 && dr.status < 300) deleted++;
+  // 1. Cancelar todos os agendamentos do testClient que ainda estão abertos
+  let cancelados = 0;
+  if (data.testClientId) {
+    const statusAbertos = ['PENDING', 'CONFIRMED'];
+    for (const status of statusAbertos) {
+      let page = 0;
+      for (;;) {
+        const res = http.get(
+          BASE_URL + '/v1/appointments?clientId=' + data.testClientId +
+          '&status=' + status + '&size=100&page=' + page,
+          { headers: h }
+        );
+        if (res.status !== 200) break;
+        const body = res.json();
+        const list = Array.isArray(body) ? body : (body.content || []);
+        if (list.length === 0) break;
+        for (const appt of list) {
+          const cr = http.patch(BASE_URL + '/v1/appointments/' + appt.id + '/cancel', null, { headers: h });
+          if (cr.status >= 200 && cr.status < 300) cancelados++;
+        }
+        if (Array.isArray(body) || body.last === true) break;
+        page++;
       }
     }
-    if (Array.isArray(body) || body.last === true) break;
-    page++;
   }
-  console.log('Teardown: ' + deleted + ' entradas de cashflow k6 removidas');
+  console.log('Teardown: ' + cancelados + ' agendamentos k6 cancelados');
+
+  // 2. Deletar entradas de cashflow criadas no período exclusivo do teste (2099-01-01)
+  let deletados = 0;
+  const cfRes = http.get(BASE_URL + '/v1/cashflow?from=2099-01-01&to=2099-12-31', { headers: h });
+  if (cfRes.status === 200) {
+    const list = cfRes.json();
+    const entries = Array.isArray(list) ? list : (list.content || []);
+    for (const entry of entries) {
+      const dr = http.del(BASE_URL + '/v1/cashflow/' + entry.id, null, { headers: h });
+      if (dr.status >= 200 && dr.status < 300) deletados++;
+    }
+  }
+  console.log('Teardown: ' + deletados + ' entradas de cashflow k6 deletadas');
+
+  // 3. Deletar os usuários de teste criados no setup
+  for (const userId of [data.testUserId, data.testClientId]) {
+    if (!userId) continue;
+    const r = http.del(BASE_URL + '/v1/users/' + userId, null, { headers: h });
+    console.log('Teardown: DELETE /v1/users/' + userId + ' → ' + r.status);
+  }
 }
 
 // ── handleSummary ─────────────────────────────────────────────────────────────
@@ -482,11 +521,14 @@ export function handleSummary(data) {
 `# Relatório de Carga e Performance — EQ03 (k6)
 
 ## Estratégia
-**ramping-arrival-rate**: o k6 controla diretamente o RPS (requisições por
-segundo) e aloca VUs conforme necessário. Cada cenário tem um alvo de RPS e
-dois critérios de aprovação: latência p(95) dentro do orçamento **e** taxa de
-erro HTTP < 1%. O contador "Req. OK no budget" registra apenas as requisições
-que retornaram 2xx **e** cuja latência ficou dentro do orçamento do cenário.
+**Stress test com ramping-arrival-rate**: o k6 controla diretamente o RPS
+(requisições por segundo) e aloca VUs conforme necessário. O RPS sobe de 1 até
+o alvo máximo em 90 s — propositalmente agressivo para encontrar o limite real
+do sistema. Quando o sistema satura, a latência estoura o budget e/ou surgem
+erros HTTP → SLA FALHOU. O contador "Req. OK no budget" registra somente as
+requisições que retornaram 2xx **e** com latência dentro do orçamento do
+cenário: esse número revela quantas entregas bem-sucedidas o sistema conseguiu
+durante toda a rampa, incluindo o trecho em que já estava sob saturação.
 
 ## Configuração
 | Parâmetro | Valor |
