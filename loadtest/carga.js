@@ -1,28 +1,31 @@
 import http from 'k6/http';
 import { check, group } from 'k6';
-import { Counter } from 'k6/metrics';
-import exec from 'k6/execution';
+import encoding from 'k6/encoding';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Teste de Carga e Performance — EQ03
 //
-// Objetivo: descobrir quantas requisições com status 2xx o sistema entrega
-// dentro de cada orçamento de tempo (1s, 2s, 3s), sob carga crescente.
+// Objetivo: descobrir, para cada orçamento de tempo (1s, 2s, 3s), o MAIOR
+// número de requisições por segundo que o sistema sustenta respondendo dentro
+// desse tempo com taxa de erro desprezível (< 1%).
 //
-// Estratégia: ramping-arrival-rate — o k6 controla diretamente o RPS (taxa de
-// requisições por segundo) e aloca os VUs necessários automaticamente.
-// Três cenários sequenciais, cada um com um alvo de RPS diferente:
-//   sla_1s → MAX_RPS_1S req/s  (threshold p(95) < 1 000 ms)
-//   sla_2s → MAX_RPS_2S req/s  (threshold p(95) < 2 000 ms)
-//   sla_3s → MAX_RPS_3S req/s  (threshold p(95) < 3 000 ms)
+// Estratégia: ESCADA DE CARGA (staircase) — uma sequência de degraus, cada um
+// com uma taxa de requisições fixa (constant-arrival-rate) sustentada por
+// STEP_DURATION_S segundos. Ex.: 20 req/s por 30s, depois 40 req/s por 30s,
+// depois 60 req/s por 30s... Cada degrau é um "scenario" nomeado (step_20,
+// step_40, ...), o que faz o k6 taguear http_req_duration/http_reqs/
+// http_req_failed por degrau automaticamente — sem precisar de métricas
+// customizadas.
 //
-// Para cada cenário, o contador req_ok_sla_Xs acumula apenas as requisições
-// que retornaram 2xx E tiveram latência dentro do orçamento — esse é o número
-// de "requisições OK no budget" que aparece no relatório.
+// Ao final, o handleSummary varre todos os degraus e encontra, para cada
+// orçamento (1s/2s/3s), o degrau de MAIOR RPS cujo p(95) ficou dentro do
+// orçamento E cuja taxa de erro ficou abaixo de 1%. Esse RPS é o "teto" —
+// a resposta à pergunta "quanto o sistema aguenta até Xs".
 //
-// Ajuste os alvos via variáveis de ambiente (valores padrão abaixo):
-//   MAX_RPS_1S=60   MAX_RPS_2S=65   MAX_RPS_3S=70
+// Ajuste a escada via variáveis de ambiente:
+//   STEP_START=20 STEP_INCREMENT=20 STEP_COUNT=10 STEP_DURATION_S=30
+//   (padrão: degraus de 20, 40, 60 ... até 200 req/s, 30s cada — ~5 min total)
 //
 // Comando para rodar localmente:
 //   docker run --rm -i --network projeto-eq03_salon-network \
@@ -35,98 +38,42 @@ const BASE_URL       = __ENV.BASE_URL       || 'http://localhost:8080';
 const ADMIN_EMAIL    = __ENV.ADMIN_EMAIL;
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD;
 
-// Alvo de RPS por cenário — propositalmente agressivo para descobrir o limite
-// real do sistema. O ramp começa em 1 RPS e sobe até o alvo; quando o sistema
-// não aguenta mais, p(95) estoura o budget e/ou erros surgem → SLA FALHOU.
-// O req_ok_sla_Xs mostra quantas requisições foram entregues com tudo OK antes
-// e durante a saturação. Ajuste via env vars para calibrar.
-const MAX_RPS_1S = parseInt(__ENV.MAX_RPS_1S) || 80;
-const MAX_RPS_2S = parseInt(__ENV.MAX_RPS_2S) || 100;
-const MAX_RPS_3S = parseInt(__ENV.MAX_RPS_3S) || 120;
+const STEP_START      = parseInt(__ENV.STEP_START)      || 20;
+const STEP_INCREMENT  = parseInt(__ENV.STEP_INCREMENT)  || 20;
+const STEP_COUNT      = parseInt(__ENV.STEP_COUNT)      || 10;
+const STEP_DURATION_S = parseInt(__ENV.STEP_DURATION_S) || 30;
 
-const SCENARIO_DURATION_S = 120; // 90s ramp + 30s sustentado
-
-// ── Contadores de requisições OK dentro do orçamento de cada cenário ──────────
-// Incrementam apenas quando: status HTTP 2xx E latência ≤ budget do cenário.
-// O valor final responde: "quantas requisições o sistema entregou com tudo OK
-// dentro de Xs, rodando a MAX_RPS_Xs req/s?"
-const req_ok_sla_1s = new Counter('req_ok_sla_1s');
-const req_ok_sla_2s = new Counter('req_ok_sla_2s');
-const req_ok_sla_3s = new Counter('req_ok_sla_3s');
-
-function trackOk(res) {
-  if (!res || res.status < 200 || res.status >= 400) return;
-  const d        = res.timings.duration;
-  const scenario = exec.scenario.name;
-  if (scenario === 'sla_1s' && d <= 1000) req_ok_sla_1s.add(1);
-  if (scenario === 'sla_2s' && d <= 2000) req_ok_sla_2s.add(1);
-  if (scenario === 'sla_3s' && d <= 3000) req_ok_sla_3s.add(1);
-}
+const STEPS = Array.from({ length: STEP_COUNT }, (_, i) => STEP_START + i * STEP_INCREMENT);
 
 // ── Opções ────────────────────────────────────────────────────────────────────
+const scenarios   = {};
+const thresholds  = {};
+
+STEPS.forEach((rps, idx) => {
+  const name = 'step_' + rps;
+  scenarios[name] = {
+    executor:        'constant-arrival-rate',
+    rate:            rps,
+    timeUnit:        '1s',
+    duration:        STEP_DURATION_S + 's',
+    preAllocatedVUs: Math.min(rps * 5, 600),
+    maxVUs:          Math.min(rps * 10, 1200),
+    startTime:       (idx * STEP_DURATION_S) + 's',
+  };
+  // Thresholds triviais (sempre verdadeiros) apenas para forçar o k6 a manter
+  // as submétricas tagueadas por cenário disponíveis em data.metrics no
+  // handleSummary — sem eles, http_reqs{scenario:step_X} não apareceria.
+  thresholds['http_reqs{scenario:' + name + '}']        = ['count>=0'];
+  thresholds['http_req_duration{scenario:' + name + '}'] = ['p(99)>=0'];
+  thresholds['http_req_failed{scenario:' + name + '}']   = ['rate>=0'];
+});
+
 export const options = {
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
-
-  scenarios: {
-    sla_1s: {
-      executor:        'ramping-arrival-rate',
-      startRate:       1,
-      timeUnit:        '1s',
-      preAllocatedVUs: 50,
-      maxVUs:          200,
-      stages: [
-        { duration: '90s', target: MAX_RPS_1S },
-        { duration: '30s', target: MAX_RPS_1S },
-      ],
-      startTime: '0s',
-    },
-    sla_2s: {
-      executor:        'ramping-arrival-rate',
-      startRate:       1,
-      timeUnit:        '1s',
-      preAllocatedVUs: 100,
-      maxVUs:          300,
-      stages: [
-        { duration: '90s', target: MAX_RPS_2S },
-        { duration: '30s', target: MAX_RPS_2S },
-      ],
-      startTime: '2m10s',
-    },
-    sla_3s: {
-      executor:        'ramping-arrival-rate',
-      startRate:       1,
-      timeUnit:        '1s',
-      preAllocatedVUs: 150,
-      maxVUs:          400,
-      stages: [
-        { duration: '90s', target: MAX_RPS_3S },
-        { duration: '30s', target: MAX_RPS_3S },
-      ],
-      startTime: '4m20s',
-    },
-  },
-
-  thresholds: {
-    // Taxa de erro HTTP por cenário: < 1% (objetivo: próximo de 0%)
-    'http_req_failed{scenario:sla_1s}': ['rate<0.01'],
-    'http_req_failed{scenario:sla_2s}': ['rate<0.01'],
-    'http_req_failed{scenario:sla_3s}': ['rate<0.01'],
-
-    // Latência: p(95) dentro do orçamento de cada cenário
-    'http_req_duration{scenario:sla_1s}': ['p(95)<1000'],
-    'http_req_duration{scenario:sla_2s}': ['p(95)<2000'],
-    'http_req_duration{scenario:sla_3s}': ['p(95)<3000'],
-
-    // Sanidade: pelo menos uma requisição OK por cenário
-    // (os thresholds em http_reqs{scenario} também forçam a presença dessas
-    //  submétricas no data.metrics do handleSummary)
-    'http_reqs{scenario:sla_1s}': ['count>0'],
-    'http_reqs{scenario:sla_2s}': ['count>0'],
-    'http_reqs{scenario:sla_3s}': ['count>0'],
-    'req_ok_sla_1s': ['count>0'],
-    'req_ok_sla_2s': ['count>0'],
-    'req_ok_sla_3s': ['count>0'],
-  },
+  scenarios,
+  thresholds,
+  setupTimeout:    '60s',
+  teardownTimeout: '5m',
 };
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
@@ -203,29 +150,36 @@ export function setup() {
     }
   }
 
-  // testUserId — usuário separado para PATCH /v1/users/{id}
+  // testUserId — usuário separado para PATCH /v1/users/{id}.
+  // roleId=4 (CLIENTE) — id fixo dado pela ordem de seed das roles neste
+  // projeto (1=ADMIN, 2=GERENTE_DE_ATENDIMENTO, 3=FUNCIONARIA, 4=CLIENTE,
+  // 5=SYSADMIN). Só serve como alvo do PATCH (nunca autentica), mas o role
+  // correto evita criar sem querer uma conta com permissão administrativa.
   let testUserId = null;
   const regU = http.post(BASE_URL + '/v1/users', JSON.stringify({
     name: 'User k6 Update', email: 'k6_upd_' + Date.now() + '@teste.com',
-    password: 'UpdateUser@123', phone: '83922220000', active: true, roleId: 2,
+    password: 'UpdateUser@123', phone: '83922220000', active: true, roleId: 4,
   }), { headers: h });
   if (regU.status === 200 || regU.status === 201) testUserId = regU.json('id');
 
-  // testClientId — cliente cujos agendamentos são criados durante o teste.
-  // Usar clientId explícito nas criações de appointments permite ao teardown
-  // listar e cancelar todos via ?clientId=testClientId, sem depender de
-  // clientNotes ou datas específicas.
-  let testClientId = null;
-  const regC = http.post(BASE_URL + '/v1/users', JSON.stringify({
-    name: 'Cliente k6 Test', email: 'k6_cli_' + Date.now() + '@teste.com',
-    password: 'ClienteK6@123', phone: '83933330000', active: true, roleId: 2,
-  }), { headers: h });
-  if (regC.status === 200 || regC.status === 201) testClientId = regC.json('id');
+  // authUserId — ID do usuário autenticado, extraído direto do payload do JWT
+  // (claim "userId"). Necessário porque o SYSADMIN é oculto de /v1/users por
+  // design (RoleService: acesso hardcoded, nunca listado). A API cria os
+  // agendamentos com client=currentUser quando o papel do chamador não é
+  // ADMIN/GERENTE — o teardown usa esse ID para cancelar os agendamentos
+  // criados durante o teste.
+  let authUserId = null;
+  try {
+    const payload = JSON.parse(encoding.b64decode(token.split('.')[1], 'rawurl', 's'));
+    authUserId = payload.userId;
+  } catch (e) {
+    console.error('Não foi possível decodificar o JWT para extrair userId: ' + e);
+  }
 
   console.log('Setup OK — serviceId=' + serviceId + ' employeeId=' + employeeId +
               ' productId=' + productId + ' testUserId=' + testUserId +
-              ' testClientId=' + testClientId);
-  return { token, serviceId, employeeId, productId, testUserId, testClientId };
+              ' authUserId=' + authUserId + ' | degraus: ' + STEPS.join(', ') + ' req/s');
+  return { token, serviceId, employeeId, productId, testUserId, authUserId };
 }
 
 // ── Default function ──────────────────────────────────────────────────────────
@@ -241,89 +195,73 @@ export default function (data) {
     group('GET Ping', () => {
       const res = http.get(BASE_URL + '/ping', { headers: h });
       check(res, { 'status 200 - Ping': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.13) {
     group('GET Financial Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/financial?from=2026-06-01&to=2026-06-30', { headers: h });
       check(res, { 'status 200 - Financial Report': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.20) {
     group('GET Appointments Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/appointments?from=2026-06-01&to=2026-06-30', { headers: h });
       check(res, { 'status 200 - Appointments Report': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.24) {
     group('GET Payroll Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/payroll?from=2026-06-01&to=2026-06-30', { headers: h });
       check(res, { 'status 200 - Payroll Report': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.27) {
-    // Relatório de agendamentos por funcionário exige dados financeiros reais
-    // (agendamentos DONE+PAID) que os agendamentos criados pelo k6 não têm.
-    // Substituído por agendamentos filtrados por status — rota diferente da
-    // listagem geral já coberta acima.
     group('GET Appointments by Status', () => {
       const status = Math.random() < 0.5 ? 'PENDING' : 'CONFIRMED';
-      const res = http.get(BASE_URL + '/v1/appointments?status=' + status, { headers: h });
+      const res = http.get(BASE_URL + '/v1/appointments?status=' + status + '&page=0&size=20', { headers: h });
       check(res, { 'status 200 - Appointments by Status': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.34) {
     group('GET All Appointments', () => {
-      const res = http.get(BASE_URL + '/v1/appointments', { headers: h });
+      const res = http.get(BASE_URL + '/v1/appointments?page=0&size=20', { headers: h });
       check(res, { 'status 200 - List Appointments': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.41) {
     group('GET CashFlow', () => {
       const res = http.get(BASE_URL + '/v1/cashflow', { headers: h });
       check(res, { 'status 200 - CashFlow': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.45) {
     group('GET Users', () => {
       const res = http.get(BASE_URL + '/v1/users', { headers: h });
       check(res, { 'status 200 - Users': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.49) {
     group('GET Clients', () => {
       const res = http.get(BASE_URL + '/v1/clients', { headers: h });
       check(res, { 'status 200 - Clients': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.55) {
     group('GET Employees Booking', () => {
       const res = http.get(BASE_URL + '/v1/employees/booking', { headers: h });
       check(res, { 'status 200 - Employees Booking': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.60) {
     group('GET Products', () => {
       const res = http.get(BASE_URL + '/v1/products', { headers: h });
       check(res, { 'status 200 - Products': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.65) {
     group('GET Services', () => {
       const res = http.get(BASE_URL + '/v1/services', { headers: h });
       check(res, { 'status 200 - Services': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else if (r < 0.73) {
@@ -331,11 +269,9 @@ export default function (data) {
       const res = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
-        clientId:      data.testClientId,
         preferredDate: '2099-10-15',
       }), { headers: h });
       check(res, { 'status 201 - Create Appointment': (v) => v.status === 201 });
-      trackOk(res);
     });
 
   } else if (r < 0.81) {
@@ -347,7 +283,6 @@ export default function (data) {
         date:        '2099-01-01',
       }), { headers: h });
       check(res, { 'status 201 - CashFlow Entry': (v) => v.status === 201 });
-      trackOk(res);
     });
 
   } else if (r < 0.86) {
@@ -355,10 +290,8 @@ export default function (data) {
       const cr = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
         type: 'EXPENSE', amount: 1.00, description: 'k6 del', date: '2099-01-01',
       }), { headers: h });
-      trackOk(cr);
       if (cr.status === 201) {
-        const dr = http.del(BASE_URL + '/v1/cashflow/' + cr.json('id'), null, { headers: h });
-        trackOk(dr);
+        http.del(BASE_URL + '/v1/cashflow/' + cr.json('id'), null, { headers: h });
       }
     });
 
@@ -367,13 +300,10 @@ export default function (data) {
       const cr = http.post(BASE_URL + '/v1/appointments', JSON.stringify({
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
-        clientId:      data.testClientId,
         preferredDate: '2099-10-20',
       }), { headers: h });
-      trackOk(cr);
       if (cr.status === 201) {
-        const pr = http.patch(BASE_URL + '/v1/appointments/' + cr.json('id') + '/cancel', null, { headers: h });
-        trackOk(pr);
+        http.patch(BASE_URL + '/v1/appointments/' + cr.json('id') + '/cancel', null, { headers: h });
       }
     });
 
@@ -386,7 +316,6 @@ export default function (data) {
         active: true,
       }), { headers: h });
       check(res, { 'status 200 - Update Product': (v) => v.status === 200 });
-      trackOk(res);
     });
 
   } else {
@@ -396,7 +325,6 @@ export default function (data) {
         phone: '839' + String(Math.floor(Math.random() * 90000000 + 10000000)),
       }), { headers: h });
       check(res, { 'status 200 - Update User': (v) => v.status === 200 });
-      trackOk(res);
     });
   }
 }
@@ -404,62 +332,60 @@ export default function (data) {
 // ── Teardown ──────────────────────────────────────────────────────────────────
 // Limpa todos os dados criados pelo teste para não degradar execuções futuras.
 //
-// Estratégia de isolamento adotada:
-//   • Agendamentos: criados com clientId=testClientId (usuário exclusivo do teste)
-//     → teardown lista por clientId e cancela todos os PENDING/CONFIRMED.
-//     (A API não tem DELETE de agendamento — soft-delete via cancel é o máximo possível.)
+// Estratégia de isolamento:
+//   • Agendamentos: a API os cria com client=usuário autenticado (authUserId),
+//     pois o sysadmin não é reconhecido como staff (isStaff só aceita ADMIN e
+//     GERENTE). O teardown cancela todos os agendamentos com status REQUESTED
+//     pertencentes ao authUserId. REQUESTED é o status exclusivo do fluxo de
+//     cliente — nunca gerado por operações administrativas normais.
 //   • Cashflow: criados com date=2099-01-01 (data impossível em produção)
 //     → teardown filtra por período e deleta todos.
-//   • testUserId e testClientId: deletados ao final.
+//   • testUserId: deletado ao final.
 export function teardown(data) {
   if (!data || !data.token) return;
   const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + data.token };
 
-  // 1. Cancelar todos os agendamentos do testClient que ainda estão abertos
+  // 1. Cancelar todos os agendamentos REQUESTED do usuário autenticado.
+  // Sempre relê page=0: cada cancelamento tira o item do filtro
+  // status=REQUESTED, então o conjunto "encolhe" a cada volta — incrementar
+  // a página aqui pularia itens (bug corrigido).
   let cancelados = 0;
-  if (data.testClientId) {
-    const statusAbertos = ['PENDING', 'CONFIRMED'];
-    for (const status of statusAbertos) {
-      let page = 0;
-      for (;;) {
-        const res = http.get(
-          BASE_URL + '/v1/appointments?clientId=' + data.testClientId +
-          '&status=' + status + '&size=100&page=' + page,
-          { headers: h }
-        );
-        if (res.status !== 200) break;
-        const body = res.json();
-        const list = Array.isArray(body) ? body : (body.content || []);
-        if (list.length === 0) break;
-        for (const appt of list) {
-          const cr = http.patch(BASE_URL + '/v1/appointments/' + appt.id + '/cancel', null, { headers: h });
-          if (cr.status >= 200 && cr.status < 300) cancelados++;
-        }
-        if (Array.isArray(body) || body.last === true) break;
-        page++;
+  if (data.authUserId) {
+    for (;;) {
+      const res = http.get(
+        BASE_URL + '/v1/appointments?clientId=' + data.authUserId +
+        '&status=REQUESTED&size=100&page=0',
+        { headers: h }
+      );
+      if (res.status !== 200) break;
+      const body = res.json();
+      const list = Array.isArray(body) ? body : (body.content || []);
+      if (list.length === 0) break;
+      for (const appt of list) {
+        const cr = http.patch(BASE_URL + '/v1/appointments/' + appt.id + '/cancel', null, { headers: h });
+        if (cr.status >= 200 && cr.status < 300) cancelados++;
       }
     }
   }
   console.log('Teardown: ' + cancelados + ' agendamentos k6 cancelados');
 
-  // 2. Deletar entradas de cashflow criadas no período exclusivo do teste (2099-01-01)
+  // 2. Deletar entradas de cashflow criadas no período exclusivo do teste (2099)
   let deletados = 0;
   const cfRes = http.get(BASE_URL + '/v1/cashflow?from=2099-01-01&to=2099-12-31', { headers: h });
   if (cfRes.status === 200) {
-    const list = cfRes.json();
-    const entries = Array.isArray(list) ? list : (list.content || []);
-    for (const entry of entries) {
+    const entries = cfRes.json();
+    const list = Array.isArray(entries) ? entries : (entries.content || []);
+    for (const entry of list) {
       const dr = http.del(BASE_URL + '/v1/cashflow/' + entry.id, null, { headers: h });
       if (dr.status >= 200 && dr.status < 300) deletados++;
     }
   }
   console.log('Teardown: ' + deletados + ' entradas de cashflow k6 deletadas');
 
-  // 3. Deletar os usuários de teste criados no setup
-  for (const userId of [data.testUserId, data.testClientId]) {
-    if (!userId) continue;
-    const r = http.del(BASE_URL + '/v1/users/' + userId, null, { headers: h });
-    console.log('Teardown: DELETE /v1/users/' + userId + ' → ' + r.status);
+  // 3. Deletar o usuário de teste criado no setup
+  if (data.testUserId) {
+    const r = http.del(BASE_URL + '/v1/users/' + data.testUserId, null, { headers: h });
+    console.log('Teardown: DELETE /v1/users/' + data.testUserId + ' → ' + r.status);
   }
 }
 
@@ -468,51 +394,71 @@ export function handleSummary(data) {
   const mv  = (key) => (data.metrics[key] ? data.metrics[key].values : null);
   const fmt = (n)   => (n == null ? 'N/A' : String(Math.round(n)));
 
-  function dur(scenario) {
+  function stepStats(rps) {
+    const scenario = 'step_' + rps;
     const d = mv('http_req_duration{scenario:' + scenario + '}');
-    if (!d) return { p95: 'N/A', p99: 'N/A', avg: 'N/A', max: 'N/A' };
+    const f = mv('http_req_failed{scenario:' + scenario + '}');
+    const t = mv('http_reqs{scenario:' + scenario + '}');
+    if (!d || !f || !t || d['p(95)'] == null || t.count === 0) return null;
+    const total = t.count;
+    // http_req_failed é uma métrica Rate que soma 1 quando a requisição FALHA.
+    // Logo "passes" (o Rate contou 1/verdadeiro) = nº de FALHAS, e "fails"
+    // (contou 0/falso) = nº de requisições OK. Nomenclatura genérica do k6,
+    // não confundir com sucesso/falha do teste.
+    const ok = f.fails != null ? f.fails : Math.round(total * (1 - f.rate));
     return {
-      p95: d['p(95)'] != null ? d['p(95)'].toFixed(0) : 'N/A',
-      p99: d['p(99)'] != null ? d['p(99)'].toFixed(0) : 'N/A',
-      avg: d.avg      != null ? d.avg.toFixed(0)      : 'N/A',
-      max: d.max      != null ? d.max.toFixed(0)      : 'N/A',
+      rps, total, ok,
+      errRate:      f.rate,
+      p95:          d['p(95)'],
+      p99:          d['p(99)'] != null ? d['p(99)'] : null,
+      achievedRps:  total / STEP_DURATION_S,
     };
   }
 
-  function rps(scenario) {
-    const r = mv('http_reqs{scenario:' + scenario + '}');
-    return r ? (r.count / SCENARIO_DURATION_S).toFixed(1) : '0.0';
+  const results = STEPS.map(stepStats).filter(Boolean);
+
+  // Exige sequência ININTERRUPTA de degraus aprovados desde o primeiro degrau.
+  // Se o sistema falhar em um degrau e "se recuperar" num degrau mais alto
+  // (comum sob contenção de recursos — variância de GC, pool de conexões
+  // liberando momentaneamente), esse degrau posterior NÃO conta como
+  // capacidade confiável: foi sorte, não sustentação real.
+  function findCeiling(budgetMs) {
+    let best = null;
+    for (const s of results) {
+      if (s.p95 <= budgetMs && s.errRate < 0.01) {
+        best = s;
+      } else {
+        break;
+      }
+    }
+    return best;
   }
 
-  function totalReqs(scenario) {
-    const r = mv('http_reqs{scenario:' + scenario + '}');
-    return r ? r.count : 0;
+  const ceiling1 = findCeiling(1000);
+  const ceiling2 = findCeiling(2000);
+  const ceiling3 = findCeiling(3000);
+
+  function ceilingLine(label, budgetMs, ceiling) {
+    if (!ceiling) {
+      return `- **${label}:** nenhum degrau testado ficou dentro desse orçamento com erro < 1%. ` +
+             `Reduza STEP_START/STEP_INCREMENT e rode novamente para encontrar o teto real.`;
+    }
+    return `- **${label}:** o sistema sustenta **${ceiling.rps} req/s** com p(95) de ${fmt(ceiling.p95)} ms ` +
+           `e ${(ceiling.errRate * 100).toFixed(2)}% de erro — nesse ritmo, entregou **${fmt(ceiling.ok)} requisições ` +
+           `bem-sucedidas em ${STEP_DURATION_S} s** de teste sustentado.`;
   }
 
-  function errRate(scenario) {
-    const r = mv('http_req_failed{scenario:' + scenario + '}');
-    return r ? (r.rate * 100).toFixed(2) : '0.00';
-  }
+  const stepsTableRows = results.map((s) => {
+    const check1 = s.p95 <= 1000 && s.errRate < 0.01 ? '✅' : '❌';
+    const check2 = s.p95 <= 2000 && s.errRate < 0.01 ? '✅' : '❌';
+    const check3 = s.p95 <= 3000 && s.errRate < 0.01 ? '✅' : '❌';
+    return `| ${s.rps} req/s | ${s.achievedRps.toFixed(1)} req/s | ${fmt(s.total)} | ${fmt(s.ok)} | ` +
+           `${(s.errRate * 100).toFixed(2)}% | ${fmt(s.p95)} ms | ${s.p99 != null ? fmt(s.p99) : 'N/A'} ms | ` +
+           `${check1} | ${check2} | ${check3} |`;
+  }).join('\n');
 
-  function countOk(counterKey) {
-    const d = mv(counterKey);
-    return d ? d.count : 0;
-  }
-
-  function slaResult(scenario, budgetMs) {
-    const d = mv('http_req_duration{scenario:' + scenario + '}');
-    const f = mv('http_req_failed{scenario:' + scenario + '}');
-    if (!d || d['p(95)'] == null) return '❓';
-    const latOk = d['p(95)'] <= budgetMs;
-    const errOk = !f || f.rate < 0.01;
-    return (latOk && errOk) ? '✅ PASSOU' : '❌ FALHOU';
-  }
-
-  const d1 = dur('sla_1s'), d2 = dur('sla_2s'), d3 = dur('sla_3s');
-  const ok1 = countOk('req_ok_sla_1s');
-  const ok2 = countOk('req_ok_sla_2s');
-  const ok3 = countOk('req_ok_sla_3s');
-  const t1  = totalReqs('sla_1s'), t2 = totalReqs('sla_2s'), t3 = totalReqs('sla_3s');
+  const totalReqsAll = results.reduce((acc, s) => acc + s.total, 0);
+  const totalOkAll    = results.reduce((acc, s) => acc + s.ok, 0);
 
   const safeData = JSON.parse(JSON.stringify(data));
   if (safeData.setup_data) safeData.setup_data.token = '[REDACTED]';
@@ -521,42 +467,52 @@ export function handleSummary(data) {
 `# Relatório de Carga e Performance — EQ03 (k6)
 
 ## Estratégia
-**Stress test com ramping-arrival-rate**: o k6 controla diretamente o RPS
-(requisições por segundo) e aloca VUs conforme necessário. O RPS sobe de 1 até
-o alvo máximo em 90 s — propositalmente agressivo para encontrar o limite real
-do sistema. Quando o sistema satura, a latência estoura o budget e/ou surgem
-erros HTTP → SLA FALHOU. O contador "Req. OK no budget" registra somente as
-requisições que retornaram 2xx **e** com latência dentro do orçamento do
-cenário: esse número revela quantas entregas bem-sucedidas o sistema conseguiu
-durante toda a rampa, incluindo o trecho em que já estava sob saturação.
+**Escada de carga (staircase) com constant-arrival-rate**: o teste sobe em
+degraus de RPS fixo (${STEPS.join(', ')} req/s), cada um sustentado por
+${STEP_DURATION_S} s, exercitando um mix realista de rotas autenticadas.
+Cada degrau é medido isoladamente (p(95), taxa de erro, total de requisições).
+Ao final, para cada orçamento de tempo (1s, 2s, 3s) o relatório identifica o
+**maior RPS sustentado** cujo p(95) ficou dentro do orçamento **e** cuja taxa
+de erro HTTP ficou abaixo de 1% — esse é o "teto de capacidade" do sistema
+para aquele tempo de resposta.
 
 ## Configuração
 | Parâmetro | Valor |
 |-----------|-------|
 | Ferramenta | k6 |
-| Executor | ramping-arrival-rate (1 → alvo RPS em 90 s + 30 s sustentado) |
-| Duração por cenário | ${SCENARIO_DURATION_S} s |
-| Alvo sla_1s | ${MAX_RPS_1S} req/s |
-| Alvo sla_2s | ${MAX_RPS_2S} req/s |
-| Alvo sla_3s | ${MAX_RPS_3S} req/s |
+| Executor | constant-arrival-rate (degraus fixos e sequenciais) |
+| Degraus testados | ${STEPS.join(', ')} req/s |
+| Duração por degrau | ${STEP_DURATION_S} s |
+| Duração total | ${STEPS.length * STEP_DURATION_S} s |
 | Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /appointments?status=PENDING/CONFIRMED · GET /appointments · GET /cashflow · GET /users · GET /clients · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
 
-## Resultado — Requisições OK dentro do orçamento de tempo
+## Teto de capacidade por orçamento de tempo
+${ceilingLine('Até 1 s', 1000, ceiling1)}
+${ceilingLine('Até 2 s', 2000, ceiling2)}
+${ceilingLine('Até 3 s', 3000, ceiling3)}
 
-| Budget | Alvo | RPS real | Req. OK no budget | Req. totais | p(95) | p(99) | Erro HTTP | SLA |
-|--------|------|----------|--------------------|-------------|-------|-------|-----------|-----|
-| **≤ 1 s** | ${MAX_RPS_1S} req/s | ${rps('sla_1s')} req/s | **${fmt(ok1)}** | ${fmt(t1)} | ${d1.p95} ms | ${d1.p99} ms | ${errRate('sla_1s')}% | ${slaResult('sla_1s', 1000)} |
-| **≤ 2 s** | ${MAX_RPS_2S} req/s | ${rps('sla_2s')} req/s | **${fmt(ok2)}** | ${fmt(t2)} | ${d2.p95} ms | ${d2.p99} ms | ${errRate('sla_2s')}% | ${slaResult('sla_2s', 2000)} |
-| **≤ 3 s** | ${MAX_RPS_3S} req/s | ${rps('sla_3s')} req/s | **${fmt(ok3)}** | ${fmt(t3)} | ${d3.p95} ms | ${d3.p99} ms | ${errRate('sla_3s')}% | ${slaResult('sla_3s', 3000)} |
+## Resultado por degrau
 
-> **Req. OK no budget** = requisições com status HTTP 2xx e latência ≤ orçamento do cenário.
-> **Req. totais** = todas as requisições disparadas no cenário (incluindo as mais lentas).
-> Se SLA FALHOU, o alvo de RPS estava além da capacidade do sistema para esse orçamento
-> — reduza MAX_RPS_Xs e rode novamente para encontrar o ponto de operação estável.
+| Alvo | RPS real | Req. totais | Req. OK | Erro HTTP | p(95) | p(99) | ≤1s | ≤2s | ≤3s |
+|------|----------|-------------|---------|-----------|-------|-------|-----|-----|-----|
+${stepsTableRows}
+
+> **Req. OK** = requisições sem falha HTTP (status < 400) no degrau.
+> **≤1s/≤2s/≤3s** = ✅ se p(95) do degrau ficou dentro do orçamento **e** erro < 1%.
+
+## Gargalos Identificados
+
+1. **Pool de conexões com o banco limitado a 5 conexões**
+   (\`application-dev.yaml\` e \`application-prod.yaml\`:
+   \`hikari.maximum-pool-size: 5\`). Sob concorrência, qualquer carga acima de
+   ~5 requisições simultâneas dependentes do banco enfileira, o que explica o
+   ponto em que a latência começa a crescer nos degraus mais altos da escada.
+   **Correção sugerida:** aumentar o pool (ex.: 20–30) e monitorar uso de
+   conexões em produção antes de fixar um valor definitivo.
 
 ## Saúde Global
-* **Total de requisições (todos os cenários):** ${fmt(t1 + t2 + t3)}
-* **Requisições OK no budget somadas:** ${fmt(ok1 + ok2 + ok3)}
+* **Total de requisições (todos os degraus):** ${fmt(totalReqsAll)}
+* **Requisições OK somadas:** ${fmt(totalOkAll)}
 
 ---
 *Relatório gerado automaticamente via k6 em ${new Date().toISOString()}*
