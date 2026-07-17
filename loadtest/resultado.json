@@ -1,105 +1,89 @@
 {
-  "setup_data": {
-    "productId": 1,
-    "serviceId": 1,
-    "testUserId": 19,
-    "token": "[REDACTED]",
-    "employeeId": 1
-  },
   "root_group": {
-    "name": "",
     "path": "",
     "id": "d41d8cd98f00b204e9800998ecf8427e",
     "groups": [
       {
-        "id": "4baa683e5283986f584089881d77583a",
-        "groups": [],
-        "checks": [
-            {
-              "id": "c300029422026dbc64b35020347aa014",
-              "passes": 686,
-              "fails": 0,
-              "name": "status 200 - Update Product",
-              "path": "::PUT Update Product::status 200 - Update Product"
-            }
-          ],
-        "name": "PUT Update Product",
-        "path": "::PUT Update Product"
-      },
-      {
-        "name": "POST CashFlow Entry",
         "path": "::POST CashFlow Entry",
         "id": "a0cd9d9004fdc81b3281e1960ce2f0ec",
         "groups": [],
         "checks": [
             {
+              "passes": 472,
+              "fails": 0,
               "name": "status 201 - CashFlow Entry",
               "path": "::POST CashFlow Entry::status 201 - CashFlow Entry",
-              "id": "0e964b7786cd6d0f979d9b1ba669ca30",
-              "passes": 1275,
+              "id": "0e964b7786cd6d0f979d9b1ba669ca30"
+            }
+          ],
+        "name": "POST CashFlow Entry"
+      },
+      {
+        "groups": [],
+        "checks": [
+            {
+              "name": "status 200 - Appointments by Status",
+              "path": "::GET Appointments by Status::status 200 - Appointments by Status",
+              "id": "93c94325146062ee0effa426ca8a8296",
+              "passes": 163,
               "fails": 0
             }
-          ]
+          ],
+        "name": "GET Appointments by Status",
+        "path": "::GET Appointments by Status",
+        "id": "394f6533959c0917b2b7b51a293b0b0e"
       },
       {
-        "name": "GET Employees Booking",
-        "path": "::GET Employees Booking",
-        "id": "b1ee73f81d49d11f5f060f575b401ac5",
+        "id": "7353522922ef906e65b7f6226bb5b6a6",
+        "groups": [],
+        "checks": [],
+        "name": "POST+PATCH Cancel Appointment",
+        "path": "::POST+PATCH Cancel Appointment"
+      },
+      {
         "groups": [],
         "checks": [
             {
-              "name": "status 200 - Employees Booking",
-              "path": "::GET Employees Booking::status 200 - Employees Booking",
-              "id": "7cedc0cf445032684395ac7c2ea2d390",
-              "passes": 1009,
+              "name": "status 200 - Ping",
+              "path": "::GET Ping::status 200 - Ping",
+              "id": "d5503b76c5ec0361e98752c14b46e94f",
+              "passes": 292,
               "fails": 0
             }
-          ]
+          ],
+        "name": "GET Ping",
+        "path": "::GET Ping",
+        "id": "89317b56bbd8405636e03d4b67afa256"
       },
       {
-        "name": "GET Services",
-        "path": "::GET Services",
-        "id": "795bfa69c7ae0fd77762295bdfea103b",
         "groups": [],
         "checks": [
             {
+              "id": "c5a3f4912de46699d30b16c10e3bfd58",
+              "passes": 426,
               "fails": 0,
-              "name": "status 200 - Services",
-              "path": "::GET Services::status 200 - Services",
-              "id": "6b624ee4984b22c128bac35533c2cb3c",
-              "passes": 843
+              "name": "status 201 - Create Appointment",
+              "path": "::POST Create Appointment::status 201 - Create Appointment"
             }
-          ]
-      },
-      {
-        "name": "GET Clients",
-        "path": "::GET Clients",
-        "id": "753a7e7b8d80ebbe28e575019f5aaad0",
-        "groups": [],
-        "checks": [
-            {
-              "path": "::GET Clients::status 200 - Clients",
-              "id": "b072186db5618724fccffaecd4d34412",
-              "passes": 640,
-              "fails": 0,
-              "name": "status 200 - Clients"
-            }
-          ]
-      },
-      {
+          ],
         "name": "POST Create Appointment",
         "path": "::POST Create Appointment",
-        "id": "f178b766f54e0ba42fa0c92a6233347d",
+        "id": "f178b766f54e0ba42fa0c92a6233347d"
+      },
+      {
         "groups": [],
         "checks": [
             {
-              "name": "status 201 - Create Appointment",
-              "path": "::POST Create Appointment::status 201 - Create Appointment",
-              "id": "c5a3f4912de46699d30b16c10e3bfd58",
-              "passes": 1329,
+              "name": "status 200 - Users",
+              "path": "::GET Users::status 200 - Users",
+              "id": "b8565282fbcaec3625cab2a8443bd207",
+              "passes": 240,
               "fails": 0
             }
-          ]
+          ],
+        "name": "GET Users",
+        "path": "::GET Users",
+        "id": "0d71a3ae77d8e53c8344e3da458eecaa"
       },
       {
         "name": "GET Payroll Report",
@@ -108,11 +92,11 @@
         "groups": [],
         "checks": [
             {
-              "name": "status 200 - Payroll Report",
-              "path": "::GET Payroll Report::status 200 - Payroll Report",
               "id": "d04e281eeb1a3cb32cde0718237758e1",
-              "passes": 649,
-              "fails": 0
+              "passes": 227,
+              "fails": 0,
+              "name": "status 200 - Payroll Report",
+              "path": "::GET Payroll Report::status 200 - Payroll Report"
             }
           ]
       },
@@ -120,31 +104,46 @@
         "groups": [],
         "checks": [
             {
+              "name": "status 200 - CashFlow",
+              "path": "::GET CashFlow::status 200 - CashFlow",
+              "id": "e1614cb629da4512045ba178abeb04db",
+              "passes": 404,
+              "fails": 0
+            }
+          ],
+        "name": "GET CashFlow",
+        "path": "::GET CashFlow",
+        "id": "f332c61c085d22a9295573152b9ab085"
+      },
+      {
+        "path": "::GET Products",
+        "id": "6bdd609466e1e05bc5fde77da5ba5aa3",
+        "groups": [],
+        "checks": [
+            {
+              "name": "status 200 - Products",
+              "path": "::GET Products::status 200 - Products",
+              "id": "fa7a521871b2c6fe54c340ef9d47d8e5",
+              "passes": 310,
+              "fails": 0
+            }
+          ],
+        "name": "GET Products"
+      },
+      {
+        "path": "::PATCH Update User",
+        "id": "39723790249870de6a281e835e425c7f",
+        "groups": [],
+        "checks": [
+            {
               "id": "a9b6c3ce1b49a54a14c7584fb549fa00",
-              "passes": 832,
+              "passes": 267,
               "fails": 0,
               "name": "status 200 - Update User",
               "path": "::PATCH Update User::status 200 - Update User"
             }
           ],
-        "name": "PATCH Update User",
-        "path": "::PATCH Update User",
-        "id": "39723790249870de6a281e835e425c7f"
-      },
-      {
-        "name": "GET Financial Report",
-        "path": "::GET Financial Report",
-        "id": "7e4e748679095df65aa9e120102710e4",
-        "groups": [],
-        "checks": [
-            {
-              "path": "::GET Financial Report::status 200 - Financial Report",
-              "id": "487cd77236b9aeb60da8f72fc597bdbf",
-              "passes": 1312,
-              "fails": 0,
-              "name": "status 200 - Financial Report"
-            }
-          ]
+        "name": "PATCH Update User"
       },
       {
         "name": "GET Appointments Report",
@@ -153,28 +152,88 @@
         "groups": [],
         "checks": [
             {
+              "fails": 0,
               "name": "status 200 - Appointments Report",
               "path": "::GET Appointments Report::status 200 - Appointments Report",
               "id": "388aa6f391c8e642af776e2359f8039d",
-              "passes": 1159,
+              "passes": 393
+            }
+          ]
+      },
+      {
+        "path": "::GET Financial Report",
+        "id": "7e4e748679095df65aa9e120102710e4",
+        "groups": [],
+        "checks": [
+            {
+              "name": "status 200 - Financial Report",
+              "path": "::GET Financial Report::status 200 - Financial Report",
+              "id": "487cd77236b9aeb60da8f72fc597bdbf",
+              "passes": 463,
+              "fails": 0
+            }
+          ],
+        "name": "GET Financial Report"
+      },
+      {
+        "name": "GET Services",
+        "path": "::GET Services",
+        "id": "795bfa69c7ae0fd77762295bdfea103b",
+        "groups": [],
+        "checks": [
+            {
+              "passes": 292,
+              "fails": 0,
+              "name": "status 200 - Services",
+              "path": "::GET Services::status 200 - Services",
+              "id": "6b624ee4984b22c128bac35533c2cb3c"
+            }
+          ]
+      },
+      {
+        "name": "PUT Update Product",
+        "path": "::PUT Update Product",
+        "id": "4baa683e5283986f584089881d77583a",
+        "groups": [],
+        "checks": [
+            {
+              "name": "status 200 - Update Product",
+              "path": "::PUT Update Product::status 200 - Update Product",
+              "id": "c300029422026dbc64b35020347aa014",
+              "passes": 214,
               "fails": 0
             }
           ]
       },
       {
-        "path": "::GET Ping",
-        "id": "89317b56bbd8405636e03d4b67afa256",
+        "id": "b1ee73f81d49d11f5f060f575b401ac5",
         "groups": [],
         "checks": [
             {
-              "name": "status 200 - Ping",
-              "path": "::GET Ping::status 200 - Ping",
-              "id": "d5503b76c5ec0361e98752c14b46e94f",
-              "passes": 797,
+              "name": "status 200 - Employees Booking",
+              "path": "::GET Employees Booking::status 200 - Employees Booking",
+              "id": "7cedc0cf445032684395ac7c2ea2d390",
+              "passes": 354,
               "fails": 0
             }
           ],
-        "name": "GET Ping"
+        "name": "GET Employees Booking",
+        "path": "::GET Employees Booking"
+      },
+      {
+        "groups": [],
+        "checks": [
+            {
+              "passes": 231,
+              "fails": 0,
+              "name": "status 200 - Clients",
+              "path": "::GET Clients::status 200 - Clients",
+              "id": "b072186db5618724fccffaecd4d34412"
+            }
+          ],
+        "name": "GET Clients",
+        "path": "::GET Clients",
+        "id": "753a7e7b8d80ebbe28e575019f5aaad0"
       },
       {
         "name": "GET All Appointments",
@@ -186,77 +245,10 @@
               "name": "status 200 - List Appointments",
               "path": "::GET All Appointments::status 200 - List Appointments",
               "id": "8baabba5880bdd57b135935b977ced67",
-              "passes": 1145,
+              "passes": 408,
               "fails": 0
             }
           ]
-      },
-      {
-        "name": "GET Products",
-        "path": "::GET Products",
-        "id": "6bdd609466e1e05bc5fde77da5ba5aa3",
-        "groups": [],
-        "checks": [
-            {
-              "name": "status 200 - Products",
-              "path": "::GET Products::status 200 - Products",
-              "id": "fa7a521871b2c6fe54c340ef9d47d8e5",
-              "passes": 816,
-              "fails": 0
-            }
-          ]
-      },
-      {
-        "name": "POST+PATCH Cancel Appointment",
-        "path": "::POST+PATCH Cancel Appointment",
-        "id": "7353522922ef906e65b7f6226bb5b6a6",
-        "groups": [],
-        "checks": []
-      },
-      {
-        "id": "f332c61c085d22a9295573152b9ab085",
-        "groups": [],
-        "checks": [
-            {
-              "passes": 1155,
-              "fails": 0,
-              "name": "status 200 - CashFlow",
-              "path": "::GET CashFlow::status 200 - CashFlow",
-              "id": "e1614cb629da4512045ba178abeb04db"
-            }
-          ],
-        "name": "GET CashFlow",
-        "path": "::GET CashFlow"
-      },
-      {
-        "groups": [],
-        "checks": [
-            {
-              "name": "status 200 - Financial Report by Employee",
-              "path": "::GET Financial Report by Employee::status 200 - Financial Report by Employee",
-              "id": "2a994571e401ae36a518cf59e5c141bf",
-              "passes": 0,
-              "fails": 496
-            }
-          ],
-        "name": "GET Financial Report by Employee",
-        "path": "::GET Financial Report by Employee",
-        "id": "119876eea0326d8e3ef4c6c6aef4e891"
-      },
-      {
-        "groups": [],
-        "checks": [
-            {
-              "id": "b8565282fbcaec3625cab2a8443bd207",
-              "passes": 605,
-              "fails": 0,
-              "name": "status 200 - Users",
-              "path": "::GET Users::status 200 - Users"
-            }
-          ],
-        "name": "GET Users",
-        "path": "::GET Users",
-        "id": "0d71a3ae77d8e53c8344e3da458eecaa"
       },
       {
         "name": "POST+DELETE CashFlow",
@@ -266,9 +258,11 @@
         "checks": []
       }
     ],
-    "checks": []
+    "checks": [],
+    "name": ""
   },
   "options": {
+    "noColor": false,
     "summaryTrendStats": [
       "avg",
       "min",
@@ -278,53 +272,105 @@
       "p(95)",
       "p(99)"
     ],
-    "summaryTimeUnit": "",
-    "noColor": false
+    "summaryTimeUnit": ""
   },
   "state": {
+    "isStdOutTTY": false,
     "isStdErrTTY": false,
-    "testRunDurationMs": 392960.173137,
-    "isStdOutTTY": false
+    "testRunDurationMs": 380419.203001
   },
   "metrics": {
-    "iterations": {
+    "http_req_duration{scenario:sla_1s}": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 464.0882222999994,
+        "avg": 88.98208830236682,
+        "min": 1.209848,
+        "med": 15.168131500000001,
+        "max": 726.471268,
+        "p(90)": 289.12210780000055,
+        "p(95)": 376.66098569999997
+      },
+      "thresholds": {
+        "p(95)<1000": {
+          "ok": true
+        }
+      }
+    },
+    "group_duration": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "max": 886.829003,
+        "p(90)": 326.2469297,
+        "p(95)": 396.4916098499999,
+        "p(99)": 523.2837074200004,
+        "avg": 105.20133599496293,
+        "min": 1.389252,
+        "med": 20.776103499999998
+      }
+    },
+    "data_received": {
+      "type": "counter",
+      "contains": "data",
+      "values": {
+        "count": 9967488130,
+        "rate": 26201327.512832727
+      }
+    },
+    "iteration_duration": {
+      "contains": "time",
+      "values": {
+        "avg": 105.31559869399078,
+        "min": 1.461337,
+        "med": 20.8604135,
+        "max": 886.932343,
+        "p(90)": 326.33242370000005,
+        "p(95)": 396.6178618499999,
+        "p(99)": 523.3780246200005
+      },
+      "type": "trend"
+    },
+    "req_ok_sla_1s": {
       "type": "counter",
       "contains": "default",
       "values": {
-        "count": 16387,
-        "rate": 41.701427066215444
+        "count": 1690,
+        "rate": 4.442467642716652
+      },
+      "thresholds": {
+        "count>0": {
+          "ok": true
+        }
       }
     },
-    "http_req_sending": {
-      "type": "trend",
+    "http_req_connecting": {
       "contains": "time",
       "values": {
-        "p(99)": 0.13413000000000033,
-        "avg": 0.038127601297765094,
-        "min": 0.00908,
-        "med": 0.02764,
-        "max": 24.171067,
-        "p(90)": 0.05094,
-        "p(95)": 0.070351
-      }
+        "p(99)": 0.3195360399999999,
+        "avg": 0.016943947054202664,
+        "min": 0,
+        "med": 0,
+        "max": 12.19646,
+        "p(90)": 0,
+        "p(95)": 0
+      },
+      "type": "trend"
     },
-    "http_req_receiving": {
-      "type": "trend",
-      "contains": "time",
+    "vus_max": {
+      "contains": "default",
       "values": {
-        "p(95)": 1853.533352,
-        "p(99)": 3385.4217235000006,
-        "avg": 244.40529310997843,
-        "min": 0.0209,
-        "med": 2.824423,
-        "max": 6175.614736,
-        "p(90)": 980.108745
-      }
+        "value": 250,
+        "min": 250,
+        "max": 250
+      },
+      "type": "gauge"
     },
-    "http_reqs{scenario:sla_3s}": {
+    "http_reqs{scenario:sla_1s}": {
       "values": {
-        "count": 6840,
-        "rate": 17.406344122347814
+        "count": 1690,
+        "rate": 4.442467642716652
       },
       "thresholds": {
         "count>0": {
@@ -334,51 +380,104 @@
       "type": "counter",
       "contains": "default"
     },
-    "data_received": {
+    "req_ok_sla_2s": {
+      "type": "counter",
+      "contains": "default",
       "values": {
-        "count": 17516142972,
-        "rate": 44574855.594572544
+        "count": 2138,
+        "rate": 5.620115869898344
+      },
+      "thresholds": {
+        "count>0": {
+          "ok": true
+        }
+      }
+    },
+    "http_req_failed{scenario:sla_3s}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0,
+        "passes": 0,
+        "fails": 2532
+      },
+      "thresholds": {
+        "rate<0.01": {
+          "ok": true
+        }
+      }
+    },
+    "http_reqs": {
+      "values": {
+        "count": 6365,
+        "rate": 16.731542334847035
       },
       "type": "counter",
-      "contains": "data"
+      "contains": "default"
+    },
+    "http_req_failed{scenario:sla_2s}": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "fails": 2138,
+        "rate": 0,
+        "passes": 0
+      },
+      "thresholds": {
+        "rate<0.01": {
+          "ok": true
+        }
+      }
     },
     "vus": {
       "type": "gauge",
       "contains": "default",
       "values": {
-        "max": 700,
-        "value": 1,
-        "min": 0
+        "value": 2,
+        "min": 0,
+        "max": 10
       }
     },
-    "checks": {
-      "type": "rate",
-      "contains": "default",
-      "values": {
-        "rate": 0.9663683211282886,
-        "passes": 14252,
-        "fails": 496
-      }
-    },
-    "http_req_connecting": {
+    "http_req_duration": {
       "type": "trend",
       "contains": "time",
       "values": {
-        "p(95)": 0.18827149999999998,
-        "p(99)": 0.3104337000000001,
-        "avg": 0.019839815040763136,
-        "min": 0,
-        "med": 0,
-        "max": 8.405384,
-        "p(90)": 0
+        "avg": 94.85047915443853,
+        "min": 1.192442,
+        "med": 15.360044,
+        "max": 886.537752,
+        "p(90)": 309.9263364000001,
+        "p(95)": 389.8716705999999,
+        "p(99)": 509.54666987999997
       }
     },
-    "http_reqs{scenario:sla_1s}": {
+    "http_req_receiving": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(99)": 189.67801523999984,
+        "avg": 17.294392988688067,
+        "min": 0.02226,
+        "med": 2.744571,
+        "max": 365.822966,
+        "p(90)": 58.28081800000004,
+        "p(95)": 124.97231119999988
+      }
+    },
+    "iterations": {
       "type": "counter",
       "contains": "default",
       "values": {
-        "rate": 12.701032677578647,
-        "count": 4991
+        "count": 5758,
+        "rate": 15.135934134178983
+      }
+    },
+    "http_reqs{scenario:sla_2s}": {
+      "type": "counter",
+      "contains": "default",
+      "values": {
+        "count": 2138,
+        "rate": 5.620115869898344
       },
       "thresholds": {
         "count>0": {
@@ -390,86 +489,105 @@
       "type": "trend",
       "contains": "time",
       "values": {
-        "avg": 4002.549789292972,
-        "min": 1.208351,
-        "med": 2082.059528,
-        "max": 20071.951988,
-        "p(90)": 10384.371544200003,
-        "p(95)": 11760.578818999998,
-        "p(99)": 14318.642618419968
+        "avg": 94.54106657811025,
+        "min": 1.243011,
+        "med": 15.304648,
+        "max": 886.537752,
+        "p(90)": 304.44779589999996,
+        "p(95)": 393.70106784999996,
+        "p(99)": 522.0663794000005
       },
       "thresholds": {
         "p(95)<2000": {
-          "ok": false
+          "ok": true
         }
       }
     },
-    "data_sent": {
-      "type": "counter",
-      "contains": "data",
-      "values": {
-        "count": 6567337,
-        "rate": 16712.47482301569
-      }
-    },
-    "http_req_duration{expected_response:true}": {
+    "http_req_blocked": {
+      "type": "trend",
       "contains": "time",
       "values": {
-        "p(99)": 18098.213192249987,
-        "avg": 4112.998703575214,
-        "min": 1.208351,
-        "med": 320.168403,
-        "max": 24684.780377,
-        "p(90)": 12192.0454528,
-        "p(95)": 14274.505417199996
-      },
-      "type": "trend"
+        "p(95)": 0.03906799999999999,
+        "p(99)": 0.44740119999999994,
+        "avg": 0.03102829740769827,
+        "min": 0.00313,
+        "med": 0.00721,
+        "max": 12.398419,
+        "p(90)": 0.01159
+      }
+    },
+    "http_req_sending": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "med": 0.02948,
+        "max": 8.119798,
+        "p(90)": 0.051676,
+        "p(95)": 0.07773199999999972,
+        "p(99)": 0.1295312399999999,
+        "avg": 0.038997790102120955,
+        "min": 0.01063
+      }
     },
     "http_req_duration{scenario:sla_3s}": {
       "type": "trend",
       "contains": "time",
       "values": {
-        "avg": 7016.8315589658005,
-        "min": 1.22008,
-        "med": 7950.7883395,
-        "max": 24684.780377,
-        "p(90)": 14860.654172400002,
-        "p(95)": 16516.141690899996,
-        "p(99)": 19719.04072414
+        "p(99)": 526.3749507900003,
+        "avg": 99.15190215284348,
+        "min": 1.192442,
+        "med": 15.595241000000001,
+        "max": 791.460255,
+        "p(90)": 319.2878758000001,
+        "p(95)": 395.91263319999996
       },
       "thresholds": {
         "p(95)<3000": {
-          "ok": false
+          "ok": true
         }
       }
     },
-    "http_req_duration": {
+    "http_req_duration{expected_response:true}": {
+      "contains": "time",
       "values": {
-        "med": 313.431788,
-        "max": 24684.780377,
-        "p(90)": 12122.849998,
-        "p(95)": 14214.4944575,
-        "p(99)": 18069.011416,
-        "avg": 4084.5845242618184,
-        "min": 1.208351
+        "p(99)": 509.54670346,
+        "avg": 94.86496611989335,
+        "min": 1.192442,
+        "med": 15.360535500000001,
+        "max": 886.537752,
+        "p(90)": 309.95477229999995,
+        "p(95)": 389.8773839499999
       },
-      "type": "trend",
-      "contains": "time"
+      "type": "trend"
     },
-    "http_reqs": {
-      "type": "counter",
+    "checks": {
+      "type": "rate",
       "contains": "default",
       "values": {
-        "count": 18031,
-        "rate": 45.88505714474466
+        "passes": 5156,
+        "fails": 0,
+        "rate": 1
       }
     },
-    "http_reqs{scenario:sla_2s}": {
+    "http_req_waiting": {
+      "type": "trend",
+      "contains": "time",
+      "values": {
+        "p(95)": 276.0690006,
+        "p(99)": 371.4728459999998,
+        "avg": 77.51708837564806,
+        "min": 1.116272,
+        "med": 11.85844,
+        "max": 596.957435,
+        "p(90)": 241.647354
+      }
+    },
+    "req_ok_sla_3s": {
       "type": "counter",
       "contains": "default",
       "values": {
-        "count": 6195,
-        "rate": 15.764956409056245
+        "count": 2532,
+        "rate": 6.655815426839386
       },
       "thresholds": {
         "count>0": {
@@ -477,119 +595,69 @@
         }
       }
     },
-    "http_req_waiting": {
-      "type": "trend",
-      "contains": "time",
-      "values": {
-        "p(95)": 13409.7925,
-        "p(99)": 16823.628449,
-        "avg": 3840.141103550568,
-        "min": 1.1261,
-        "med": 243.509677,
-        "max": 22675.959912,
-        "p(90)": 11544.31171
-      }
-    },
-    "iteration_duration": {
-      "type": "trend",
-      "contains": "time",
-      "values": {
-        "avg": 4494.733678785625,
-        "min": 1.431753,
-        "med": 345.952569,
-        "max": 34400.979722,
-        "p(90)": 13104.556107799997,
-        "p(95)": 15848.792194999998,
-        "p(99)": 21831.611424499988
-      }
-    },
-    "vus_max": {
-      "type": "gauge",
+    "http_req_failed{scenario:sla_1s}": {
+      "type": "rate",
       "contains": "default",
       "values": {
-        "value": 1200,
-        "min": 250,
-        "max": 1200
-      }
-    },
-    "http_req_duration{scenario:sla_1s}": {
-      "contains": "time",
-      "values": {
-        "p(90)": 298.184767,
-        "p(95)": 990.286156,
-        "p(99)": 2307.5931170000035,
-        "avg": 171.90838995131242,
-        "min": 1.287065,
-        "med": 20.274791,
-        "max": 3876.420794
-      },
-      "thresholds": {
-        "p(95)<1000": {
-          "ok": true
-        }
-      },
-      "type": "trend"
-    },
-    "http_req_failed": {
-      "values": {
-        "rate": 0.027563640397093893,
-        "passes": 497,
-        "fails": 17534
+        "rate": 0,
+        "passes": 0,
+        "fails": 1690
       },
       "thresholds": {
         "rate<0.01": {
-          "ok": false
+          "ok": true
         }
-      },
-      "type": "rate",
-      "contains": "default"
+      }
     },
-    "group_duration": {
+    "data_sent": {
+      "type": "counter",
+      "contains": "data",
       "values": {
-        "min": 1.352963,
-        "med": 345.870618,
-        "max": 34400.904671,
-        "p(90)": 13104.434982799998,
-        "p(95)": 15848.707543699998,
-        "p(99)": 21831.36803337999,
-        "avg": 4494.639941682549
-      },
-      "type": "trend",
-      "contains": "time"
+        "count": 2308058,
+        "rate": 6067.143776635095
+      }
     },
-    "dropped_iterations": {
+    "http_reqs{scenario:sla_3s}": {
       "values": {
-        "count": 6995,
-        "rate": 17.80078613096827
+        "count": 2532,
+        "rate": 6.655815426839386
+      },
+      "thresholds": {
+        "count>0": {
+          "ok": true
+        }
       },
       "type": "counter",
       "contains": "default"
-    },
-    "http_req_blocked": {
-      "type": "trend",
-      "contains": "time",
-      "values": {
-        "max": 8.491894,
-        "p(90)": 0.011561,
-        "p(95)": 0.25990199999999997,
-        "p(99)": 0.42190500000000003,
-        "avg": 0.033531886085075756,
-        "min": 0.00283,
-        "med": 0.00689
-      }
     },
     "http_req_tls_handshaking": {
       "type": "trend",
       "contains": "time",
       "values": {
-        "med": 0,
         "max": 0,
         "p(90)": 0,
         "p(95)": 0,
         "p(99)": 0,
         "avg": 0,
-        "min": 0
+        "min": 0,
+        "med": 0
+      }
+    },
+    "http_req_failed": {
+      "type": "rate",
+      "contains": "default",
+      "values": {
+        "rate": 0.00015710919088766692,
+        "passes": 1,
+        "fails": 6364
       }
     }
+  },
+  "setup_data": {
+    "employeeId": 1,
+    "productId": 1,
+    "serviceId": 1,
+    "testUserId": 25,
+    "token": "[REDACTED]"
   }
 }
