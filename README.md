@@ -151,30 +151,68 @@ Mais detalhes sobre a arquitetura do projeto, APIs, testes e diretrizes de desen
 
 ## 📊 Avaliação de Performance (k6)
 
-Realizamos testes de carga automatizados com o [k6](https://k6.io/) para medir quantas requisições o sistema consegue atender dentro de orçamentos de tempo de 1s, 2s e 3s, sob concorrência crescente.
+Realizamos um teste de carga automatizado com o [k6](https://k6.io/) para descobrir, para cada orçamento de tempo (1s, 2s e 3s), o **maior número de requisições por segundo que o sistema sustenta respondendo dentro desse tempo com taxa de erro desprezível**.
 
 Os artefatos completos do teste (script, relatório e saída JSON) estão em [`loadtest/`](./loadtest/).
 
 ---
 
+### 0. Como rodar
+
+Pré-requisitos: projeto rodando localmente via `docker compose up -d` e Docker instalado (para rodar o k6 via imagem oficial, sem precisar instalar nada extra).
+
+**Linux / macOS (bash ou zsh):**
+
+```bash
+docker run --rm -i --network projeto-eq03_salon-network \
+  -v "${PWD}:/app" -w /app --env-file .env \
+  -e BASE_URL=http://salon-app:8080 \
+  grafana/k6 run loadtest/carga.js
+```
+
+**Windows (PowerShell):**
+
+```powershell
+docker run --rm -i --network projeto-eq03_salon-network `
+  -v "${PWD}:/app" -w /app --env-file .env `
+  -e BASE_URL=http://salon-app:8080 `
+  grafana/k6 run loadtest/carga.js
+```
+
+**Windows (cmd.exe):**
+
+```cmd
+docker run --rm -i --network projeto-eq03_salon-network ^
+  -v "%cd%:/app" -w /app --env-file .env ^
+  -e BASE_URL=http://salon-app:8080 ^
+  grafana/k6 run loadtest/carga.js
+```
+
+> O nome da rede (`projeto-eq03_salon-network`) segue o padrão `<pasta-do-projeto>_<nome-da-rede-no-compose>`. Se o diretório do projeto tiver outro nome, confira com `docker network ls`.
+
+Os degraus de carga são ajustáveis via variáveis de ambiente (opcional):
+
+```bash
+# Linux/macOS: adicione -e antes de cada var; Windows PowerShell: mesma sintaxe -e
+-e STEP_START=20 -e STEP_INCREMENT=20 -e STEP_COUNT=10 -e STEP_DURATION_S=30
+```
+
+Ao final, o script sobrescreve automaticamente `loadtest/report.md` e `loadtest/resultado.json` com os resultados da execução.
+
+---
+
 ### 1. Estratégia e rotas testadas
 
-Adotamos **3 cenários independentes com `ramping-arrival-rate`** — o k6 controla diretamente o RPS (requisições por segundo) e aloca os VUs necessários automaticamente. Cada cenário tem um alvo de RPS crescente e dois critérios de aprovação: `p(95) < orçamento` **e** `taxa de erro HTTP < 1%`. O **contador `Req. OK no budget`** registra apenas as requisições que retornaram 2xx _e_ cuja latência ficou dentro do orçamento do cenário.
+Adotamos uma **escada de carga (staircase) com `constant-arrival-rate`**: o RPS sobe em degraus fixos (20, 40, 60, 80, 100, 120, 140, 160, 180, 200 req/s), cada um sustentado por 30 s, exercitando um mix realista de rotas autenticadas (JWT via admin). Cada degrau é medido isoladamente — p(95), taxa de erro, total de requisições. Ao final, para cada orçamento de tempo o relatório encontra o **maior RPS sustentado em sequência ininterrupta desde o primeiro degrau** cujo p(95) ficou dentro do orçamento **e** cuja taxa de erro ficou abaixo de 1% — esse é o teto de capacidade real (um degrau que "passa" isoladamente após uma falha anterior não conta, pois reflete variância transitória, não capacidade sustentável).
 
-| Cenário | Alvo RPS | Threshold latência | Threshold erro | Duração |
-|---|---|---|---|---|
-| `sla_1s` | 20 req/s | p(95) < 1 000 ms | taxa < 1% | 120 s |
-| `sla_2s` | 25 req/s | p(95) < 2 000 ms | taxa < 1% | 120 s |
-| `sla_3s` | 30 req/s | p(95) < 3 000 ms | taxa < 1% | 120 s |
-
-Simulamos o **caminho crítico da aplicação** com fluxo autenticado (JWT via admin) misturando leitura e escrita em **18 rotas**, com distribuição probabilística:
+Distribuição probabilística das **18 rotas** testadas (leitura + escrita):
 
 | Rota | Método | Tipo | Aprox. |
 |---|---|---|---|
 | `GET /v1/reports/financial` | GET | Relatório financeiro (agregação SQL) | 8% |
 | `GET /v1/reports/appointments` | GET | Relatório de agendamentos | 7% |
 | `GET /v1/reports/payroll` | GET | Relatório de folha | 4% |
-| `GET /v1/reports/financial/employees/{id}` | GET | Histórico financeiro por profissional | 3% |
+| `GET /v1/appointments?status=` | GET | Agendamentos filtrados por status | 3% |
 | `GET /v1/appointments` | GET | Listagem de agendamentos (paginada) | 7% |
 | `GET /v1/cashflow` | GET | Extrato de caixa | 7% |
 | `GET /v1/users` | GET | Listagem de usuários | 4% |
@@ -190,41 +228,44 @@ Simulamos o **caminho crítico da aplicação** com fluxo autenticado (JWT via a
 | `PUT /v1/products/{id}` | PUT | Atualização de produto | 5% |
 | `PATCH /v1/users/{id}` | PATCH | Atualização de usuário | 5% |
 
----
-
-### 2. Resultados — Requisições OK dentro do orçamento de tempo
-
-| Cenário | Alvo | RPS real | **Req. OK no budget** | Req. totais | p(95) | p(99) | Erro HTTP | SLA |
-|---|---|---|---|---|---|---|---|---|
-| `sla_1s` (≤ 1 s) | 20 req/s | 14,1 req/s | **1.690** | 1.690 | 377 ms | 464 ms | 0,00% | ✅ PASSOU |
-| `sla_2s` (≤ 2 s) | 25 req/s | 17,8 req/s | **2.138** | 2.138 | 394 ms | 522 ms | 0,00% | ✅ PASSOU |
-| `sla_3s` (≤ 3 s) | 30 req/s | 21,1 req/s | **2.532** | 2.532 | 396 ms | 526 ms | 0,00% | ✅ PASSOU |
-
-> **Req. OK no budget** = requisições com status HTTP 2xx **e** latência dentro do orçamento do cenário. Como os 3 SLAs passaram, `Req. totais = Req. OK` (100% de aproveitamento).
-
-**Saúde global (todos os cenários somados):**
-
-| Métrica | Resultado | Status |
-|---|---|---|
-| Total de requisições | 6.360 | — |
-| Requisições OK no budget | 6.360 | ✅ 100% |
-| Taxa de erro HTTP | 0,00% | ✅ Abaixo de 1% |
-
-> **Interpretação:** Com os alvos de 20/25/30 req/s e banco de dados com dados acumulados de múltiplos testes, o sistema entregou **1.690 requisições em ≤1s**, **2.138 em ≤2s** e **2.532 em ≤3s** — todos com erro zero. Os targets podem ser aumentados via variáveis de ambiente (`MAX_RPS_1S`, `MAX_RPS_2S`, `MAX_RPS_3S`) em um banco mais limpo.
+Todos os dados de escrita são isolados por marcadores exclusivos de teste (data `2099-01-01`/`2099-10-15`/`2099-10-20`, usuário de teste dedicado) e removidos automaticamente por um `teardown()` ao final da execução — nenhum dado do teste permanece no banco (agendamentos são cancelados, já que a API não expõe `DELETE` para esse recurso; cashflow e usuários de teste são excluídos de fato).
 
 ---
 
-### 3. Gargalos identificados e melhorias aplicadas
+### 2. Resultados — teto de capacidade por orçamento de tempo
 
-#### 🐘 Gargalo 1 — Pool de Conexões do Banco de Dados (HikariCP)
+| Orçamento | Teto sustentado | p(95) no teto | Erro HTTP | Req. OK no degrau (30 s) |
+|---|---|---|---|---|
+| ≤ 1 s | **120 req/s** | 211 ms | 0,00% | 3.949 |
+| ≤ 2 s | **120 req/s** | 211 ms | 0,00% | 3.949 |
+| ≤ 3 s | **120 req/s** | 211 ms | 0,00% | 3.949 |
 
-Ao escalarmos os VUs para além de 30 usuários simultâneos, observamos que o `p(95)` disparava para **mais de 4 segundos**, enquanto a CPU e a memória da aplicação permaneciam estáveis. Diagnosticamos que o gargalo não era computacional, mas sim uma **fila de espera no pool de conexões do HikariCP**, que por padrão era limitado a `maximum-pool-size: 5`. Com muitos VUs ativos, threads ficavam bloqueadas aguardando uma conexão disponível.
+Resultado por degrau (curva completa):
 
-**O que fizemos:** Tornamos o tamanho do pool configurável via variável de ambiente (`${DB_POOL_SIZE:5}`) no `application-dev.yaml` e injetamos `DB_POOL_SIZE=100` no perfil de performance via `docker-compose.performance.yml`. A latência caiu imediatamente após a mudança.
+| RPS alvo | RPS real | Req. totais | Req. OK | Erro HTTP | p(95) | p(99) |
+|---|---|---|---|---|---|---|
+| 20 | 21,8 | 654 | 654 | 0,00% | 182 ms | 213 ms |
+| 40 | 44,0 | 1.319 | 1.319 | 0,00% | 175 ms | 215 ms |
+| 60 | 65,9 | 1.978 | 1.978 | 0,00% | 43 ms | 196 ms |
+| 80 | 87,1 | 2.613 | 2.613 | 0,00% | 162 ms | 227 ms |
+| 100 | 109,3 | 3.278 | 3.278 | 0,00% | 151 ms | 224 ms |
+| **120** | **131,6** | **3.949** | **3.949** | **0,00%** | **211 ms** | **379 ms** |
+| 140 | 151,3 | 4.540 | 4.540 | 0,00% | **7.805 ms** | 8.964 ms |
+| 160 | 152,3 | 4.569 | 4.569 | 0,00% | 8.968 ms | 9.959 ms |
+| 180 | 177,2 | 5.317 | 5.317 | 0,00% | 8.043 ms | 8.846 ms |
+| 200 | 167,2 | 5.015 | 5.015 | 0,00% | 8.524 ms | 9.153 ms |
 
-#### 🔐 Gargalo 2 — Autorização incorreta no endpoint de Relatório Financeiro (HTTP 403)
+> **Interpretação:** o sistema entrega 100% de sucesso com latência baixa até 120 req/s. Entre 120 e 140 req/s há um **colapso abrupto** — o p(95) salta de 211 ms para quase 8 segundos, ultrapassando de uma vez os três orçamentos (1s, 2s e 3s). Por isso o teto é o mesmo para os três tempos: não existe uma faixa intermediária em que o sistema responde, por exemplo, em 1,5s — ou está rápido, ou já rompeu os 3 segundos. Essa assinatura (sucesso estável seguido de colapso repentino, não degradação gradual) é característica de esgotamento de um recurso de tamanho fixo, como um pool de conexões.
 
-Durante a análise dos logs do k6, identificamos que a rota `GET /v1/reports/financial` respondia com **status 403 Forbidden** para o usuário admin. A causa raiz foi que o `ReportController` utilizava a anotação `@PreAuthorize("hasAnyRole('ADMIN')")`, a expressão padrão do Spring Security, que ignorava completamente o validador customizado da equipe (`VerifyUserPermissions`).
+---
 
-**O que fizemos:** Padronizamos as anotações do `ReportController` para `@PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")`, alinhando-as à arquitetura de segurança do projeto. A correção eliminou todos os erros 403.
+### 3. Gargalo identificado
+
+#### 🐘 Pool de conexões do banco de dados (HikariCP) limitado a 5
+
+O perfil `prod` (usado pela imagem Docker padrão) define `hikari.maximum-pool-size: 5` de forma fixa em `application-prod.yaml`, sem variável de ambiente para ajuste. Sob concorrência acima de ~5 requisições simultâneas dependentes do banco, threads ficam bloqueadas aguardando uma conexão livre — o que bate exatamente com o ponto de colapso observado entre 120 e 140 req/s (a essa taxa, com múltiplas rotas concorrentes por operação, a demanda de conexões simultâneas facilmente ultrapassa 5).
+
+O perfil `dev` já suporta ajuste via `${DB_POOL_SIZE:5}`, e existe um overlay `docker-compose.performance.yml` com `DB_POOL_SIZE=100` pronto para testes de performance sob esse perfil — mas o `prod` (perfil da imagem padrão testada) ainda não tem esse parâmetro exposto.
+
+**Melhoria sugerida:** parametrizar `maximum-pool-size` também em `application-prod.yaml` (ex.: `${DB_POOL_SIZE:20}`) e validar o novo teto de capacidade com um pool maior — a expectativa é que o teto suba substancialmente acima de 120 req/s, já que CPU e memória não eram o limitante neste teste.
 
