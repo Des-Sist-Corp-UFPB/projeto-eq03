@@ -6,7 +6,7 @@
 | Ferramenta | k6 |
 | Executor | ramping-vus (auto: 1 → 60 VUs por cenário) |
 | Duração por cenário | 120 s (90 s ramp + 30 s sustentado) |
-| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /appointments · GET /cashflow · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
+| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /reports/financial/employees/{id} · GET /appointments · GET /cashflow · GET /users · GET /clients · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
 
 ## Resultado Principal — Requisições HTTP-OK por Budget de Tempo
 

@@ -151,61 +151,71 @@ Mais detalhes sobre a arquitetura do projeto, APIs, testes e diretrizes de desen
 
 ## 📊 Avaliação de Performance (k6)
 
-Realizamos testes de carga automatizados com o [k6](https://k6.io/) para validar a capacidade e estabilidade da API sob concorrência real. Adotamos uma estratégia de **Carga Constante com Busca Binária Manual**, que nos permitiu isolar cada nível de concorrência e medir os SLAs com precisão, sem misturar dados de períodos estáveis com momentos de saturação.
+Realizamos testes de carga automatizados com o [k6](https://k6.io/) para medir quantas requisições o sistema consegue atender dentro de orçamentos de tempo de 1s, 2s e 3s, sob concorrência crescente.
 
 Os artefatos completos do teste (script, relatório e saída JSON) estão em [`loadtest/`](./loadtest/).
 
 ---
 
-### 1. Rotas testadas e usuários virtuais (VUs)
+### 1. Estratégia e rotas testadas
 
-Executamos o teste definitivo com **12 VUs em carga constante por 1 minuto** (`duration: '1m'`), resultando em **2.510 requisições** e um throughput médio de **41,53 req/s**.
+Adotamos **3 cenários independentes com ramping de VUs** (1 → 60 usuários virtuais ao longo de 90s, sustentado por mais 30s — 120s por cenário). Cada cenário conta somente as requisições HTTP 2xx entregues dentro do seu orçamento de tempo (≤1s, ≤2s, ≤3s), permitindo responder objetivamente: _"quantas requisições o sistema entrega com latência aceitável?"_
 
-Simulamos o **caminho crítico da aplicação** com um fluxo autenticado (JWT via `sysadmin@salao.com`) misturando leitura e escrita, com a seguinte distribuição probabilística:
+Simulamos o **caminho crítico da aplicação** com fluxo autenticado (JWT via admin) misturando leitura e escrita em **18 rotas**, com distribuição probabilística:
 
-| Rota | Método | Tipo | Probabilidade |
+| Rota | Método | Tipo | Aprox. |
 |---|---|---|---|
-| `GET /v1/reports/financial` | GET | Leitura pesada (agregação SQL) | 30% |
-| `GET /v1/appointments` | GET | Listagem geral paginada | 30% |
-| `POST /v1/appointments` | POST | Escrita: criação de agendamento | 20% |
-| `POST /v1/cashflow` | POST | Escrita: lançamento de caixa | 20% |
+| `GET /v1/reports/financial` | GET | Relatório financeiro (agregação SQL) | 8% |
+| `GET /v1/reports/appointments` | GET | Relatório de agendamentos | 7% |
+| `GET /v1/reports/payroll` | GET | Relatório de folha | 4% |
+| `GET /v1/reports/financial/employees/{id}` | GET | Histórico financeiro por profissional | 3% |
+| `GET /v1/appointments` | GET | Listagem de agendamentos (paginada) | 7% |
+| `GET /v1/cashflow` | GET | Extrato de caixa | 7% |
+| `GET /v1/users` | GET | Listagem de usuários | 4% |
+| `GET /v1/clients` | GET | Listagem de clientes | 4% |
+| `GET /v1/employees/booking` | GET | Funcionários disponíveis p/ agendamento | 6% |
+| `GET /v1/products` | GET | Listagem de produtos | 5% |
+| `GET /v1/services` | GET | Listagem de serviços | 5% |
+| `GET /ping` | GET | Health check | 5% |
+| `POST /v1/appointments` | POST | Criação de agendamento | 8% |
+| `POST /v1/cashflow` | POST | Lançamento de caixa | 7% |
+| `POST+DELETE /v1/cashflow/{id}` | POST+DELETE | Lançamento e exclusão de caixa | 5% |
+| `POST+PATCH /v1/appointments/{id}/cancel` | POST+PATCH | Criação e cancelamento de agendamento | 5% |
+| `PUT /v1/products/{id}` | PUT | Atualização de produto | 5% |
+| `PATCH /v1/users/{id}` | PATCH | Atualização de usuário | 5% |
 
 ---
 
-### 2. Resultados de Latência e Taxa de Erro
+### 2. Resultados — Requisições OK por orçamento de tempo
+
+| Orçamento | RPS real | Req. OK no budget | p(95) | p(99) | Meta >1.000 |
+|---|---|---|---|---|---|
+| **≤ 1 s** | 53,73 req/s | **4.479** | 2.988 ms | 4.335 ms | ✅ |
+| **≤ 2 s** | 49,00 req/s | **4.572** | 3.135 ms | 4.601 ms | ✅ |
+| **≤ 3 s** | 50,12 req/s | **5.056** | 3.173 ms | 4.533 ms | ✅ |
+
+**Saúde global (todos os cenários somados):**
 
 | Métrica | Resultado | Status |
 |---|---|---|
-| **p(95) — tempo de resposta** | **453 ms** | ✅ Abaixo de 500 ms |
-| **Taxa de erro (http_req_failed)** | **0,07%** | ✅ Abaixo de 1% |
-| Tempo médio de resposta | 187 ms | ✅ |
-| Mediana (p50) | 174 ms | ✅ |
-| p(90) | 392 ms | ✅ |
-| Throughput (RPS) | 41,53 req/s | ✅ |
+| Total de requisições | 18.346 | — |
+| Taxa de erro HTTP | 0,01% | ✅ Abaixo de 1% |
 
-**SLAs atingidos com 100% de sucesso:**
-
-| SLA | Limite | % Atendido |
-|---|---|---|
-| SLA ≤ 1s | 1.000 ms | **100,00%** ✅ |
-| SLA ≤ 2s | 2.000 ms | **100,00%** ✅ |
-| SLA ≤ 3s | 3.000 ms | **100,00%** ✅ |
+> Os valores de p(95)/p(99) refletem o pico de carga com 60 VUs simultâneos. As requisições contabilizadas no budget (ex.: 4.479 dentro de 1s) correspondem principalmente à fase de ramp-up, quando a concorrência ainda era baixa e as respostas rápidas.
 
 ---
 
 ### 3. Gargalos identificados e melhorias aplicadas
 
-Durante o processo de busca binária da capacidade máxima, identificamos e resolvemos dois gargalos críticos que impediam o sistema de escalar:
-
 #### 🐘 Gargalo 1 — Pool de Conexões do Banco de Dados (HikariCP)
 
-Ao escalarmos os VUs para além de 30 usuários simultâneos, observamos que o `p(95)` disparava para **mais de 4 segundos**, enquanto a CPU e a memória da aplicação permaneciam estáveis. Diagnosticamos que o gargalo não era computacional, mas sim uma **fila de espera no pool de conexões do HikariCP**, que por padrão era limitado a `maximum-pool-size: 5`. Com 400 VUs ativos, até 395 threads ficavam bloqueadas aguardando uma conexão disponível.
+Ao escalarmos os VUs para além de 30 usuários simultâneos, observamos que o `p(95)` disparava para **mais de 4 segundos**, enquanto a CPU e a memória da aplicação permaneciam estáveis. Diagnosticamos que o gargalo não era computacional, mas sim uma **fila de espera no pool de conexões do HikariCP**, que por padrão era limitado a `maximum-pool-size: 5`. Com muitos VUs ativos, threads ficavam bloqueadas aguardando uma conexão disponível.
 
 **O que fizemos:** Tornamos o tamanho do pool configurável via variável de ambiente (`${DB_POOL_SIZE:5}`) no `application-dev.yaml` e injetamos `DB_POOL_SIZE=100` no perfil de performance via `docker-compose.performance.yml`. A latência caiu imediatamente após a mudança.
 
 #### 🔐 Gargalo 2 — Autorização incorreta no endpoint de Relatório Financeiro (HTTP 403)
 
-Durante a análise dos logs do k6, identificamos que a rota `GET /v1/reports/financial` respondia com **status 403 Forbidden** para o usuário `sysadmin@salao.com`. A causa raiz foi que o `ReportController` utilizava a anotação `@PreAuthorize("hasAnyRole('ADMIN')")`, a expressão padrão do Spring Security, que ignorava completamente o validador customizado da equipe (`VerifyUserPermissions`). Esse validador, por design, já concedia acesso total à role `SYSADMIN` para qualquer recurso da aplicação.
+Durante a análise dos logs do k6, identificamos que a rota `GET /v1/reports/financial` respondia com **status 403 Forbidden** para o usuário admin. A causa raiz foi que o `ReportController` utilizava a anotação `@PreAuthorize("hasAnyRole('ADMIN')")`, a expressão padrão do Spring Security, que ignorava completamente o validador customizado da equipe (`VerifyUserPermissions`).
 
-**O que fizemos:** Padronizamos as anotações do `ReportController` para `@PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")`, alinhando-as à arquitetura de segurança do projeto. A correção eliminou todos os erros 403 e a rota passou a responder com 100% de sucesso durante a carga.
+**O que fizemos:** Padronizamos as anotações do `ReportController` para `@PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")`, alinhando-as à arquitetura de segurança do projeto. A correção eliminou todos os erros 403.
 

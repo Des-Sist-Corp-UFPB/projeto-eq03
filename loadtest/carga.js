@@ -213,7 +213,7 @@ export default function (data) {
       check(res, { 'status 200 - Financial Report': (v) => v.status === 200 });
     });
 
-  } else if (r < 0.21) {
+  } else if (r < 0.20) {
     // ── GET /v1/reports/appointments ──────────────────────────────────────
     group('GET Appointments Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/appointments?from=2026-06-01&to=2026-06-30', { headers: h });
@@ -221,7 +221,7 @@ export default function (data) {
       check(res, { 'status 200 - Appointments Report': (v) => v.status === 200 });
     });
 
-  } else if (r < 0.25) {
+  } else if (r < 0.24) {
     // ── GET /v1/reports/payroll ───────────────────────────────────────────
     group('GET Payroll Report', () => {
       const res = http.get(BASE_URL + '/v1/reports/payroll?from=2026-06-01&to=2026-06-30', { headers: h });
@@ -229,7 +229,15 @@ export default function (data) {
       check(res, { 'status 200 - Payroll Report': (v) => v.status === 200 });
     });
 
-  } else if (r < 0.35) {
+  } else if (r < 0.27) {
+    // ── GET /v1/reports/financial/employees/{id} ──────────────────────────
+    group('GET Financial Report by Employee', () => {
+      const res = http.get(BASE_URL + '/v1/reports/financial/employees/' + data.employeeId + '?from=2026-06-01&to=2026-06-30', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Financial Report by Employee': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.34) {
     // ── GET /v1/appointments ──────────────────────────────────────────────
     group('GET All Appointments', () => {
       const res = http.get(BASE_URL + '/v1/appointments', { headers: h });
@@ -237,7 +245,7 @@ export default function (data) {
       check(res, { 'status 200 - List Appointments': (v) => v.status === 200 });
     });
 
-  } else if (r < 0.45) {
+  } else if (r < 0.41) {
     // ── GET /v1/cashflow ──────────────────────────────────────────────────
     group('GET CashFlow', () => {
       const res = http.get(BASE_URL + '/v1/cashflow', { headers: h });
@@ -245,15 +253,31 @@ export default function (data) {
       check(res, { 'status 200 - CashFlow': (v) => v.status === 200 });
     });
 
-  } else if (r < 0.52) {
-    // ── GET /v1/employees/booking (public, sem role check) ────────────────
+  } else if (r < 0.45) {
+    // ── GET /v1/users ─────────────────────────────────────────────────────
+    group('GET Users', () => {
+      const res = http.get(BASE_URL + '/v1/users', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Users': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.49) {
+    // ── GET /v1/clients ───────────────────────────────────────────────────
+    group('GET Clients', () => {
+      const res = http.get(BASE_URL + '/v1/clients', { headers: h });
+      trackResponseSla(res);
+      check(res, { 'status 200 - Clients': (v) => v.status === 200 });
+    });
+
+  } else if (r < 0.55) {
+    // ── GET /v1/employees/booking ─────────────────────────────────────────
     group('GET Employees Booking', () => {
       const res = http.get(BASE_URL + '/v1/employees/booking', { headers: h });
       trackResponseSla(res);
       check(res, { 'status 200 - Employees Booking': (v) => v.status === 200 });
     });
 
-  } else if (r < 0.59) {
+  } else if (r < 0.60) {
     // ── GET /v1/products ──────────────────────────────────────────────────
     group('GET Products', () => {
       const res = http.get(BASE_URL + '/v1/products', { headers: h });
@@ -396,7 +420,7 @@ export function handleSummary(data) {
 | Ferramenta | k6 |
 | Executor | ramping-vus (auto: 1 → 60 VUs por cenário) |
 | Duração por cenário | 120 s (90 s ramp + 30 s sustentado) |
-| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /appointments · GET /cashflow · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
+| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /reports/financial/employees/{id} · GET /appointments · GET /cashflow · GET /users · GET /clients · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
 
 ## Resultado Principal — Requisições HTTP-OK por Budget de Tempo
 
