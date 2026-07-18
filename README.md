@@ -156,12 +156,12 @@ de requisições por segundo que o sistema sustenta, com 100% de sucesso e
 resposta em até 1 segundo** (p(95) ≤ 1000 ms — o limiar clássico de UX para
 "sente como instantâneo")?
 
-Os artefatos completos estão em [`loadtest/`](./loadtest/) — **3 pares
-`report-*.md` + `resultado-*.json`, um por fase da metodologia (ver seção
-1)**. Não existe um único `report.md`/`resultado.json` genérico: cada
-execução do script grava exatamente no caminho indicado por
-`REPORT_PATH`/`RESULT_PATH` (env vars), de propósito, para uma fase nunca
-sobrescrever a evidência da outra.
+Os artefatos completos estão em [`loadtest/`](./loadtest/): as duas fases
+exploratórias em `report-fase1-bracket.md` e `report-fase2-busca-fina.md`
+(+ seus `resultado-*.json`), e o resultado final confirmado em
+`loadtest/report.md` / `loadtest/resultado.json` — os nomes padrão que o
+script grava quando você não sobrescreve `REPORT_PATH`/`RESULT_PATH` (ver
+seção 1).
 
 ---
 
@@ -200,10 +200,11 @@ docker run --rm -i --network projeto-eq03_salon-network \
   grafana/k6 run loadtest/carga.js
 
 # limpar banco de novo, depois Fase 3 — soak de confirmação no RPS candidato (~4 min)
+# usa os nomes padrão (REPORT_PATH/RESULT_PATH não sobrescritos): esse É o
+# resultado final, por isso vira loadtest/report.md e loadtest/resultado.json
 docker run --rm -i --network projeto-eq03_salon-network \
   -v "${PWD}:/app" -w /app --env-file .env -e BASE_URL=http://salon-app:8080 \
   -e MODE=soak -e SOAK_RPS=100 -e SOAK_DURATION_S=180 \
-  -e REPORT_PATH=loadtest/report-fase3-soak-confirmacao.md -e RESULT_PATH=loadtest/resultado-fase3-soak-confirmacao.json \
   grafana/k6 run loadtest/carga.js
 ```
 
@@ -225,8 +226,8 @@ Fizemos 3 execuções manuais em sequência, cada uma refinando a anterior:
    uma janela curta. A latência é comparada entre a primeira e a segunda
    metade da janela — um RPS só é considerado confirmado se a segunda
    metade também ficar dentro do SLA (degradação progressiva reprova o
-   teste, mesmo que a média geral pareça OK).
-   → [`report-fase3-soak-confirmacao.md`](./loadtest/report-fase3-soak-confirmacao.md)
+   teste, mesmo que a média geral pareça OK). **Este é o resultado final** —
+   → [`report.md`](./loadtest/report.md)
 
 Cada arquivo listado acima é a saída **genuína e não editada** do script
 para aquela execução — nenhum resultado foi digitado ou combinado à mão.
@@ -273,7 +274,7 @@ sucesso** (100%, nenhuma falha), com p(95) de 678 ms.
 |---|---|---|---|---|
 | 1 — Bracket grosso (20 em 20, 25s/degrau) | teto indicado: 120 req/s (colapso em 140) | 386 ms | 0,00% | [report-fase1-bracket.md](./loadtest/report-fase1-bracket.md) |
 | 2 — Busca fina (5 em 5, 30s/degrau) | teto indicado: 105 req/s (colapso em 110) | 162 ms | 0,00% | [report-fase2-busca-fina.md](./loadtest/report-fase2-busca-fina.md) |
-| 3 — Soak (100 req/s, 3 min) | **confirmado** | **678 ms** | 0,00% | [report-fase3-soak-confirmacao.md](./loadtest/report-fase3-soak-confirmacao.md) |
+| 3 — Soak (100 req/s, 3 min) | **confirmado** | **678 ms** | 0,00% | [report.md](./loadtest/report.md) |
 
 > **Por que rodar 3 fases em vez de confiar direto na escada:** em execuções
 > anteriores desta mesma metodologia, a busca fina chegou a indicar 150 req/s
