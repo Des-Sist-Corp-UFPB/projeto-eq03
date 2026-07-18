@@ -2,71 +2,119 @@ import http from 'k6/http';
 import { check, group } from 'k6';
 import encoding from 'k6/encoding';
 import { textSummary } from 'https://jslib.k6.io/k6-summary/0.0.2/index.js';
+import { extractAllSteps, extractByTag, findCeiling, isSoakStable } from './lib/capacity.js';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Teste de Carga e Performance — EQ03
 //
-// Objetivo: descobrir, para cada orçamento de tempo (1s, 2s, 3s), o MAIOR
-// número de requisições por segundo que o sistema sustenta respondendo dentro
-// desse tempo com taxa de erro desprezível (< 1%).
+// Objetivo: descobrir o MAIOR número de requisições por segundo que o sistema
+// sustenta respondendo dentro de um único orçamento de latência (SLA_MS,
+// padrão 1000 ms = "sente como instantâneo", limiar clássico de UX) com 0%
+// de erro — a pergunta "quantas requisições em até 1s o sistema aguenta,
+// com tudo dando OK?".
 //
-// Estratégia: ESCADA DE CARGA (staircase) — uma sequência de degraus, cada um
-// com uma taxa de requisições fixa (constant-arrival-rate) sustentada por
-// STEP_DURATION_S segundos. Ex.: 20 req/s por 30s, depois 40 req/s por 30s,
-// depois 60 req/s por 30s... Cada degrau é um "scenario" nomeado (step_20,
-// step_40, ...), o que faz o k6 taguear http_req_duration/http_reqs/
-// http_req_failed por degrau automaticamente — sem precisar de métricas
-// customizadas.
+// Dois modos, escolhidos por MODE:
 //
-// Ao final, o handleSummary varre todos os degraus e encontra, para cada
-// orçamento (1s/2s/3s), o degrau de MAIOR RPS cujo p(95) ficou dentro do
-// orçamento E cuja taxa de erro ficou abaixo de 1%. Esse RPS é o "teto" —
-// a resposta à pergunta "quanto o sistema aguenta até Xs".
+//   MODE=staircase (padrão) — escada de degraus de RPS fixo
+//     (constant-arrival-rate), cada um sustentado por STEP_DURATION_S.
+//     Serve tanto para um bracket grosso (poucos degraus, passo largo, achar
+//     ONDE o sistema quebra) quanto para uma busca fina (passo estreito,
+//     dentro da faixa onde já se sabe que a quebra acontece).
+//       STEP_START=20 STEP_INCREMENT=20 STEP_COUNT=10 STEP_DURATION_S=30
 //
-// Ajuste a escada via variáveis de ambiente:
-//   STEP_START=20 STEP_INCREMENT=20 STEP_COUNT=10 STEP_DURATION_S=30
-//   (padrão: degraus de 20, 40, 60 ... até 200 req/s, 30s cada — ~5 min total)
+//   MODE=soak — um único RPS fixo (SOAK_RPS, obrigatório) sustentado por
+//     SOAK_DURATION_S (padrão 180s = 3 min). Usado para CONFIRMAR que um
+//     teto encontrado na escada é sustentável de verdade, não sorte de
+//     30 segundos: cada requisição é tagueada com half=first/second (duas
+//     metades da janela) para comparar se a latência se mantém estável ao
+//     longo do tempo ou vai degradando (fila crescendo).
 //
-// Comando para rodar localmente:
-//   docker run --rm -i --network projeto-eq03_salon-network \
-//     -v "${PWD}:/app" -w /app --env-file .env \
-//     -e BASE_URL=http://salon-app:8080 \
-//     grafana/k6 run loadtest/carga.js
+// Os dois modos usam a MESMA lógica de análise (loadtest/lib/capacity.js),
+// então staircase e soak nunca podem discordar sobre o que conta como "OK".
+//
+// Fluxo recomendado de uso (manual, sem orquestração):
+//   1. Rodar MODE=staircase com uma faixa larga (padrão) para achar ONDE o
+//      sistema quebra.
+//   2. Opcional — rodar de novo com STEP_START/STEP_INCREMENT mais estreitos
+//      só na faixa de transição, para precisão maior.
+//   3. Opcional — confirmar o teto encontrado com MODE=soak por alguns
+//      minutos, para garantir que é capacidade sustentável e não sorte de
+//      30 segundos.
+//
+// Veja loadtest/README.md para os comandos completos (Linux/macOS/Windows).
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BASE_URL       = __ENV.BASE_URL       || 'http://localhost:8080';
 const ADMIN_EMAIL    = __ENV.ADMIN_EMAIL;
 const ADMIN_PASSWORD = __ENV.ADMIN_PASSWORD;
 
+const MODE   = __ENV.MODE   || 'staircase';
+const SLA_MS = parseInt(__ENV.SLA_MS) || 1000;
+
+const REPORT_PATH = __ENV.REPORT_PATH || 'loadtest/report.md';
+const RESULT_PATH = __ENV.RESULT_PATH || 'loadtest/resultado.json';
+
+if (MODE !== 'staircase' && MODE !== 'soak') {
+  throw new Error('ERRO: MODE deve ser "staircase" ou "soak" (recebido: ' + MODE + ')');
+}
+
+// ── Configuração específica de cada modo ───────────────────────────────────────
 const STEP_START      = parseInt(__ENV.STEP_START)      || 20;
 const STEP_INCREMENT  = parseInt(__ENV.STEP_INCREMENT)  || 20;
 const STEP_COUNT      = parseInt(__ENV.STEP_COUNT)      || 10;
 const STEP_DURATION_S = parseInt(__ENV.STEP_DURATION_S) || 30;
-
 const STEPS = Array.from({ length: STEP_COUNT }, (_, i) => STEP_START + i * STEP_INCREMENT);
 
-// ── Opções ────────────────────────────────────────────────────────────────────
-const scenarios   = {};
-const thresholds  = {};
+const SOAK_RPS         = parseInt(__ENV.SOAK_RPS);
+const SOAK_DURATION_S  = parseInt(__ENV.SOAK_DURATION_S) || 180;
 
-STEPS.forEach((rps, idx) => {
-  const name = 'step_' + rps;
-  scenarios[name] = {
-    executor:        'constant-arrival-rate',
-    rate:            rps,
-    timeUnit:        '1s',
-    duration:        STEP_DURATION_S + 's',
-    preAllocatedVUs: Math.min(rps * 5, 600),
-    maxVUs:          Math.min(rps * 10, 1200),
-    startTime:       (idx * STEP_DURATION_S) + 's',
+if (MODE === 'soak' && !(SOAK_RPS > 0)) {
+  throw new Error('ERRO: MODE=soak exige SOAK_RPS (RPS fixo a sustentar) — nenhum valor padrão faz sentido aqui.');
+}
+
+// ── Opções (scenarios/thresholds) por modo ─────────────────────────────────────
+const scenarios  = {};
+const thresholds = {};
+
+function vusFor(rps) {
+  return { preAllocatedVUs: Math.min(rps * 5, 600), maxVUs: Math.min(rps * 10, 1200) };
+}
+
+// Thresholds triviais (sempre verdadeiros) só para forçar o k6 a manter as
+// submétricas tagueadas disponíveis em data.metrics no handleSummary — sem
+// eles, uma submétrica tagueada não apareceria se não houver nenhum
+// threshold referenciando exatamente aquela tag.
+function forceSubmetric(tagExpr) {
+  thresholds['http_reqs{' + tagExpr + '}']         = ['count>=0'];
+  thresholds['http_req_duration{' + tagExpr + '}']  = ['p(99)>=0'];
+  thresholds['http_req_failed{' + tagExpr + '}']    = ['rate>=0'];
+}
+
+if (MODE === 'staircase') {
+  STEPS.forEach((rps, idx) => {
+    const name = 'step_' + rps;
+    scenarios[name] = {
+      executor:  'constant-arrival-rate',
+      rate:      rps,
+      timeUnit:  '1s',
+      duration:  STEP_DURATION_S + 's',
+      startTime: (idx * STEP_DURATION_S) + 's',
+      ...vusFor(rps),
+    };
+    forceSubmetric('scenario:' + name);
+  });
+} else {
+  scenarios.soak = {
+    executor: 'constant-arrival-rate',
+    rate:     SOAK_RPS,
+    timeUnit: '1s',
+    duration: SOAK_DURATION_S + 's',
+    ...vusFor(SOAK_RPS),
   };
-  // Thresholds triviais (sempre verdadeiros) apenas para forçar o k6 a manter
-  // as submétricas tagueadas por cenário disponíveis em data.metrics no
-  // handleSummary — sem eles, http_reqs{scenario:step_X} não apareceria.
-  thresholds['http_reqs{scenario:' + name + '}']        = ['count>=0'];
-  thresholds['http_req_duration{scenario:' + name + '}'] = ['p(99)>=0'];
-  thresholds['http_req_failed{scenario:' + name + '}']   = ['rate>=0'];
-});
+  forceSubmetric('scenario:soak');
+  forceSubmetric('half:first');
+  forceSubmetric('half:second');
+}
 
 export const options = {
   summaryTrendStats: ['avg', 'min', 'med', 'max', 'p(90)', 'p(95)', 'p(99)'],
@@ -78,7 +126,7 @@ export const options = {
 
 // ── Setup ─────────────────────────────────────────────────────────────────────
 export function setup() {
-  console.log('Setup contra ' + BASE_URL);
+  console.log('Setup contra ' + BASE_URL + ' | modo=' + MODE);
 
   if (!ADMIN_EMAIL || !ADMIN_PASSWORD) {
     throw new Error('ERRO: ADMIN_EMAIL e ADMIN_PASSWORD são obrigatórios no .env');
@@ -89,8 +137,14 @@ export function setup() {
     JSON.stringify({ email: ADMIN_EMAIL, password: ADMIN_PASSWORD }),
     { headers: { 'Content-Type': 'application/json' } }
   );
+  if (loginRes.status !== 200) {
+    throw new Error(
+      'ERRO: login falhou (HTTP ' + loginRes.status + ') — verifique BASE_URL (' + BASE_URL +
+      ') e as credenciais no .env. Corpo da resposta: ' + loginRes.body
+    );
+  }
   const token = loginRes.json('accessToken');
-  if (!token) throw new Error('ERRO: login falhou — verifique as credenciais no .env');
+  if (!token) throw new Error('ERRO: login respondeu 200 mas sem accessToken — verifique o formato da resposta de /v1/auth/login');
 
   const h = { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token };
 
@@ -176,91 +230,111 @@ export function setup() {
     console.error('Não foi possível decodificar o JWT para extrair userId: ' + e);
   }
 
+  const modeInfo = MODE === 'staircase'
+    ? 'degraus: ' + STEPS.join(', ') + ' req/s'
+    : 'soak: ' + SOAK_RPS + ' req/s por ' + SOAK_DURATION_S + ' s';
+
   console.log('Setup OK — serviceId=' + serviceId + ' employeeId=' + employeeId +
               ' productId=' + productId + ' testUserId=' + testUserId +
-              ' authUserId=' + authUserId + ' | degraus: ' + STEPS.join(', ') + ' req/s');
-  return { token, serviceId, employeeId, productId, testUserId, authUserId };
+              ' authUserId=' + authUserId + ' | ' + modeInfo);
+
+  return {
+    token, serviceId, employeeId, productId, testUserId, authUserId,
+    testStartTime: Date.now(),
+  };
 }
 
 // ── Default function ──────────────────────────────────────────────────────────
+// No modo soak, cada requisição é tagueada com half=first/second (relativo à
+// metade da janela de SOAK_DURATION_S) para o handleSummary poder comparar a
+// latência entre as duas metades e verificar se ficou estável ou degradou.
+// No modo staircase essa tag não é necessária (o k6 já tagueia por cenário).
+function buildParams(data, h) {
+  if (MODE !== 'soak') return { headers: h };
+  const elapsedMs = Date.now() - data.testStartTime;
+  const half = elapsedMs < (SOAK_DURATION_S * 1000) / 2 ? 'first' : 'second';
+  return { headers: h, tags: { half } };
+}
+
 export default function (data) {
   const h = {
     'Content-Type':  'application/json',
     'Authorization': 'Bearer ' + data.token,
   };
+  const params = buildParams(data, h);
 
   const r = Math.random();
 
   if (r < 0.05) {
     group('GET Ping', () => {
-      const res = http.get(BASE_URL + '/ping', { headers: h });
+      const res = http.get(BASE_URL + '/ping', params);
       check(res, { 'status 200 - Ping': (v) => v.status === 200 });
     });
 
   } else if (r < 0.13) {
     group('GET Financial Report', () => {
-      const res = http.get(BASE_URL + '/v1/reports/financial?from=2026-06-01&to=2026-06-30', { headers: h });
+      const res = http.get(BASE_URL + '/v1/reports/financial?from=2026-06-01&to=2026-06-30', params);
       check(res, { 'status 200 - Financial Report': (v) => v.status === 200 });
     });
 
   } else if (r < 0.20) {
     group('GET Appointments Report', () => {
-      const res = http.get(BASE_URL + '/v1/reports/appointments?from=2026-06-01&to=2026-06-30', { headers: h });
+      const res = http.get(BASE_URL + '/v1/reports/appointments?from=2026-06-01&to=2026-06-30', params);
       check(res, { 'status 200 - Appointments Report': (v) => v.status === 200 });
     });
 
   } else if (r < 0.24) {
     group('GET Payroll Report', () => {
-      const res = http.get(BASE_URL + '/v1/reports/payroll?from=2026-06-01&to=2026-06-30', { headers: h });
+      const res = http.get(BASE_URL + '/v1/reports/payroll?from=2026-06-01&to=2026-06-30', params);
       check(res, { 'status 200 - Payroll Report': (v) => v.status === 200 });
     });
 
   } else if (r < 0.27) {
     group('GET Appointments by Status', () => {
       const status = Math.random() < 0.5 ? 'PENDING' : 'CONFIRMED';
-      const res = http.get(BASE_URL + '/v1/appointments?status=' + status + '&page=0&size=20', { headers: h });
+      const res = http.get(BASE_URL + '/v1/appointments?status=' + status + '&page=0&size=20', params);
       check(res, { 'status 200 - Appointments by Status': (v) => v.status === 200 });
     });
 
   } else if (r < 0.34) {
     group('GET All Appointments', () => {
-      const res = http.get(BASE_URL + '/v1/appointments?page=0&size=20', { headers: h });
+      const res = http.get(BASE_URL + '/v1/appointments?page=0&size=20', params);
       check(res, { 'status 200 - List Appointments': (v) => v.status === 200 });
     });
 
   } else if (r < 0.41) {
     group('GET CashFlow', () => {
-      const res = http.get(BASE_URL + '/v1/cashflow', { headers: h });
+      const res = http.get(BASE_URL + '/v1/cashflow', params);
       check(res, { 'status 200 - CashFlow': (v) => v.status === 200 });
     });
 
   } else if (r < 0.45) {
     group('GET Users', () => {
-      const res = http.get(BASE_URL + '/v1/users', { headers: h });
+      const res = http.get(BASE_URL + '/v1/users', params);
       check(res, { 'status 200 - Users': (v) => v.status === 200 });
     });
 
   } else if (r < 0.49) {
     group('GET Clients', () => {
-      const res = http.get(BASE_URL + '/v1/clients', { headers: h });
+      const res = http.get(BASE_URL + '/v1/clients', params);
       check(res, { 'status 200 - Clients': (v) => v.status === 200 });
     });
 
   } else if (r < 0.55) {
     group('GET Employees Booking', () => {
-      const res = http.get(BASE_URL + '/v1/employees/booking', { headers: h });
+      const res = http.get(BASE_URL + '/v1/employees/booking', params);
       check(res, { 'status 200 - Employees Booking': (v) => v.status === 200 });
     });
 
   } else if (r < 0.60) {
     group('GET Products', () => {
-      const res = http.get(BASE_URL + '/v1/products', { headers: h });
+      const res = http.get(BASE_URL + '/v1/products', params);
       check(res, { 'status 200 - Products': (v) => v.status === 200 });
     });
 
   } else if (r < 0.65) {
     group('GET Services', () => {
-      const res = http.get(BASE_URL + '/v1/services', { headers: h });
+      const res = http.get(BASE_URL + '/v1/services', params);
       check(res, { 'status 200 - Services': (v) => v.status === 200 });
     });
 
@@ -270,7 +344,7 @@ export default function (data) {
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
         preferredDate: '2099-10-15',
-      }), { headers: h });
+      }), params);
       check(res, { 'status 201 - Create Appointment': (v) => v.status === 201 });
     });
 
@@ -281,7 +355,7 @@ export default function (data) {
         amount:      parseFloat((Math.random() * 100 + 1).toFixed(2)),
         description: 'k6 entry',
         date:        '2099-01-01',
-      }), { headers: h });
+      }), params);
       check(res, { 'status 201 - CashFlow Entry': (v) => v.status === 201 });
     });
 
@@ -289,9 +363,9 @@ export default function (data) {
     group('POST+DELETE CashFlow', () => {
       const cr = http.post(BASE_URL + '/v1/cashflow', JSON.stringify({
         type: 'EXPENSE', amount: 1.00, description: 'k6 del', date: '2099-01-01',
-      }), { headers: h });
+      }), params);
       if (cr.status === 201) {
-        http.del(BASE_URL + '/v1/cashflow/' + cr.json('id'), null, { headers: h });
+        http.del(BASE_URL + '/v1/cashflow/' + cr.json('id'), null, params);
       }
     });
 
@@ -301,9 +375,9 @@ export default function (data) {
         employeeId:    data.employeeId,
         serviceId:     data.serviceId,
         preferredDate: '2099-10-20',
-      }), { headers: h });
+      }), params);
       if (cr.status === 201) {
-        http.patch(BASE_URL + '/v1/appointments/' + cr.json('id') + '/cancel', null, { headers: h });
+        http.patch(BASE_URL + '/v1/appointments/' + cr.json('id') + '/cancel', null, params);
       }
     });
 
@@ -314,7 +388,7 @@ export default function (data) {
         stock:  9999,
         price:  parseFloat((Math.random() * 50 + 10).toFixed(2)),
         active: true,
-      }), { headers: h });
+      }), params);
       check(res, { 'status 200 - Update Product': (v) => v.status === 200 });
     });
 
@@ -323,7 +397,7 @@ export default function (data) {
       if (!data.testUserId) return;
       const res = http.patch(BASE_URL + '/v1/users/' + data.testUserId, JSON.stringify({
         phone: '839' + String(Math.floor(Math.random() * 90000000 + 10000000)),
-      }), { headers: h });
+      }), params);
       check(res, { 'status 200 - Update User': (v) => v.status === 200 });
     });
   }
@@ -390,137 +464,138 @@ export function teardown(data) {
 }
 
 // ── handleSummary ─────────────────────────────────────────────────────────────
-export function handleSummary(data) {
-  const mv  = (key) => (data.metrics[key] ? data.metrics[key].values : null);
-  const fmt = (n)   => (n == null ? 'N/A' : String(Math.round(n)));
+function fmt(n) {
+  return n == null ? 'N/A' : String(Math.round(n));
+}
 
-  function stepStats(rps) {
-    const scenario = 'step_' + rps;
-    const d = mv('http_req_duration{scenario:' + scenario + '}');
-    const f = mv('http_req_failed{scenario:' + scenario + '}');
-    const t = mv('http_reqs{scenario:' + scenario + '}');
-    if (!d || !f || !t || d['p(95)'] == null || t.count === 0) return null;
-    const total = t.count;
-    // http_req_failed é uma métrica Rate que soma 1 quando a requisição FALHA.
-    // Logo "passes" (o Rate contou 1/verdadeiro) = nº de FALHAS, e "fails"
-    // (contou 0/falso) = nº de requisições OK. Nomenclatura genérica do k6,
-    // não confundir com sucesso/falha do teste.
-    const ok = f.fails != null ? f.fails : Math.round(total * (1 - f.rate));
-    return {
-      rps, total, ok,
-      errRate:      f.rate,
-      p95:          d['p(95)'],
-      p99:          d['p(99)'] != null ? d['p(99)'] : null,
-      achievedRps:  total / STEP_DURATION_S,
-    };
-  }
+function renderStaircaseReport(data) {
+  const results = extractAllSteps(data.metrics, STEPS, STEP_DURATION_S);
+  const ceiling = findCeiling(results, SLA_MS);
 
-  const results = STEPS.map(stepStats).filter(Boolean);
+  const ceilingLine = ceiling
+    ? `O sistema sustenta **${ceiling.rps} req/s** com p(95) de ${fmt(ceiling.p95)} ms e ` +
+      `${(ceiling.errRate * 100).toFixed(2)}% de erro — nesse ritmo, entregou **${fmt(ceiling.ok)} ` +
+      `requisições bem-sucedidas em ${STEP_DURATION_S} s** de teste.`
+    : `Nenhum degrau testado ficou dentro do SLA de ${SLA_MS} ms com erro < 1%. ` +
+      `Reduza STEP_START e rode novamente para encontrar o teto real.`;
 
-  // Exige sequência ININTERRUPTA de degraus aprovados desde o primeiro degrau.
-  // Se o sistema falhar em um degrau e "se recuperar" num degrau mais alto
-  // (comum sob contenção de recursos — variância de GC, pool de conexões
-  // liberando momentaneamente), esse degrau posterior NÃO conta como
-  // capacidade confiável: foi sorte, não sustentação real.
-  function findCeiling(budgetMs) {
-    let best = null;
-    for (const s of results) {
-      if (s.p95 <= budgetMs && s.errRate < 0.01) {
-        best = s;
-      } else {
-        break;
-      }
-    }
-    return best;
-  }
-
-  const ceiling1 = findCeiling(1000);
-  const ceiling2 = findCeiling(2000);
-  const ceiling3 = findCeiling(3000);
-
-  function ceilingLine(label, budgetMs, ceiling) {
-    if (!ceiling) {
-      return `- **${label}:** nenhum degrau testado ficou dentro desse orçamento com erro < 1%. ` +
-             `Reduza STEP_START/STEP_INCREMENT e rode novamente para encontrar o teto real.`;
-    }
-    return `- **${label}:** o sistema sustenta **${ceiling.rps} req/s** com p(95) de ${fmt(ceiling.p95)} ms ` +
-           `e ${(ceiling.errRate * 100).toFixed(2)}% de erro — nesse ritmo, entregou **${fmt(ceiling.ok)} requisições ` +
-           `bem-sucedidas em ${STEP_DURATION_S} s** de teste sustentado.`;
-  }
-
-  const stepsTableRows = results.map((s) => {
-    const check1 = s.p95 <= 1000 && s.errRate < 0.01 ? '✅' : '❌';
-    const check2 = s.p95 <= 2000 && s.errRate < 0.01 ? '✅' : '❌';
-    const check3 = s.p95 <= 3000 && s.errRate < 0.01 ? '✅' : '❌';
+  const rows = results.map((s) => {
+    const ok = s.p95 <= SLA_MS && s.errRate < 0.01 ? '✅' : '❌';
     return `| ${s.rps} req/s | ${s.achievedRps.toFixed(1)} req/s | ${fmt(s.total)} | ${fmt(s.ok)} | ` +
-           `${(s.errRate * 100).toFixed(2)}% | ${fmt(s.p95)} ms | ${s.p99 != null ? fmt(s.p99) : 'N/A'} ms | ` +
-           `${check1} | ${check2} | ${check3} |`;
+           `${(s.errRate * 100).toFixed(2)}% | ${fmt(s.p95)} ms | ${s.p99 != null ? fmt(s.p99) : 'N/A'} ms | ${ok} |`;
   }).join('\n');
 
-  const totalReqsAll = results.reduce((acc, s) => acc + s.total, 0);
-  const totalOkAll    = results.reduce((acc, s) => acc + s.ok, 0);
+  const totalReqs = results.reduce((acc, s) => acc + s.total, 0);
+  const totalOk    = results.reduce((acc, s) => acc + s.ok, 0);
 
-  const safeData = JSON.parse(JSON.stringify(data));
-  if (safeData.setup_data) safeData.setup_data.token = '[REDACTED]';
-
-  const reportContent =
-`# Relatório de Carga e Performance — EQ03 (k6)
+  const content =
+`# Relatório de Carga — Fase Staircase (k6)
 
 ## Estratégia
-**Escada de carga (staircase) com constant-arrival-rate**: o teste sobe em
-degraus de RPS fixo (${STEPS.join(', ')} req/s), cada um sustentado por
-${STEP_DURATION_S} s, exercitando um mix realista de rotas autenticadas.
-Cada degrau é medido isoladamente (p(95), taxa de erro, total de requisições).
-Ao final, para cada orçamento de tempo (1s, 2s, 3s) o relatório identifica o
-**maior RPS sustentado** cujo p(95) ficou dentro do orçamento **e** cuja taxa
-de erro HTTP ficou abaixo de 1% — esse é o "teto de capacidade" do sistema
-para aquele tempo de resposta.
+Escada de carga com \`constant-arrival-rate\`: RPS fixo por degrau
+(${STEPS.join(', ')} req/s), cada um sustentado por ${STEP_DURATION_S} s.
+SLA único: p(95) ≤ ${SLA_MS} ms **e** erro HTTP < 1%. O teto de capacidade é
+o maior RPS numa sequência ininterrupta de degraus aprovados desde o
+primeiro degrau testado — um degrau que "passa" isoladamente depois de uma
+falha anterior não conta (variância transitória, não capacidade real).
 
-## Configuração
-| Parâmetro | Valor |
-|-----------|-------|
-| Ferramenta | k6 |
-| Executor | constant-arrival-rate (degraus fixos e sequenciais) |
-| Degraus testados | ${STEPS.join(', ')} req/s |
-| Duração por degrau | ${STEP_DURATION_S} s |
-| Duração total | ${STEPS.length * STEP_DURATION_S} s |
-| Rotas testadas | GET /ping · GET /reports/financial · GET /reports/appointments · GET /reports/payroll · GET /appointments?status=PENDING/CONFIRMED · GET /appointments · GET /cashflow · GET /users · GET /clients · GET /employees/booking · GET /products · GET /services · POST /appointments · POST /cashflow · POST+DELETE /cashflow · POST+PATCH /appointments/cancel · PUT /products · PATCH /users |
-
-## Teto de capacidade por orçamento de tempo
-${ceilingLine('Até 1 s', 1000, ceiling1)}
-${ceilingLine('Até 2 s', 2000, ceiling2)}
-${ceilingLine('Até 3 s', 3000, ceiling3)}
+## Teto de capacidade (SLA ≤ ${SLA_MS} ms)
+${ceilingLine}
 
 ## Resultado por degrau
 
-| Alvo | RPS real | Req. totais | Req. OK | Erro HTTP | p(95) | p(99) | ≤1s | ≤2s | ≤3s |
-|------|----------|-------------|---------|-----------|-------|-------|-----|-----|-----|
-${stepsTableRows}
-
-> **Req. OK** = requisições sem falha HTTP (status < 400) no degrau.
-> **≤1s/≤2s/≤3s** = ✅ se p(95) do degrau ficou dentro do orçamento **e** erro < 1%.
-
-## Gargalos Identificados
-
-1. **Pool de conexões com o banco limitado a 5 conexões**
-   (\`application-dev.yaml\` e \`application-prod.yaml\`:
-   \`hikari.maximum-pool-size: 5\`). Sob concorrência, qualquer carga acima de
-   ~5 requisições simultâneas dependentes do banco enfileira, o que explica o
-   ponto em que a latência começa a crescer nos degraus mais altos da escada.
-   **Correção sugerida:** aumentar o pool (ex.: 20–30) e monitorar uso de
-   conexões em produção antes de fixar um valor definitivo.
+| Alvo | RPS real | Req. totais | Req. OK | Erro HTTP | p(95) | p(99) | OK≤${SLA_MS}ms |
+|------|----------|-------------|---------|-----------|-------|-------|---------|
+${rows}
 
 ## Saúde Global
-* **Total de requisições (todos os degraus):** ${fmt(totalReqsAll)}
-* **Requisições OK somadas:** ${fmt(totalOkAll)}
+* **Total de requisições:** ${fmt(totalReqs)}
+* **Requisições OK:** ${fmt(totalOk)}
 
 ---
-*Relatório gerado automaticamente via k6 em ${new Date().toISOString()}*
+*Gerado em ${new Date().toISOString()}*
 `;
 
+  return { content, ceiling };
+}
+
+function renderSoakReport(data) {
+  const overall    = extractByTag(data.metrics, 'scenario:soak', SOAK_DURATION_S);
+  const firstHalf   = extractByTag(data.metrics, 'half:first', SOAK_DURATION_S / 2);
+  const secondHalf  = extractByTag(data.metrics, 'half:second', SOAK_DURATION_S / 2);
+  const stability   = isSoakStable(firstHalf && firstHalf.p95, secondHalf && secondHalf.p95);
+
+  // Critério de aprovação: p(95) geral dentro do SLA, erro desprezível, E a
+  // SEGUNDA metade da janela (o "fim" do soak) também dentro do SLA — isso
+  // captura degradação progressiva real que ameaçaria o SLA se o teste
+  // continuasse. Não usamos a razão relativa (`stability.stable`) como veto
+  // direto: um p(95) que cresce de 160ms para 350ms é "2x pior" mas continua
+  // seguríssimo frente a um SLA de 1000ms — vetar isso reportaria um falso
+  // negativo. A razão relativa fica só como informação de contexto.
+  const secondHalfOk = !secondHalf || secondHalf.p95 <= SLA_MS;
+  const passed = !!overall && overall.p95 <= SLA_MS && overall.errRate < 0.01 && secondHalfOk;
+
+  const verdictLine = !overall
+    ? 'Nenhum dado coletado — verifique se SOAK_RPS/SOAK_DURATION_S estão corretos.'
+    : passed
+      ? `✅ **CONFIRMADO**: ${SOAK_RPS} req/s é sustentável. Ao longo de ${SOAK_DURATION_S} s ` +
+        `(${(SOAK_DURATION_S / 60).toFixed(1)} min), o sistema processou **${fmt(overall.ok)} requisições ` +
+        `com sucesso (100%)**, p(95) geral de ${fmt(overall.p95)} ms.`
+      : `❌ **NÃO CONFIRMADO**: ${SOAK_RPS} req/s não se sustentou pelos ${SOAK_DURATION_S} s inteiros ` +
+        `(p(95)=${fmt(overall.p95)} ms, erro=${(overall.errRate * 100).toFixed(2)}%` +
+        `${!secondHalfOk ? ', a segunda metade da janela já ultrapassou o SLA' : ''}).`;
+
+  const stabilityLine = stability.stable == null
+    ? 'Não foi possível comparar as duas metades da janela (dados insuficientes).'
+    : `p(95) primeira metade: ${fmt(firstHalf && firstHalf.p95)} ms · p(95) segunda metade: ` +
+      `${fmt(secondHalf && secondHalf.p95)} ms · razão: ${stability.ratio.toFixed(2)}x ` +
+      `(informativo — só reprova o soak se a segunda metade sozinha já ultrapassar o SLA)`;
+
+  const content =
+`# Relatório de Carga — Fase Soak / Confirmação (k6)
+
+## Estratégia
+Sustenta um RPS fixo (SOAK_RPS=${SOAK_RPS}) por ${SOAK_DURATION_S} s inteiros,
+para confirmar que um teto encontrado na escada é capacidade real —
+não sorte de alguns segundos. Cada requisição é tagueada pela metade da
+janela em que ocorreu (primeira/segunda), para detectar se a latência
+degrada com o tempo (fila crescendo) mesmo com RPS constante.
+
+## Veredito
+${verdictLine}
+
+## Estabilidade ao longo da janela
+${stabilityLine}
+
+## Detalhamento
+
+| Métrica | Valor |
+|---|---|
+| RPS alvo | ${SOAK_RPS} req/s |
+| RPS real | ${overall ? overall.achievedRps.toFixed(1) : 'N/A'} req/s |
+| Duração | ${SOAK_DURATION_S} s (${(SOAK_DURATION_S / 60).toFixed(1)} min) |
+| Requisições totais | ${overall ? fmt(overall.total) : 'N/A'} |
+| Requisições OK | ${overall ? fmt(overall.ok) : 'N/A'} |
+| Taxa de erro HTTP | ${overall ? (overall.errRate * 100).toFixed(2) + '%' : 'N/A'} |
+| p(95) geral | ${overall ? fmt(overall.p95) + ' ms' : 'N/A'} |
+| p(99) geral | ${overall && overall.p99 != null ? fmt(overall.p99) + ' ms' : 'N/A'} |
+
+---
+*Gerado em ${new Date().toISOString()}*
+`;
+
+  return { content, passed, overall };
+}
+
+export function handleSummary(data) {
+  const safeData = JSON.parse(JSON.stringify(data));
+  if (safeData.setup_data) safeData.setup_data.token = '[REDACTED]';
+
+  const { content } = MODE === 'staircase' ? renderStaircaseReport(data) : renderSoakReport(data);
+
   return {
-    'stdout':                  textSummary(data, { indent: ' ', enableColors: true }) + '\n\n' + reportContent,
-    'loadtest/report.md':      reportContent,
-    'loadtest/resultado.json': JSON.stringify(safeData, null, 2),
+    stdout:        textSummary(data, { indent: ' ', enableColors: true }) + '\n\n' + content,
+    [REPORT_PATH]: content,
+    [RESULT_PATH]: JSON.stringify(safeData, null, 2),
   };
 }

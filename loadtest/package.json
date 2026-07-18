@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Scripts do orquestrador de teste de capacidade (rodam em Node.js — não faz parte do build do backend/frontend)."
+}

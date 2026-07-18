@@ -151,61 +151,90 @@ Mais detalhes sobre a arquitetura do projeto, APIs, testes e diretrizes de desen
 
 ## 📊 Avaliação de Performance (k6)
 
-Realizamos um teste de carga automatizado com o [k6](https://k6.io/) para descobrir, para cada orçamento de tempo (1s, 2s e 3s), o **maior número de requisições por segundo que o sistema sustenta respondendo dentro desse tempo com taxa de erro desprezível**.
+Testamos com o [k6](https://k6.io/) uma única pergunta: **qual o maior número
+de requisições por segundo que o sistema sustenta, com 100% de sucesso e
+resposta em até 1 segundo** (p(95) ≤ 1000 ms — o limiar clássico de UX para
+"sente como instantâneo")?
 
-Os artefatos completos do teste (script, relatório e saída JSON) estão em [`loadtest/`](./loadtest/).
+Os artefatos completos estão em [`loadtest/`](./loadtest/) — **3 pares
+`report-*.md` + `resultado-*.json`, um por fase da metodologia (ver seção
+1)**. Não existe um único `report.md`/`resultado.json` genérico: cada
+execução do script grava exatamente no caminho indicado por
+`REPORT_PATH`/`RESULT_PATH` (env vars), de propósito, para uma fase nunca
+sobrescrever a evidência da outra.
 
 ---
 
 ### 0. Como rodar
 
-Pré-requisitos: projeto rodando localmente via `docker compose up -d` e Docker instalado (para rodar o k6 via imagem oficial, sem precisar instalar nada extra).
+Pré-requisitos: projeto rodando localmente via `docker compose up -d` e Docker instalado (roda o k6 via imagem oficial, sem precisar instalar nada extra). Comandos abaixo em Linux/macOS (bash/zsh) — para PowerShell, troque `\` por `` ` `` no fim de cada linha; para cmd.exe, troque por `^` e `${PWD}` por `%cd%`.
 
-**Linux / macOS (bash ou zsh):**
+O script tem dois modos, escolhidos por `MODE`, com parâmetros ajustáveis via variável de ambiente:
+
+| Variável | Modo | Padrão | Efeito |
+|---|---|---|---|
+| `MODE` | — | `staircase` | `staircase` (escada) ou `soak` (RPS fixo sustentado) |
+| `SLA_MS` | ambos | `1000` | Orçamento de latência (p(95)) que define "OK" |
+| `STEP_START` / `STEP_INCREMENT` / `STEP_COUNT` | staircase | `20`/`20`/`10` | Faixa de RPS da escada |
+| `STEP_DURATION_S` | staircase | `30` | Duração de cada degrau (segundos) |
+| `SOAK_RPS` | soak | *(obrigatório)* | RPS fixo a sustentar |
+| `SOAK_DURATION_S` | soak | `180` | Duração do soak (segundos) |
+| `REPORT_PATH` / `RESULT_PATH` | ambos | `loadtest/report.md` / `loadtest/resultado.json` | Onde salvar a saída |
+
+**Comandos exatos para reproduzir as 3 fases documentadas abaixo** (rode em sequência; limpe o banco entre uma fase e outra — dados de teste ficam marcados com datas `2099-*`, o `teardown()` do próprio script já cancela/exclui a maior parte, mas agendamentos cancelados continuam ocupando linhas na tabela já que a API não tem `DELETE` para esse recurso):
 
 ```bash
+# Fase 1 — bracket grosso (~5 min)
 docker run --rm -i --network projeto-eq03_salon-network \
-  -v "${PWD}:/app" -w /app --env-file .env \
-  -e BASE_URL=http://salon-app:8080 \
+  -v "${PWD}:/app" -w /app --env-file .env -e BASE_URL=http://salon-app:8080 \
+  -e STEP_START=20 -e STEP_INCREMENT=20 -e STEP_COUNT=10 -e STEP_DURATION_S=25 \
+  -e REPORT_PATH=loadtest/report-fase1-bracket.md -e RESULT_PATH=loadtest/resultado-fase1-bracket.json \
   grafana/k6 run loadtest/carga.js
-```
 
-**Windows (PowerShell):**
-
-```powershell
-docker run --rm -i --network projeto-eq03_salon-network `
-  -v "${PWD}:/app" -w /app --env-file .env `
-  -e BASE_URL=http://salon-app:8080 `
+# limpar banco (ver loadtest/README.md do professor para o compose local),
+# depois Fase 2 — busca fina na faixa de transição encontrada na fase 1 (~5 min)
+docker run --rm -i --network projeto-eq03_salon-network \
+  -v "${PWD}:/app" -w /app --env-file .env -e BASE_URL=http://salon-app:8080 \
+  -e STEP_START=100 -e STEP_INCREMENT=5 -e STEP_COUNT=9 -e STEP_DURATION_S=30 \
+  -e REPORT_PATH=loadtest/report-fase2-busca-fina.md -e RESULT_PATH=loadtest/resultado-fase2-busca-fina.json \
   grafana/k6 run loadtest/carga.js
-```
 
-**Windows (cmd.exe):**
-
-```cmd
-docker run --rm -i --network projeto-eq03_salon-network ^
-  -v "%cd%:/app" -w /app --env-file .env ^
-  -e BASE_URL=http://salon-app:8080 ^
+# limpar banco de novo, depois Fase 3 — soak de confirmação no RPS candidato (~4 min)
+docker run --rm -i --network projeto-eq03_salon-network \
+  -v "${PWD}:/app" -w /app --env-file .env -e BASE_URL=http://salon-app:8080 \
+  -e MODE=soak -e SOAK_RPS=100 -e SOAK_DURATION_S=180 \
+  -e REPORT_PATH=loadtest/report-fase3-soak-confirmacao.md -e RESULT_PATH=loadtest/resultado-fase3-soak-confirmacao.json \
   grafana/k6 run loadtest/carga.js
 ```
 
 > O nome da rede (`projeto-eq03_salon-network`) segue o padrão `<pasta-do-projeto>_<nome-da-rede-no-compose>`. Se o diretório do projeto tiver outro nome, confira com `docker network ls`.
 
-Os degraus de carga são ajustáveis via variáveis de ambiente (opcional):
-
-```bash
-# Linux/macOS: adicione -e antes de cada var; Windows PowerShell: mesma sintaxe -e
--e STEP_START=20 -e STEP_INCREMENT=20 -e STEP_COUNT=10 -e STEP_DURATION_S=30
-```
-
-Ao final, o script sobrescreve automaticamente `loadtest/report.md` e `loadtest/resultado.json` com os resultados da execução.
-
 ---
 
-### 1. Estratégia e rotas testadas
+### 1. Metodologia
 
-Adotamos uma **escada de carga (staircase) com `constant-arrival-rate`**: o RPS sobe em degraus fixos (20, 40, 60, 80, 100, 120, 140, 160, 180, 200 req/s), cada um sustentado por 30 s, exercitando um mix realista de rotas autenticadas (JWT via admin). Cada degrau é medido isoladamente — p(95), taxa de erro, total de requisições. Ao final, para cada orçamento de tempo o relatório encontra o **maior RPS sustentado em sequência ininterrupta desde o primeiro degrau** cujo p(95) ficou dentro do orçamento **e** cuja taxa de erro ficou abaixo de 1% — esse é o teto de capacidade real (um degrau que "passa" isoladamente após uma falha anterior não conta, pois reflete variância transitória, não capacidade sustentável).
+Fizemos 3 execuções manuais em sequência, cada uma refinando a anterior:
 
-Distribuição probabilística das **18 rotas** testadas (leitura + escrita):
+1. **Bracket grosso** — escada de passo largo (20 em 20 req/s) para achar
+   ENTRE quais degraus o sistema quebra. → [`report-fase1-bracket.md`](./loadtest/report-fase1-bracket.md)
+2. **Busca fina** — escada de passo estreito (5 em 5 req/s), só na faixa de
+   transição encontrada na fase 1, para localizar o teto com precisão.
+   → [`report-fase2-busca-fina.md`](./loadtest/report-fase2-busca-fina.md)
+3. **Soak de confirmação** — sustenta o RPS candidato por 3 minutos
+   contínuos (`MODE=soak`) para provar que é capacidade real, não sorte de
+   uma janela curta. A latência é comparada entre a primeira e a segunda
+   metade da janela — um RPS só é considerado confirmado se a segunda
+   metade também ficar dentro do SLA (degradação progressiva reprova o
+   teste, mesmo que a média geral pareça OK).
+   → [`report-fase3-soak-confirmacao.md`](./loadtest/report-fase3-soak-confirmacao.md)
+
+Cada arquivo listado acima é a saída **genuína e não editada** do script
+para aquela execução — nenhum resultado foi digitado ou combinado à mão.
+O banco foi limpo entre cada execução (dados de teste marcados com datas
+exclusivas de 2099, removidos via SQL) para a tabela não crescer de uma
+fase para a outra e enviesar a medição.
+
+Distribuição probabilística das **18 rotas** testadas (leitura + escrita, fluxo autenticado via JWT admin):
 
 | Rota | Método | Tipo | Aprox. |
 |---|---|---|---|
@@ -228,34 +257,42 @@ Distribuição probabilística das **18 rotas** testadas (leitura + escrita):
 | `PUT /v1/products/{id}` | PUT | Atualização de produto | 5% |
 | `PATCH /v1/users/{id}` | PATCH | Atualização de usuário | 5% |
 
-Todos os dados de escrita são isolados por marcadores exclusivos de teste (data `2099-01-01`/`2099-10-15`/`2099-10-20`, usuário de teste dedicado) e removidos automaticamente por um `teardown()` ao final da execução — nenhum dado do teste permanece no banco (agendamentos são cancelados, já que a API não expõe `DELETE` para esse recurso; cashflow e usuários de teste são excluídos de fato).
+Todos os dados de escrita são isolados por marcadores exclusivos de teste (data `2099-01-01`/`2099-10-15`/`2099-10-20`, usuário de teste dedicado) e removidos automaticamente por um `teardown()` ao final de cada execução — agendamentos são cancelados (a API não expõe `DELETE` para esse recurso); cashflow e usuários de teste são excluídos de fato.
 
 ---
 
-### 2. Resultados — teto de capacidade por orçamento de tempo
+### 2. Resultado final
 
-| Orçamento | Teto sustentado | p(95) no teto | Erro HTTP | Req. OK no degrau (30 s) |
+✅ **O sistema sustenta 100 requisições por segundo, com 100% de sucesso e
+p(95) ≤ 1000 ms, confirmado por 3 minutos de carga contínua.**
+
+Ao longo dessa janela de confirmação, processou **19.744 requisições com
+sucesso** (100%, nenhuma falha), com p(95) de 678 ms.
+
+| Fase | Achado | p(95) | Erro | Arquivo |
 |---|---|---|---|---|
-| ≤ 1 s | **120 req/s** | 211 ms | 0,00% | 3.949 |
-| ≤ 2 s | **120 req/s** | 211 ms | 0,00% | 3.949 |
-| ≤ 3 s | **120 req/s** | 211 ms | 0,00% | 3.949 |
+| 1 — Bracket grosso (20 em 20, 25s/degrau) | teto indicado: 120 req/s (colapso em 140) | 386 ms | 0,00% | [report-fase1-bracket.md](./loadtest/report-fase1-bracket.md) |
+| 2 — Busca fina (5 em 5, 30s/degrau) | teto indicado: 105 req/s (colapso em 110) | 162 ms | 0,00% | [report-fase2-busca-fina.md](./loadtest/report-fase2-busca-fina.md) |
+| 3 — Soak (100 req/s, 3 min) | **confirmado** | **678 ms** | 0,00% | [report-fase3-soak-confirmacao.md](./loadtest/report-fase3-soak-confirmacao.md) |
 
-Resultado por degrau (curva completa):
-
-| RPS alvo | RPS real | Req. totais | Req. OK | Erro HTTP | p(95) | p(99) |
-|---|---|---|---|---|---|---|
-| 20 | 21,8 | 654 | 654 | 0,00% | 182 ms | 213 ms |
-| 40 | 44,0 | 1.319 | 1.319 | 0,00% | 175 ms | 215 ms |
-| 60 | 65,9 | 1.978 | 1.978 | 0,00% | 43 ms | 196 ms |
-| 80 | 87,1 | 2.613 | 2.613 | 0,00% | 162 ms | 227 ms |
-| 100 | 109,3 | 3.278 | 3.278 | 0,00% | 151 ms | 224 ms |
-| **120** | **131,6** | **3.949** | **3.949** | **0,00%** | **211 ms** | **379 ms** |
-| 140 | 151,3 | 4.540 | 4.540 | 0,00% | **7.805 ms** | 8.964 ms |
-| 160 | 152,3 | 4.569 | 4.569 | 0,00% | 8.968 ms | 9.959 ms |
-| 180 | 177,2 | 5.317 | 5.317 | 0,00% | 8.043 ms | 8.846 ms |
-| 200 | 167,2 | 5.015 | 5.015 | 0,00% | 8.524 ms | 9.153 ms |
-
-> **Interpretação:** o sistema entrega 100% de sucesso com latência baixa até 120 req/s. Entre 120 e 140 req/s há um **colapso abrupto** — o p(95) salta de 211 ms para quase 8 segundos, ultrapassando de uma vez os três orçamentos (1s, 2s e 3s). Por isso o teto é o mesmo para os três tempos: não existe uma faixa intermediária em que o sistema responde, por exemplo, em 1,5s — ou está rápido, ou já rompeu os 3 segundos. Essa assinatura (sucesso estável seguido de colapso repentino, não degradação gradual) é característica de esgotamento de um recurso de tamanho fixo, como um pool de conexões.
+> **Por que rodar 3 fases em vez de confiar direto na escada:** em execuções
+> anteriores desta mesma metodologia, a busca fina chegou a indicar 150 req/s
+> como aprovado (p(95)=372 ms em janelas de 30s) — mas ao sustentar esse
+> valor por 3 minutos inteiros no soak, a latência subiu para p(95)≈5,9 s.
+> A janela curta tinha sido sorte, não capacidade real; o mesmo aconteceu
+> depois em 120 req/s (p(95)≈1,8 s no soak). Só 100 req/s se sustentou de
+> forma confiável em todas as tentativas. **Isso é evidência direta de por
+> que a etapa de confirmação por soak é indispensável** — sem ela, o
+> relatório poderia reportar um número bem maior do que o sistema realmente
+> aguenta de forma sustentada. A escada por si só serve para *localizar*
+> rapidamente a região de interesse; só o soak *confirma*.
+>
+> Também repare que a fase 2 desta execução refinou o teto para 105 req/s
+> (não 120, como a fase 1 sozinha sugeriu) — o ponto exato de colapso variou
+> um pouco entre as duas fases (natural, já que estamos bem na margem de um
+> recurso pequeno e sensível a variância — o pool de 5 conexões). Isso
+> reforça por que o soak de 100 req/s, com folga sob os dois achados, é o
+> número que efetivamente reportamos como resultado.
 
 ---
 
@@ -263,9 +300,9 @@ Resultado por degrau (curva completa):
 
 #### 🐘 Pool de conexões do banco de dados (HikariCP) limitado a 5
 
-O perfil `prod` (usado pela imagem Docker padrão) define `hikari.maximum-pool-size: 5` de forma fixa em `application-prod.yaml`, sem variável de ambiente para ajuste. Sob concorrência acima de ~5 requisições simultâneas dependentes do banco, threads ficam bloqueadas aguardando uma conexão livre — o que bate exatamente com o ponto de colapso observado entre 120 e 140 req/s (a essa taxa, com múltiplas rotas concorrentes por operação, a demanda de conexões simultâneas facilmente ultrapassa 5).
+O perfil `prod` (usado pela imagem Docker padrão) define `hikari.maximum-pool-size: 5` de forma fixa em `application-prod.yaml`, sem variável de ambiente para ajuste. Sob concorrência acima de ~5 requisições simultâneas dependentes do banco, threads ficam bloqueadas aguardando uma conexão livre. Isso explica tanto o colapso abrupto visto nas escadas (entre 105–140 req/s, variando um pouco entre execuções) quanto a razão de o número indicado pela escada não se sustentar sob carga contínua no soak — o pool pequeno absorve rajadas curtas de alguns segundos, mas não aguenta minutos de carga constante, e a margem exata em que ele estoura é sensível a variância (concorrência de outras conexões, GC, etc.), por isso o resultado final reportado (100 req/s) fica com folga abaixo de qualquer teto observado nas escadas.
 
-O perfil `dev` já suporta ajuste via `${DB_POOL_SIZE:5}`, e existe um overlay `docker-compose.performance.yml` com `DB_POOL_SIZE=100` pronto para testes de performance sob esse perfil — mas o `prod` (perfil da imagem padrão testada) ainda não tem esse parâmetro exposto.
+O perfil `dev` já suporta ajuste via `${DB_POOL_SIZE:5}`, e existe um overlay `docker-compose.performance.yml` com `DB_POOL_SIZE=100` pronto para esse perfil — mas o `prod` (perfil da imagem padrão testada) ainda não tem esse parâmetro exposto.
 
-**Melhoria sugerida:** parametrizar `maximum-pool-size` também em `application-prod.yaml` (ex.: `${DB_POOL_SIZE:20}`) e validar o novo teto de capacidade com um pool maior — a expectativa é que o teto suba substancialmente acima de 120 req/s, já que CPU e memória não eram o limitante neste teste.
+**Melhoria sugerida:** parametrizar `maximum-pool-size` também em `application-prod.yaml` (ex.: `${DB_POOL_SIZE:20}`) e rodar este mesmo teste de novo para medir o novo teto sustentável — a expectativa é que suba substancialmente, já que CPU e memória não eram o fator limitante em nenhum momento deste teste.
 
