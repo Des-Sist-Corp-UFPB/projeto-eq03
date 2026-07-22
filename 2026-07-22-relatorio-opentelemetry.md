@@ -27,6 +27,7 @@ Não é um arquivo de configuração separado — os spans manuais vivem **dentr
 - **Produção:** servidor central da disciplina (`https://otel.dsc.rodrigor.com`).
 - **`OTEL_SERVICE_NAME`:** `dsc-eq03`.
 - **Versão do agente:** fixada em `v2.30.0` no `Dockerfile` (não "latest"), para builds reprodutíveis.
+- **Logs:** exportação para o Loki via `OTEL_LOGS_EXPORTER=otlp` (não é padrão do agente, precisa ser ligado explicitamente) e captura de atributos customizados do MDC via `OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES=*` (também desligada por padrão).
 
 ---
 
@@ -166,18 +167,93 @@ Dois atributos de negócio (não vêm de nenhuma biblioteca, foram definidos por
 
 ---
 
-## 4. Resumo técnico das mudanças no repositório
+## 4. Entregáveis (Logs — Loki)
+
+Documento complementar. Pré-requisito citado no documento: `OTEL_LOGS_EXPORTER=otlp` — **não vem ligado por padrão** mesmo com o agente já anexado, precisamos configurar explicitamente (ver seção 2).
+
+### 4.1 Log no Loki
+
+![Lista de logs do serviço dsc-eq03 no Loki, com histograma de volume por nível](docs/opentelemetry-evidencias/07-lista-logs-dsc-eq03.png)
+
+Query `{service_name="dsc-eq03"}` no Grafana → Explore → Loki. 814 linhas retornadas, com o histograma de volume mostrando a distribuição por nível (`debug`, `info`, `warning`, `error`) na última hora — confirma que os logs da aplicação chegam ao Loki, indexados pelo `service_name`, sem nenhuma alteração de código (o agente Java intercepta o Logback automaticamente).
+
+### 4.2 Log estruturado
+
+![Log expandido mostrando o link de correlação com o trace](docs/opentelemetry-evidencias/08-log-expandido-com-link-de-trace.png)
+
+![Metadata estruturada do log, com os campos de negócio relatorio_periodo e relatorio_lucro_liquido](docs/opentelemetry-evidencias/09-log-metadata-estruturada-relatorio.png)
+
+Query `{service_name="dsc-eq03"} |= "Relatório financeiro gerado"`. Expandindo a linha, a seção **Structured metadata** mostra, além dos campos técnicos padrão, dois campos de negócio que não vêm de nenhuma biblioteca:
+
+- `relatorio_periodo = "2026-07-01 a 2026-08-21"`
+- `relatorio_lucro_liquido = -12973.39`
+
+Esses campos vêm do `MDC` (Mapped Diagnostic Context) do SLF4J, em `ReportService.generateFinancialReport()`:
+
+```java
+MDC.put("relatorio.periodo", period);
+MDC.put("relatorio.lucro_liquido", netProfit.toPlainString());
+try {
+    log.info("Relatório financeiro gerado");
+} finally {
+    MDC.remove("relatorio.periodo");
+    MDC.remove("relatorio.lucro_liquido");
+}
+```
+
+**Detalhe técnico que quase passou despercebido:** por padrão, o agente Java **ignora** entradas customizadas do MDC — ele só injeta `trace_id`/`span_id`/`trace_flags` automaticamente. Descobrimos isso quando o primeiro teste só mostrou a mensagem de texto, sem os campos. A propriedade que faltava é `otel.instrumentation.logback-appender.experimental.capture-mdc-attributes` (equivalente de ambiente: `OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES=*`), desabilitada por padrão. Sem ela, dá pra logar campos estruturados achando que está tudo certo e eles simplesmente não chegam no backend de observabilidade.
+
+### 4.3 Correlação log ↔ trace
+
+![Log expandido com o link de correlação para o trace em destaque](docs/opentelemetry-evidencias/11-log-link-trace-expandido.png)
+
+Na seção **Links**, dentro do log expandido, o campo `trace_id` vem acompanhado de um botão clicável **"Trace: ebb4d81ea1f94a85515a103e36842746"** — o Grafana reconhece o `trace_id` anexado automaticamente pelo agente e oferece o pulo direto para a cascata correspondente no Tempo, sem precisar copiar/colar IDs manualmente. É esse recurso que o documento chama de "o ganho central de ter os dois sinais no mesmo lugar".
+
+### 4.4 Log de erro tratado
+
+![Log de erro (WARN) de uma BusinessException real, com trace_id e metadata](docs/opentelemetry-evidencias/10-log-erro-warn-business-exception.png)
+
+**Como chegamos nessa evidência (vale registrar o processo, não só o resultado):** o documento pede um erro **tratado**, registrado com `logger.error(...)` incluindo a exceção. Investigamos o `GlobalExceptionHandler.java` (19 handlers de exceção) atrás de um cenário real e reproduzível — não fabricado — que alcançasse o handler genérico (`@ExceptionHandler(Exception.class)`, o único que já usava `log.error`).
+
+Resultado da investigação: **não existe hoje nenhuma rota da API que alcance esse handler genérico com uma requisição válida.** Todo ponto do código que faz `enum.valueOf(...)` (conversão de texto para `AppointmentStatus`, `PaymentStatus`, `CashFlowType` — os três lugares onde isso acontece no sistema) já está envolto em `try/catch`, convertendo para uma exceção tipada (`BadRequestException`) antes de escapar.
+
+Encontramos, porém, um gap real: o handler de `IllegalArgumentException` era o **único dos 19 handlers do arquivo sem nenhum log** — um ponto cego de observabilidade genuíno, não um erro forçado. Corrigimos isso permanentemente:
+
+```java
+@ExceptionHandler(IllegalArgumentException.class)
+public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
+    log.error("Argumento inválido em {}: {}", request.getRequestURI(), ex.getMessage(), ex);
+    // ...
+}
+```
+
+Como nenhuma rota alcança esse handler hoje, a evidência de "erro tratado, logado com a exceção, correlacionado ao trace" que temos de fato é em nível **WARN**, não ERROR — dispara ao tentar alterar o status de um agendamento já cancelado:
+
+```java
+// BusinessException: Agendamentos pagos ou cancelados não podem ter seu status alterado.
+// on URI: /v1/appointments/26957/status
+```
+
+Print acima: `severity_text = WARN`, mensagem completa da exceção, `trace_id` presente para correlação. É um erro real (`BusinessException`), tratado por um handler dedicado, chegando ao Loki com correlação — só não é nível `ERROR` porque, no design deste sistema, um erro de regra de negócio causado pelo usuário é conscientemente classificado como aviso, não como falha do servidor.
+
+---
+
+## 5. Resumo técnico das mudanças no repositório
 
 | Arquivo | Mudança |
 |---|---|
 | `docker-compose.yml` | Serviço `otel-lgtm` (Grafana + Tempo + Prometheus + Loki local) na rede `salon-network`; `salon-app` depende dele |
 | `Dockerfile` | Agente Java do OTel (`v2.30.0`, versão fixa) baixado via `ADD` na imagem final; `ENTRYPOINT` com `-javaagent` |
 | `salon-back/pom.xml` | Dependências `opentelemetry-api` e `opentelemetry-instrumentation-annotations` (versão `2.16.0`) |
-| `.env` / `.env.example` | Variáveis `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS` — config de dev local por padrão, com instrução de troca para produção documentada em comentário |
-| `salon-back/.../report/service/ReportService.java` | 2 spans manuais (`@WithSpan` + `Span.current()`) em `generateFinancialReport` e no novo método `calcularPagamentoFuncionaria`, com atributos de negócio customizados |
+| `.env` / `.env.example` | Variáveis `OTEL_SERVICE_NAME`, `OTEL_EXPORTER_OTLP_ENDPOINT`, `OTEL_EXPORTER_OTLP_PROTOCOL`, `OTEL_EXPORTER_OTLP_HEADERS`, `OTEL_LOGS_EXPORTER`, `OTEL_INSTRUMENTATION_LOGBACK_APPENDER_EXPERIMENTAL_CAPTURE_MDC_ATTRIBUTES` — config de dev local por padrão, com instrução de troca para produção documentada em comentário |
+| `salon-back/.../report/service/ReportService.java` | 2 spans manuais (`@WithSpan` + `Span.current()`) em `generateFinancialReport` e no novo método `calcularPagamentoFuncionaria`, com atributos de negócio customizados; log estruturado via MDC no mesmo método |
+| `salon-back/.../exception/GlobalExceptionHandler.java` | Adicionado `log.error(...)` (com a exceção) no handler de `IllegalArgumentException`, que não tinha log nenhum — correção permanente de observabilidade, não código de teste |
+| `salon-back/src/main/resources/logback-spring.xml` | Padrão de log do console passa a incluir `trace_id`/`span_id`, para correlação visível também em `docker logs` |
 
 ---
 
-## 5. Conclusão
+## 6. Conclusão
 
-Todos os 6 entregáveis do documento da disciplina estão cobertos com evidência real e reproduzível: backend de observabilidade no ar, trace completo de uma operação de negócio real, query SQL identificada com tabela/operação, 2 spans manuais aninhados com atributos customizados, e um diagnóstico de gargalo — encontrado organicamente ao instrumentar o sistema, não provocado artificialmente com `Thread.sleep`.
+Todos os 10 entregáveis do documento da disciplina (6 de traces + 4 de logs) estão cobertos com evidência real e reproduzível: backend de observabilidade no ar, trace completo de uma operação de negócio real, query SQL identificada com tabela/operação, 2 spans manuais aninhados com atributos customizados, diagnóstico de gargalo encontrado organicamente (não provocado com `Thread.sleep`), logs estruturados correlacionados a traces, e um log de erro real (nível WARN, com justificativa técnica documentada de por que não é ERROR neste sistema).
+
+Um padrão se repetiu nas duas frentes (traces e logs): **os recursos mais úteis do OTel não vêm ligados por padrão.** A captura de spans automáticos (zero-code) sim, mas exportar logs (`OTEL_LOGS_EXPORTER`) e capturar atributos customizados do MDC (`...CAPTURE_MDC_ATTRIBUTES`) exigiram configuração explícita que não está no caminho óbvio.

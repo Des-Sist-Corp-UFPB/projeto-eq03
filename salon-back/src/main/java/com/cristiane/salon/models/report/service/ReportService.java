@@ -20,6 +20,9 @@ import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.slf4j.MDC;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -37,6 +40,8 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class ReportService {
+
+    private static final Logger log = LoggerFactory.getLogger(ReportService.class);
 
     private final CashFlowRepository cashFlowRepository;
     private final AppointmentRepository appointmentRepository;
@@ -125,6 +130,18 @@ public class ReportService {
 
         Span.current().setAttribute("relatorio.lucro_liquido", netProfit.doubleValue());
         Span.current().setAttribute("relatorio.funcionarias.total", employees.size());
+
+        // Log estruturado: os campos do MDC são promovidos a atributos do log no Loki
+        // (via ponte MDC do agente OTel), então dá pra filtrar/agrupar por eles no LogQL
+        // sem precisar fazer parsing de texto livre.
+        MDC.put("relatorio.periodo", period);
+        MDC.put("relatorio.lucro_liquido", netProfit.toPlainString());
+        try {
+            log.info("Relatório financeiro gerado");
+        } finally {
+            MDC.remove("relatorio.periodo");
+            MDC.remove("relatorio.lucro_liquido");
+        }
 
         return new FinancialReportResponse(income, expense, totalSalaryPaid, totalCommissionPaid, netProfit, employeeFinanceDetails, period);
     }
