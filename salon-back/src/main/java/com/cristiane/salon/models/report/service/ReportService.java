@@ -16,6 +16,9 @@ import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.EmployeeFinanceResponse;
 import com.cristiane.salon.models.report.dto.PayrollReportResponse;
+import io.opentelemetry.api.trace.Span;
+import io.opentelemetry.instrumentation.annotations.SpanAttribute;
+import io.opentelemetry.instrumentation.annotations.WithSpan;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -54,8 +57,11 @@ public class ReportService {
                 .map(AppointmentFinancialResponse::fromEntity);
     }
 
+    @WithSpan("gerar-relatorio-financeiro")
     @Transactional(readOnly = true)
-    public FinancialReportResponse generateFinancialReport(LocalDate from, LocalDate to) {
+    public FinancialReportResponse generateFinancialReport(
+            @SpanAttribute("relatorio.data_inicio") LocalDate from,
+            @SpanAttribute("relatorio.data_fim") LocalDate to) {
         if (from == null) from = LocalDate.now().withDayOfMonth(1);
         if (to == null) to = LocalDate.now().plusDays(30);
 
@@ -97,32 +103,9 @@ public class ReportService {
                     .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-            BigDecimal payout = BigDecimal.ZERO;
-
-            if (employee.getRemunerationType() == RemunerationType.SALARIO_FIXO) {
-                payout = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
-                totalSalaryPaid = totalSalaryPaid.add(payout);
-            } else if (employee.getRemunerationType() == RemunerationType.COMISSIONADO) {
-                BigDecimal pct = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
-                if (employee.getCommissionScope() == CommissionScope.INDIVIDUAL) {
-                    payout = empDoneValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-                } else if (employee.getCommissionScope() == CommissionScope.GLOBAL) {
-                    payout = globalDoneAppointmentsValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-                }
-                totalCommissionPaid = totalCommissionPaid.add(payout);
-            } else if (employee.getRemunerationType() == RemunerationType.FIXO_E_COMISSIONADO) {
-                BigDecimal salary = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
-                BigDecimal pct = employee.getCommissionValue() != null ? employee.getCommissionValue() : BigDecimal.ZERO;
-                BigDecimal commissionPart = BigDecimal.ZERO;
-                if (employee.getCommissionScope() == CommissionScope.INDIVIDUAL) {
-                    commissionPart = empDoneValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-                } else if (employee.getCommissionScope() == CommissionScope.GLOBAL) {
-                    commissionPart = globalDoneAppointmentsValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
-                }
-                totalSalaryPaid = totalSalaryPaid.add(salary);
-                totalCommissionPaid = totalCommissionPaid.add(commissionPart);
-                payout = salary.add(commissionPart);
-            }
+            PayoutBreakdown breakdown = calcularPagamentoFuncionaria(employee, empDoneValue, globalDoneAppointmentsValue);
+            totalSalaryPaid = totalSalaryPaid.add(breakdown.salaryPart());
+            totalCommissionPaid = totalCommissionPaid.add(breakdown.commissionPart());
 
             employeeFinanceDetails.add(new EmployeeFinanceResponse(
                     employee.getId(),
@@ -133,15 +116,67 @@ public class ReportService {
                     employee.getCommissionValue(),
                     doneCount,
                     empDoneValue,
-                    payout
+                    breakdown.totalPayout()
             ));
         }
 
         BigDecimal netProfit = income.subtract(expense).subtract(totalSalaryPaid).subtract(totalCommissionPaid);
         String period = from + " a " + to;
 
+        Span.current().setAttribute("relatorio.lucro_liquido", netProfit.doubleValue());
+        Span.current().setAttribute("relatorio.funcionarias.total", employees.size());
+
         return new FinancialReportResponse(income, expense, totalSalaryPaid, totalCommissionPaid, netProfit, employeeFinanceDetails, period);
     }
+
+    /**
+     * Calcula o pagamento de uma funcionária no período do relatório (salário fixo,
+     * comissão individual/global, ou a combinação dos dois). Span manual: fica aninhado
+     * dentro de "gerar-relatorio-financeiro" no trace, um span por funcionária.
+     */
+    @WithSpan("calcular-pagamento-funcionaria")
+    private PayoutBreakdown calcularPagamentoFuncionaria(
+            Employee employee, BigDecimal empDoneValue, BigDecimal globalDoneAppointmentsValue) {
+
+        Span span = Span.current();
+        span.setAttribute("funcionaria.id", employee.getId());
+        span.setAttribute("funcionaria.tipo_remuneracao",
+                employee.getRemunerationType() != null ? employee.getRemunerationType().name() : "N/A");
+
+        BigDecimal salaryPart = BigDecimal.ZERO;
+        BigDecimal commissionPart = BigDecimal.ZERO;
+        BigDecimal payout = BigDecimal.ZERO;
+
+        if (employee.getRemunerationType() == RemunerationType.SALARIO_FIXO) {
+            payout = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
+            salaryPart = payout;
+        } else if (employee.getRemunerationType() == RemunerationType.COMISSIONADO) {
+            BigDecimal pct = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
+            if (employee.getCommissionScope() == CommissionScope.INDIVIDUAL) {
+                payout = empDoneValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            } else if (employee.getCommissionScope() == CommissionScope.GLOBAL) {
+                payout = globalDoneAppointmentsValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            }
+            commissionPart = payout;
+        } else if (employee.getRemunerationType() == RemunerationType.FIXO_E_COMISSIONADO) {
+            BigDecimal salary = employee.getRemunerationValue() != null ? employee.getRemunerationValue() : BigDecimal.ZERO;
+            BigDecimal pct = employee.getCommissionValue() != null ? employee.getCommissionValue() : BigDecimal.ZERO;
+            BigDecimal commission = BigDecimal.ZERO;
+            if (employee.getCommissionScope() == CommissionScope.INDIVIDUAL) {
+                commission = empDoneValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            } else if (employee.getCommissionScope() == CommissionScope.GLOBAL) {
+                commission = globalDoneAppointmentsValue.multiply(pct).divide(new BigDecimal("100"), 2, java.math.RoundingMode.HALF_UP);
+            }
+            salaryPart = salary;
+            commissionPart = commission;
+            payout = salary.add(commission);
+        }
+
+        span.setAttribute("funcionaria.pagamento_calculado", payout.doubleValue());
+        return new PayoutBreakdown(salaryPart, commissionPart, payout);
+    }
+
+    private record PayoutBreakdown(BigDecimal salaryPart, BigDecimal commissionPart, BigDecimal totalPayout) {}
 
     @Transactional(readOnly = true)
     public AppointmentReportResponse generateAppointmentReport(LocalDate from, LocalDate to) {
