@@ -24,8 +24,8 @@ services:
     image: axllent/mailpit
     container_name: salon-mailpit
     ports:
-      - "1025:1025"  # SMTP
-      - "8025:8025"  # UI Web do Mailpit
+      - "1025:1025" # SMTP
+      - "8025:8025" # UI Web do Mailpit
     networks:
       - salon-network
 
@@ -45,6 +45,16 @@ services:
         condition: service_healthy
       mailpit:
         condition: service_started
+    networks:
+      - salon-network
+
+  otel-lgtm:
+    image: grafana/otel-lgtm
+    container_name: otel-lgtm
+    ports:
+      - "3000:3000" # Grafana (interface web)
+      - "4317:4317" # OTLP via gRPC
+      - "4318:4318" # OTLP via HTTP
     networks:
       - salon-network
 
