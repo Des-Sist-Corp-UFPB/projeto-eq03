@@ -33,7 +33,16 @@ WORKDIR /app
 # Copia o artefato único
 COPY --from=backend-build /app/backend/target/salon-0.0.1-SNAPSHOT.jar app.jar
 
+# Agente Java do OpenTelemetry — instrumentação automática (HTTP, JDBC, métricas da JVM)
+# sem alterar o código da aplicação. ADD baixa direto da release oficial, sem precisar
+# instalar curl/wget na imagem final (alpine mínima).
+# Versão fixa (não "latest"): builds precisam ser reprodutíveis — o mesmo commit não pode
+# gerar imagens com agentes diferentes dependendo de quando o cache do Docker foi invalidado.
+# Para atualizar: troque a tag abaixo (ver releases em
+# https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases).
+ADD https://github.com/open-telemetry/opentelemetry-java-instrumentation/releases/download/v2.30.0/opentelemetry-javaagent.jar /app/otel-javaagent.jar
+
 EXPOSE 8080
 ENV SPRING_PROFILES_ACTIVE=prod
 
-ENTRYPOINT ["java", "-jar", "app.jar"]
+ENTRYPOINT ["java", "-javaagent:/app/otel-javaagent.jar", "-jar", "app.jar"]
