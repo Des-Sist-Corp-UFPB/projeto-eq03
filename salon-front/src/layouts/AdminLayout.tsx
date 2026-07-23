@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Outlet, Navigate, Link, useLocation } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { useFeatureFlag } from '../hooks/useFeatureFlag';
 import { useTheme } from '../context/ThemeContext';
 import { getVisibleAdminNavItems } from '../config/adminNav';
 import { Menu, X, LogOut, ChevronLeft, ChevronRight, Sun, Moon } from 'lucide-react';
@@ -13,6 +14,7 @@ export const AdminLayout = () => {
   });
   const location = useLocation();
   const { theme, toggleTheme } = useTheme();
+  const { enabled: aiRecommendationsEnabled } = useFeatureFlag('ENABLE_AI_RECOMMENDATIONS');
 
   if (isLoading)
     return (
@@ -41,7 +43,11 @@ export const AdminLayout = () => {
     });
   };
 
-  const menuItems = getVisibleAdminNavItems(user?.role);
+  // "Recomendações de IA" só aparece com a feature flag ligada — o motor por trás
+  // (RecommendationService) recusa qualquer chamada enquanto ela estiver desligada.
+  const menuItems = getVisibleAdminNavItems(user?.role).filter(
+    (item) => item.to !== '/admin/recommendations' || aiRecommendationsEnabled
+  );
 
   const userName = user?.email ? user.email.split('@')[0] : 'Admin';
 

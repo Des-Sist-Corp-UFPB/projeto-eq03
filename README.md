@@ -69,6 +69,35 @@ O sistema integra-se com serviços de e-mail e gateways de pagamento em produç�
 
 ---
 
+## 🤖 Recomendações de IA e Servidor MCP
+
+O sistema integra IA em duas frentes, construídas sobre a mesma configuração central (**Central de IA**, no painel sysadmin) e o mesmo motor de negócio — nenhuma das duas duplica lógica:
+
+- **Motor de recomendações:** analisa dados agregados do salão (financeiro/ocupação e retenção de clientes) e devolve sugestões acionáveis numa tela do painel admin (`/admin/recommendations`). Cada geração é cacheada, contabilizada num orçamento diário de chamadas e registrada em log de auditoria próprio.
+- **Servidor MCP (Model Context Protocol):** expõe esse mesmo motor como *tools* que um assistente de IA externo (Claude Desktop, Cursor, etc.) pode chamar diretamente fora da aplicação, autenticado por token próprio gerenciável no painel sysadmin.
+
+Toda chamada passa por um proxy **LiteLLM** (compatível com a API da OpenAI) hospedado pelo professor — o projeto não fala com nenhum provedor de LLM diretamente, apenas com esse proxy.
+
+Dois controles independentes decidem se a feature está disponível:
+- **Feature flag `ENABLE_AI_RECOMMENDATIONS`** (nasce desligada): controla se a página/menu existe, ligada/desligada como qualquer outra feature flag do sistema.
+- **Toggle operacional da Central de IA (`AiConfig.enabled`):** liga/desliga só a chamada ao provedor (ex. para pausar custos ou trocar de chave), sem esconder a tela — os botões de gerar/atualizar somem quando desligado, evitando erro ao clicar.
+
+Documentação completa (mapa de arquivos, migrations, parâmetros, decisões de design) em [`USO-DE-IA.md`](./USO-DE-IA.md); tutoriais de configuração do MCP em [`MCP-TUTORIAL.md`](./MCP-TUTORIAL.md) e [`MCP-IDEIA.md`](./MCP-IDEIA.md).
+
+---
+
+## 📈 Observabilidade com OpenTelemetry
+
+O backend é instrumentado com **OpenTelemetry**, cobrindo os três sinais de telemetria (traces, métricas e logs), enviados via OTLP para uma stack **Grafana LGTM** (Loki + Grafana + Tempo + Prometheus/Mimir) — local via `docker-compose.yml` em desenvolvimento, e para o servidor central da disciplina (`https://otel.dsc.rodrigor.com`) em produção.
+
+- **Instrumentação automática (zero-code):** um agente Java (`-javaagent`, versão fixada no `Dockerfile`) captura HTTP, JDBC e métricas da JVM em toda a aplicação, sem alterar código.
+- **Instrumentação manual (spans de negócio):** spans explícitos (`@WithSpan`) adicionados seletivamente na geração do relatório financeiro (`ReportService.java`), a rota mais lenta identificada via telemetria automática — permitiu isolar o gargalo em consultas ao banco (ver detalhes no relatório).
+- **Logs correlacionados:** exportação para o Loki via OTLP, com atributos estruturados do MDC capturados e correlação automática log↔trace.
+
+O relatório da entrega, com evidências (traces reais, spans, queries SQL capturadas) e o diagnóstico do gargalo encontrado, está em [`2026-07-22-relatorio-opentelemetry.md`](./2026-07-22-relatorio-opentelemetry.md). O guia conceitual e tutorial prático (o que é telemetria, como instrumentar) está em [`docs/opentelemetry.md`](./docs/opentelemetry.md), com um complemento dedicado a logs em [`docs/opentelemetry-logs.md`](./docs/opentelemetry-logs.md).
+
+---
+
 ## 🛠️ Stack Tecnológica
 
 - **Backend:** Java 21 · Spring Boot 4.0.6 · Spring Security · JWT · Spring Data JPA · PostgreSQL · Flyway · JaCoCo · Lombok · Springdoc OpenAPI

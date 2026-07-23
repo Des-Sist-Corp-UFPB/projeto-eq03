@@ -5,6 +5,7 @@ import { recommendationsService } from '../../../../services/recommendations';
 
 vi.mock('../../../../services/recommendations', () => ({
   recommendationsService: {
+    getStatus: vi.fn(),
     getLatest: vi.fn(),
     generate: vi.fn(),
   },
@@ -13,6 +14,10 @@ vi.mock('../../../../services/recommendations', () => ({
 const mockShowError = vi.fn();
 vi.mock('../../../../hooks/useAlert', () => ({
   useAlert: () => ({ error: mockShowError, success: vi.fn() }),
+}));
+
+vi.mock('../../../../hooks/useFeatureFlag', () => ({
+  useFeatureFlag: () => ({ enabled: true, isLoading: false }),
 }));
 
 const cachedResult = {
@@ -33,6 +38,7 @@ const renderPage = () =>
 describe('Recommendations page', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    vi.mocked(recommendationsService.getStatus).mockResolvedValue({ available: true });
   });
 
   it('shows an empty state when there is no cached recommendation yet (404)', async () => {

@@ -73,12 +73,12 @@ export function DataTable<T, F>({
     <div className="space-y-6">
       {/* Dynamic Filter Row */}
       {filtersConfig.length > 0 && (
-        <div className="bg-white/80 dark:bg-[#161c2a] backdrop-blur-md rounded-2xl p-6 border border-[#eae1e1]/80 dark:border-[#1e293b] shadow-sm flex flex-wrap gap-4 items-end animate-fade-in-up">
+        <div className="bg-white/80 backdrop-blur-md rounded-2xl p-6 border border-[#eae1e1]/80 shadow-sm flex flex-wrap gap-4 items-end animate-fade-in-up">
           {filtersConfig.map((field) => {
             const val = (filters as any)[field.key] ?? '';
             return (
               <div key={field.key} className="flex flex-col gap-1.5 min-w-[200px] flex-1">
-                <label className="text-xs font-bold text-[#7a7074] dark:text-gray-400 uppercase tracking-wider">
+                <label className="label-premium">
                   {field.label}
                 </label>
                 {field.type === 'text' && (
@@ -134,15 +134,15 @@ export function DataTable<T, F>({
         </div>
       ) : data.length === 0 ? (
         /* Elegant Empty State */
-        <div className="w-full bg-white/80 dark:bg-[#161c2a] backdrop-blur-md rounded-2xl p-12 border border-[#eae1e1]/80 dark:border-[#1e293b] shadow-sm flex flex-col items-center justify-center text-center space-y-4 animate-fade-in-up">
-          <div className="w-14 h-14 bg-[#be8a83]/10 dark:bg-[#e5a49c]/10 rounded-full flex items-center justify-center text-[#be8a83] dark:text-[#e5a49c]">
+        <div className="w-full bg-white/80 backdrop-blur-md rounded-2xl p-12 border border-[#eae1e1]/80 shadow-sm flex flex-col items-center justify-center text-center space-y-4 animate-fade-in-up">
+          <div className="w-14 h-14 bg-accent/10 rounded-full flex items-center justify-center text-accent">
             <SearchX size={26} />
           </div>
           <div className="space-y-1">
-            <h4 className="font-heading text-lg font-bold text-[#3b3036] dark:text-white m-0">
+            <h4 className="font-heading text-lg font-bold text-[#3b3036] m-0">
               Nenhum resultado encontrado
             </h4>
-            <p className="text-sm text-[#7a7074] dark:text-gray-400 max-w-md mx-auto leading-relaxed">
+            <p className="text-sm text-[#7a7074] max-w-md mx-auto leading-relaxed">
               Não encontramos nenhum registro que corresponda aos filtros de busca aplicados. Tente limpar os filtros ou digitar outros termos.
             </p>
           </div>
