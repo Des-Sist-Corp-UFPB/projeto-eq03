@@ -1,4 +1,6 @@
 import api from '../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../utils/pagination';
+export type { PageResponse } from '../../../utils/pagination';
 
 export interface SalonServiceData {
   id?: number;
@@ -27,20 +29,12 @@ export interface SalonServiceFilter {
   active?: boolean;
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
-}
-
 export const salonServicesApi = {
   findAll: async (filter: SalonServiceFilter = {}, page = 0, size = 10) => {
-    const { data } = await api.get<PageResponse<SalonServiceData>>('/services', {
+    const { data } = await api.get<SpringPageResponse<SalonServiceData>>('/services', {
       params: { ...filter, page, size },
     });
-    return data;
+    return normalizePage(data);
   },
 
   findById: async (id: number) => {

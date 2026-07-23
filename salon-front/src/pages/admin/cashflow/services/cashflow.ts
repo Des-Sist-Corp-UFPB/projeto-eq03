@@ -1,4 +1,6 @@
 import api from '../../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../../utils/pagination';
+export type { PageResponse } from '../../../../utils/pagination';
 
 export interface CashFlowItemData {
   productId: number;
@@ -16,12 +18,12 @@ export interface CashFlowData {
 }
 
 export const cashFlowApi = {
-  findByPeriod: async (from?: string, to?: string) => {
-    const params: Record<string, string> = {};
+  findByPeriod: async (from?: string, to?: string, page = 0, size = 20) => {
+    const params: Record<string, string | number> = { page, size };
     if (from) params.from = from;
     if (to) params.to = to;
-    const { data } = await api.get<CashFlowData[]>('/cashflow', { params });
-    return data;
+    const { data } = await api.get<SpringPageResponse<CashFlowData>>('/cashflow', { params });
+    return normalizePage(data);
   },
 
   create: async (cashFlowData: CashFlowData) => {

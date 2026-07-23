@@ -59,7 +59,7 @@ export const AuditLog = () => {
       const { data } = await api.get(`/audit?${params.toString()}`);
 
       setAuditLogs(data.content);
-      setTotalItems(data.totalElements);
+      setTotalItems(data.page.totalElements);
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Erro ao carregar logs de auditoria');
       await showError(msg);
