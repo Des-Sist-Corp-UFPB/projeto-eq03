@@ -120,6 +120,21 @@ public class RecommendationService {
         }
     }
 
+    /**
+     * Diagnóstico leve pra ADMIN/GERENTE saberem, antes de clicar em "Gerar", se
+     * {@link #generate} vai funcionar agora — sem expor a configuração sensível
+     * (URL, modelo, key), que é sysadmin-only. Não conta no orçamento diário nem
+     * grava log, mesma lógica de {@code AiConfigService.testConnection}.
+     */
+    @Transactional(readOnly = true)
+    public boolean isAvailable() {
+        if (!featureFlagService.isEnabled(FEATURE_FLAG)) {
+            return false;
+        }
+        AiConfig config = aiConfigService.getDecryptedForInternalUse();
+        return Boolean.TRUE.equals(config.getEnabled());
+    }
+
     private String buildFinanceiroPrompt() {
         LocalDate from = LocalDate.now().minusDays(30);
         LocalDate to = LocalDate.now();

@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.ai.controller;
 
+import com.cristiane.salon.models.ai.dto.RecommendationAvailabilityResponse;
 import com.cristiane.salon.models.ai.dto.RecommendationResult;
 import com.cristiane.salon.models.ai.entity.RecommendationType;
 import com.cristiane.salon.models.ai.service.RecommendationService;
@@ -20,6 +21,13 @@ import org.springframework.web.bind.annotation.*;
 public class RecommendationController {
 
     private final RecommendationService recommendationService;
+
+    @GetMapping("/status")
+    @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
+    @Operation(summary = "Diagnóstico leve: diz se é possível gerar recomendações agora, sem expor a configuração sensível (Admin/Gerente)")
+    public ResponseEntity<RecommendationAvailabilityResponse> status() {
+        return ResponseEntity.ok(new RecommendationAvailabilityResponse(recommendationService.isAvailable()));
+    }
 
     @GetMapping("/{type}")
     @PreAuthorize("@verifyUserPermissions.userOwnResourceOrHasPermission(null)")
