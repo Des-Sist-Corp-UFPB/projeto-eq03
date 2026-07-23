@@ -1,5 +1,35 @@
 import type { ReactNode } from 'react';
-import { Search } from 'lucide-react';
+import { Search, ChevronsLeft, ChevronLeft, ChevronRight, ChevronsRight } from 'lucide-react';
+
+const ELLIPSIS = '…' as const;
+
+// Gera algo como [1, '…', 4, 5, 6, '…', 42] em vez de um botão por página —
+// necessário porque algumas listagens têm milhares de páginas (ex.: Fluxo de Caixa).
+function getPageNumbers(current: number, total: number, siblingCount = 1): (number | typeof ELLIPSIS)[] {
+  const totalNumbersToShow = siblingCount * 2 + 5; // primeira + última + atual + 2 vizinhos + 2 reticências
+  if (totalNumbersToShow >= total) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+
+  const leftSibling = Math.max(current - siblingCount, 1);
+  const rightSibling = Math.min(current + siblingCount, total);
+  const showLeftEllipsis = leftSibling > 2;
+  const showRightEllipsis = rightSibling < total - 1;
+
+  if (!showLeftEllipsis && showRightEllipsis) {
+    const leftRange = Array.from({ length: 3 + siblingCount * 2 }, (_, i) => i + 1);
+    return [...leftRange, ELLIPSIS, total];
+  }
+
+  if (showLeftEllipsis && !showRightEllipsis) {
+    const rightCount = 3 + siblingCount * 2;
+    const rightRange = Array.from({ length: rightCount }, (_, i) => total - rightCount + i + 1);
+    return [1, ELLIPSIS, ...rightRange];
+  }
+
+  const middleRange = Array.from({ length: rightSibling - leftSibling + 1 }, (_, i) => leftSibling + i);
+  return [1, ELLIPSIS, ...middleRange, ELLIPSIS, total];
+}
 
 interface Column<T> {
   key: keyof T | string;
@@ -101,41 +131,61 @@ export function Table<T>({
       </div>
 
       {totalPages > 1 && onPageChange && (
-        <div className="flex justify-center items-center gap-2 mt-6">
+        <div className="flex justify-center items-center gap-1 mt-6">
+          <button
+            disabled={currentPage === 1}
+            onClick={() => onPageChange(1)}
+            aria-label="Primeira página"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eae1e1] bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronsLeft size={16} />
+          </button>
           <button
             disabled={currentPage === 1}
             onClick={() => onPageChange(currentPage - 1)}
-            className="px-4 py-2 border border-[#eae1e1] rounded-lg bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+            aria-label="Página anterior"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eae1e1] bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Anterior
+            <ChevronLeft size={16} />
           </button>
 
           <div className="flex items-center gap-1">
-            {Array.from({ length: totalPages }).map((_, i) => {
-              const pageNum = i + 1;
-              const isActive = pageNum === currentPage;
-              return (
+            {getPageNumbers(currentPage, totalPages).map((page, i) =>
+              page === ELLIPSIS ? (
+                <span key={`ellipsis-${i}`} className="w-9 h-9 flex items-center justify-center text-sm text-[#7a7074]">
+                  {ELLIPSIS}
+                </span>
+              ) : (
                 <button
-                  key={pageNum}
-                  onClick={() => onPageChange(pageNum)}
+                  key={page}
+                  onClick={() => onPageChange(page)}
                   className={`w-9 h-9 rounded-lg flex items-center justify-center text-sm font-semibold transition-all ${
-                    isActive
+                    page === currentPage
                       ? 'bg-[#be8a83] text-white shadow-sm'
                       : 'border border-[#eae1e1] bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83]'
                   }`}
                 >
-                  {pageNum}
+                  {page}
                 </button>
-              );
-            })}
+              )
+            )}
           </div>
 
           <button
             disabled={currentPage === totalPages}
             onClick={() => onPageChange(currentPage + 1)}
-            className="px-4 py-2 border border-[#eae1e1] rounded-lg bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] disabled:opacity-50 disabled:cursor-not-allowed transition-all text-sm font-medium"
+            aria-label="Próxima página"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eae1e1] bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
           >
-            Próxima
+            <ChevronRight size={16} />
+          </button>
+          <button
+            disabled={currentPage === totalPages}
+            onClick={() => onPageChange(totalPages)}
+            aria-label="Última página"
+            className="w-9 h-9 flex items-center justify-center rounded-lg border border-[#eae1e1] bg-white text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+          >
+            <ChevronsRight size={16} />
           </button>
         </div>
       )}

@@ -1,4 +1,6 @@
 import api from '../../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../../utils/pagination';
+export type { PageResponse } from '../../../../utils/pagination';
 
 export interface ProductData {
   id?: number;
@@ -13,20 +15,12 @@ export interface ProductFilter {
   active?: boolean;
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
-}
-
 export const productsApi = {
   findAll: async (filter: ProductFilter = {}, page = 0, size = 10) => {
-    const { data } = await api.get<PageResponse<ProductData>>('/products', {
+    const { data } = await api.get<SpringPageResponse<ProductData>>('/products', {
       params: { ...filter, page, size },
     });
-    return data;
+    return normalizePage(data);
   },
 
   findById: async (id: number) => {

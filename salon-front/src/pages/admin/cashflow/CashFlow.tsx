@@ -30,6 +30,8 @@ export const CashFlow = () => {
 
   const [dateFrom, setDateFrom] = useState('');
   const [dateTo, setDateTo] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const {
     register,
@@ -55,8 +57,14 @@ export const CashFlow = () => {
   const loadCashFlows = async () => {
     setIsLoading(true);
     try {
-      const data = await cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined);
-      setCashFlows(data);
+      const response = await cashFlowApi.findByPeriod(
+        dateFrom || undefined,
+        dateTo || undefined,
+        currentPage - 1,
+        20
+      );
+      setCashFlows(response.content);
+      setTotalPages(response.totalPages || 1);
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Erro ao carregar fluxo de caixa');
       await showError(msg);
@@ -80,7 +88,7 @@ export const CashFlow = () => {
 
   useEffect(() => {
     loadCashFlows();
-  }, [dateFrom, dateTo]);
+  }, [dateFrom, dateTo, currentPage]);
   useEffect(() => {
     loadSuggestions();
   }, []);
@@ -299,7 +307,10 @@ export const CashFlow = () => {
             <input
               type="date"
               value={dateFrom}
-              onChange={(e) => setDateFrom(e.target.value)}
+              onChange={(e) => {
+                setDateFrom(e.target.value);
+                setCurrentPage(1);
+              }}
               className={inputCls}
             />
           </div>
@@ -308,7 +319,10 @@ export const CashFlow = () => {
             <input
               type="date"
               value={dateTo}
-              onChange={(e) => setDateTo(e.target.value)}
+              onChange={(e) => {
+                setDateTo(e.target.value);
+                setCurrentPage(1);
+              }}
               className={inputCls}
             />
           </div>
@@ -316,6 +330,7 @@ export const CashFlow = () => {
             onClick={() => {
               setDateFrom('');
               setDateTo('');
+              setCurrentPage(1);
             }}
             className="px-5 py-2.5 border border-[#eae1e1] text-sm font-semibold text-[#3b3036] hover:text-[#be8a83] hover:border-[#be8a83] bg-white rounded-xl transition-all duration-200 cursor-pointer"
           >
@@ -329,7 +344,14 @@ export const CashFlow = () => {
             <span>Carregando registros...</span>
           </div>
         ) : (
-          <Table columns={columns} data={cashFlows} keyExtractor={(item) => item.id!} />
+          <Table
+            columns={columns}
+            data={cashFlows}
+            keyExtractor={(item) => item.id!}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
         )}
       </div>
 
