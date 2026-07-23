@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Navigate } from 'react-router-dom';
 import { Lightbulb, DollarSign, Users, RefreshCw } from 'lucide-react';
 import {
   recommendationsService,
@@ -7,6 +8,7 @@ import {
   type RecommendationPriority,
 } from '../../../services/recommendations';
 import { useAlert } from '../../../hooks/useAlert';
+import { useFeatureFlag } from '../../../hooks/useFeatureFlag';
 import { getApiErrorMessage } from '../../../utils/apiError';
 
 const priorityStyles: Record<RecommendationPriority, string> = {
@@ -50,7 +52,13 @@ const sections: SectionConfig[] = [
   },
 ];
 
-const RecommendationSection = ({ config }: { config: SectionConfig }) => {
+const RecommendationSection = ({
+  config,
+  canGenerate,
+}: {
+  config: SectionConfig;
+  canGenerate: boolean;
+}) => {
   const [result, setResult] = useState<RecommendationResult | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -98,15 +106,23 @@ const RecommendationSection = ({ config }: { config: SectionConfig }) => {
             <p className="text-sm text-[#3b3036]/60">{config.description}</p>
           </div>
         </div>
-        <button
-          onClick={handleGenerate}
-          disabled={isGenerating}
-          className="shrink-0 flex items-center gap-2 px-4 py-2 bg-[#be8a83] hover:bg-[#a1706a] text-[#fcf9f9] text-sm font-semibold rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
-        >
-          <RefreshCw size={16} className={isGenerating ? 'animate-spin' : ''} />
-          {isGenerating ? 'Gerando...' : result ? 'Atualizar' : 'Gerar'}
-        </button>
+        {canGenerate && (
+          <button
+            onClick={handleGenerate}
+            disabled={isGenerating}
+            className="shrink-0 flex items-center gap-2 px-4 py-2 bg-[#be8a83] hover:bg-[#a1706a] text-[#fcf9f9] text-sm font-semibold rounded-xl transition-all disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+          >
+            <RefreshCw size={16} className={isGenerating ? 'animate-spin' : ''} />
+            {isGenerating ? 'Gerando...' : result ? 'Atualizar' : 'Gerar'}
+          </button>
+        )}
       </div>
+
+      {!canGenerate && (
+        <p className="text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+          A Central de IA está desativada no momento — só é possível consultar a última recomendação já gerada.
+        </p>
+      )}
 
       {config.details && (
         <div className="bg-[#fdf6f5] border border-[#eae1e1] rounded-xl px-4 py-3 space-y-1.5">
@@ -153,7 +169,9 @@ const RecommendationSection = ({ config }: { config: SectionConfig }) => {
         <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
           <Lightbulb size={28} className="text-gray-300" />
           <span className="text-sm text-[#3b3036]/60">
-            Nenhuma recomendação gerada ainda. Clique em "Gerar" para começar.
+            {canGenerate
+              ? 'Nenhuma recomendação gerada ainda. Clique em "Gerar" para começar.'
+              : 'Nenhuma recomendação gerada ainda.'}
           </span>
         </div>
       )}
@@ -162,6 +180,37 @@ const RecommendationSection = ({ config }: { config: SectionConfig }) => {
 };
 
 export const Recommendations = () => {
+  // Defesa em profundidade: o item de menu já some com a flag desligada
+  // (AdminLayout), mas alguém pode chegar aqui direto pela URL.
+  const { enabled: aiRecommendationsEnabled, isLoading: isCheckingFlag } =
+    useFeatureFlag('ENABLE_AI_RECOMMENDATIONS');
+
+  // Diferente da feature flag (liga o módulo inteiro), isso reflete o botão
+  // "Recomendações de IA ativas" da Central de IA — pode estar desligado
+  // mesmo com o módulo liberado. Sem checar isso, o botão "Gerar" apareceria
+  // e falharia ao clicar (ver RecommendationService.generate).
+  const [canGenerate, setCanGenerate] = useState(false);
+
+  useEffect(() => {
+    if (!aiRecommendationsEnabled) return;
+    recommendationsService
+      .getStatus()
+      .then((status) => setCanGenerate(status.available))
+      .catch(() => setCanGenerate(false));
+  }, [aiRecommendationsEnabled]);
+
+  if (isCheckingFlag) {
+    return (
+      <div className="flex justify-center items-center py-20">
+        <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-[#be8a83]"></div>
+      </div>
+    );
+  }
+
+  if (!aiRecommendationsEnabled) {
+    return <Navigate to="/" replace />;
+  }
+
   return (
     <div className="max-w-4xl mx-auto space-y-6 animate-fade-in-up">
       <div className="flex items-center gap-3">
@@ -179,7 +228,7 @@ export const Recommendations = () => {
 
       <div className="space-y-6">
         {sections.map((section) => (
-          <RecommendationSection key={section.type} config={section} />
+          <RecommendationSection key={section.type} config={section} canGenerate={canGenerate} />
         ))}
       </div>
     </div>

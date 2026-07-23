@@ -18,6 +18,12 @@ export interface RecommendationResult {
 }
 
 export const recommendationsService = {
+  /** Diz se dá pra gerar recomendações agora (feature flag + Central de IA ligadas), sem expor a configuração sensível. */
+  getStatus: async (): Promise<{ available: boolean }> => {
+    const response = await api.get<{ available: boolean }>('/admin/recommendations/status');
+    return response.data;
+  },
+
   getLatest: async (type: RecommendationType): Promise<RecommendationResult> => {
     const response = await api.get<RecommendationResult>(`/admin/recommendations/${type}`);
     return response.data;

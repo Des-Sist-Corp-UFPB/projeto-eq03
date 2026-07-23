@@ -85,7 +85,7 @@ export function Table<T>({
                     return (
                       <td
                         key={String(col.key) + index}
-                        className={`px-4 py-4 align-middle bg-white/60 border-y border-[#eae1e1] group-hover:bg-[#fcf9f9]/40 dark:group-hover:bg-white/5 transition-all duration-200 ${
+                        className={`px-4 py-4 align-middle bg-white/60 border-y border-[#eae1e1] group-hover:bg-[#fcf9f9]/40 transition-all duration-200 ${
                           isFirst ? 'border-l rounded-l-xl' : ''
                         } ${isLast ? 'border-r rounded-r-xl' : ''}`}
                       >
