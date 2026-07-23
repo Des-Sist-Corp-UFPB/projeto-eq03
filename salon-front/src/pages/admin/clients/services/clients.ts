@@ -1,6 +1,8 @@
 import api from '../../../../services/api';
 import type { UserData } from '../../users/services/users';
 import type { AppointmentResponse } from '../../../appointments/services/appointments';
+import { normalizePage, type SpringPageResponse } from '../../../../utils/pagination';
+export type { PageResponse } from '../../../../utils/pagination';
 
 export interface ClientFilter {
   name?: string;
@@ -16,24 +18,16 @@ export interface ClientDetailsResponse extends UserData {
   appointments: AppointmentResponse[];
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
-}
-
 export const clientsApi = {
   findAll: async (filter: ClientFilter, page: number, size: number) => {
-    const { data } = await api.get<PageResponse<UserData>>('/clients', {
+    const { data } = await api.get<SpringPageResponse<UserData>>('/clients', {
       params: {
         ...filter,
         page,
         size,
       },
     });
-    return data;
+    return normalizePage(data);
   },
 
   findById: async (id: number) => {

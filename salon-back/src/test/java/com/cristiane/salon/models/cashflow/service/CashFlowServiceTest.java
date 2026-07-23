@@ -135,6 +135,47 @@ class CashFlowServiceTest {
         verify(cashFlowRepository).findByDateBetween(from, expectedTo);
     }
 
+    @Test
+    void findByPeriodPaginated_whenDatesPassed_shouldQueryRepositoryWithPageable() {
+        // Arrange
+        LocalDate from = LocalDate.of(2026, 6, 1);
+        LocalDate to = LocalDate.of(2026, 6, 15);
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+        CashFlow cf = new CashFlow();
+        cf.setId(10L);
+        cf.setType(CashFlowType.INCOME);
+        cf.setAmount(BigDecimal.TEN);
+        cf.setDate(LocalDate.of(2026, 6, 5));
+        org.springframework.data.domain.Page<CashFlow> page =
+                new org.springframework.data.domain.PageImpl<>(List.of(cf));
+        when(cashFlowRepository.findByDateBetween(from, to, pageable)).thenReturn(page);
+
+        // Act
+        org.springframework.data.domain.Page<CashFlowResponse> result =
+                cashFlowService.findByPeriod(from, to, pageable);
+
+        // Assert
+        assertThat(result.getContent()).hasSize(1);
+        assertThat(result.getContent().get(0).id()).isEqualTo(10L);
+        verify(cashFlowRepository).findByDateBetween(from, to, pageable);
+    }
+
+    @Test
+    void findByPeriodPaginated_whenDatesNull_shouldDefaultDates() {
+        // Arrange
+        org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
+        LocalDate expectedFrom = LocalDate.now().withDayOfMonth(1);
+        LocalDate expectedTo = LocalDate.now().plusDays(30);
+        when(cashFlowRepository.findByDateBetween(eq(expectedFrom), eq(expectedTo), eq(pageable)))
+                .thenReturn(org.springframework.data.domain.Page.empty());
+
+        // Act
+        cashFlowService.findByPeriod(null, null, pageable);
+
+        // Assert
+        verify(cashFlowRepository).findByDateBetween(expectedFrom, expectedTo, pageable);
+    }
+
     // --- create with items (Product Sale) ---
 
     @Test

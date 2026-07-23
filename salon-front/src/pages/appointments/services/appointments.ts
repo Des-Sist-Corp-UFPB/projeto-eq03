@@ -1,4 +1,6 @@
 import api from '../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../utils/pagination';
+export type { PageResponse } from '../../../utils/pagination';
 
 export interface AppointmentRequestBody {
   employeeId: number;
@@ -71,14 +73,6 @@ export interface AppointmentFilter {
   clientId?: number;
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
-}
-
 export const appointmentsApi = {
   create: async (request: AppointmentRequestBody) => {
     const { data } = await api.post<AppointmentResponse>(
@@ -106,10 +100,10 @@ export const appointmentsApi = {
   },
 
   findAll: async (filter: AppointmentFilter = {}, page = 0, size = 20) => {
-    const { data } = await api.get<PageResponse<AppointmentResponse>>('/appointments', {
+    const { data } = await api.get<SpringPageResponse<AppointmentResponse>>('/appointments', {
       params: { ...filter, page, size },
     });
-    return data;
+    return normalizePage(data);
   },
 
   cancel: async (id: number) => {

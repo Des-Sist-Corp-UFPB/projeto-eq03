@@ -42,6 +42,8 @@ function formatServiceOption(s: SalonServiceData): string {
 export const AdminAppointments = () => {
   const [appointments, setAppointments] = useState<AppointmentResponse[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
 
   const [showModal, setShowModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -84,7 +86,7 @@ export const AdminAppointments = () => {
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
-      const response = await appointmentsApi.findAll({}, 0, 1000);
+      const response = await appointmentsApi.findAll({}, currentPage - 1, 20);
       const data = response.content;
       data.sort((a, b) => {
         const ta = a.scheduledAt
@@ -100,6 +102,7 @@ export const AdminAppointments = () => {
         return tb - ta;
       });
       setAppointments(data);
+      setTotalPages(response.totalPages || 1);
     } catch (err) {
       await showError('Erro ao carregar agendamentos');
     } finally {
@@ -126,6 +129,9 @@ export const AdminAppointments = () => {
 
   useEffect(() => {
     loadAppointments();
+  }, [currentPage]);
+
+  useEffect(() => {
     // Dados do formulário (clientes/serviços/profissionais) só são úteis para quem
     // pode abrir o modal de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
     if (canCreateAppointment) {
@@ -529,6 +535,9 @@ export const AdminAppointments = () => {
             columns={columns}
             data={appointments}
             keyExtractor={(item) => item.id?.toString() || Math.random().toString()}
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
           />
         )}
       </div>

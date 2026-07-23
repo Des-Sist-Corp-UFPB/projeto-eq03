@@ -1,4 +1,6 @@
 import api from '../../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../../utils/pagination';
+export type { PageResponse } from '../../../../utils/pagination';
 
 export interface EmployeeFinanceResponse {
   employeeId: number;
@@ -57,14 +59,6 @@ export interface AppointmentFinancialResponse {
   paymentStatus: string | null;
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
-}
-
 export const reportsApi = {
   getFinancialReport: async (from?: string, to?: string) => {
     const params: Record<string, string> = {};
@@ -100,10 +94,10 @@ export const reportsApi = {
     const params: Record<string, string | number> = { page, size };
     if (from) params.from = from;
     if (to) params.to = to;
-    const { data } = await api.get<PageResponse<AppointmentFinancialResponse>>(
+    const { data } = await api.get<SpringPageResponse<AppointmentFinancialResponse>>(
       `/reports/financial/employees/${employeeId}`,
       { params }
     );
-    return data;
+    return normalizePage(data);
   },
 };
