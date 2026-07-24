@@ -82,10 +82,8 @@ public class ReportService {
                 .map(CashFlow::getAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        final LocalDate finalFrom = from;
-        final LocalDate finalTo = to;
-        List<Appointment> doneAppointments = appointmentRepository.findAll().stream()
-                .filter(a -> a.getStatus() == AppointmentStatus.DONE && isAppointmentInReportPeriod(a, finalFrom, finalTo))
+        List<Appointment> doneAppointments = findAppointmentsInPeriod(from, to).stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.DONE)
                 .collect(Collectors.toList());
 
         BigDecimal globalDoneAppointmentsValue = doneAppointments.stream()
@@ -200,9 +198,7 @@ public class ReportService {
         final LocalDate fromDate = from == null ? LocalDate.now().withDayOfMonth(1) : from;
         final LocalDate toDate = to == null ? LocalDate.now().plusDays(30) : to;
 
-        List<Appointment> appointments = appointmentRepository.findAll().stream()
-                .filter(a -> isAppointmentInReportPeriod(a, fromDate, toDate))
-                .collect(Collectors.toList());
+        List<Appointment> appointments = findAppointmentsInPeriod(fromDate, toDate);
 
         long pending = appointments.stream().filter(a ->
                 a.getStatus() == AppointmentStatus.PENDING || a.getStatus() == AppointmentStatus.REQUESTED).count();
@@ -236,11 +232,8 @@ public class ReportService {
         if (from == null) from = LocalDate.now().withDayOfMonth(1);
         if (to == null) to = LocalDate.now().plusDays(30);
 
-        final LocalDate finalFrom = from;
-        final LocalDate finalTo = to;
-
-        List<Appointment> doneAppointments = appointmentRepository.findAll().stream()
-                .filter(a -> a.getStatus() == AppointmentStatus.DONE && isAppointmentInReportPeriod(a, finalFrom, finalTo))
+        List<Appointment> doneAppointments = findAppointmentsInPeriod(from, to).stream()
+                .filter(a -> a.getStatus() == AppointmentStatus.DONE)
                 .collect(Collectors.toList());
 
         BigDecimal globalDoneAppointmentsValue = doneAppointments.stream()
@@ -300,19 +293,15 @@ public class ReportService {
         return new PayrollReportResponse(items, period);
     }
 
-    private static boolean isAppointmentInReportPeriod(Appointment a, LocalDate from, LocalDate to) {
+    /**
+     * Busca agendamentos no período direto no banco (fallback scheduledAt > preferredDate >
+     * createdAt), em vez de carregar {@code appointmentRepository.findAll()} inteiro e filtrar
+     * em memória — gargalo identificado via OpenTelemetry (ver relatório de observabilidade):
+     * essa query crescia sem limite junto com o histórico de agendamentos do salão.
+     */
+    private List<Appointment> findAppointmentsInPeriod(LocalDate from, LocalDate to) {
         LocalDateTime startOfDay = from.atStartOfDay();
         LocalDateTime endOfDay = to.atTime(LocalTime.MAX);
-        if (a.getScheduledAt() != null) {
-            return !a.getScheduledAt().isBefore(startOfDay) && !a.getScheduledAt().isAfter(endOfDay);
-        }
-        if (a.getPreferredDate() != null) {
-            return !a.getPreferredDate().isBefore(from) && !a.getPreferredDate().isAfter(to);
-        }
-        if (a.getCreatedAt() != null) {
-            LocalDate d = a.getCreatedAt().toLocalDate();
-            return !d.isBefore(from) && !d.isAfter(to);
-        }
-        return false;
+        return appointmentRepository.findAllInPeriod(from, to, startOfDay, endOfDay);
     }
 }

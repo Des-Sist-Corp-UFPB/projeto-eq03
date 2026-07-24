@@ -1,4 +1,6 @@
 import api from '../../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../../utils/pagination';
+export type { PageResponse } from '../../../../utils/pagination';
 
 export interface EmployeeData {
   id?: number;
@@ -17,20 +19,12 @@ export interface EmployeeFilter {
   active?: boolean;
 }
 
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
-}
-
 export const employeesApi = {
   findAll: async (filter: EmployeeFilter = {}, page = 0, size = 10) => {
-    const { data } = await api.get<PageResponse<EmployeeData>>('/employees', {
+    const { data } = await api.get<SpringPageResponse<EmployeeData>>('/employees', {
       params: { ...filter, page, size },
     });
-    return data;
+    return normalizePage(data);
   },
 
   /** Lista funcionárias para o fluxo de agendamento público (sem expor email). */

@@ -15,6 +15,8 @@ import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
 import com.cristiane.salon.models.product.entity.Product;
 import com.cristiane.salon.models.product.repository.ProductRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +44,14 @@ public class CashFlowService {
         return cashFlowRepository.findByDateBetween(from, to).stream()
                 .map(CashFlowResponse::fromEntity)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public Page<CashFlowResponse> findByPeriod(LocalDate from, LocalDate to, Pageable pageable) {
+        if (from == null) from = LocalDate.now().withDayOfMonth(1);
+        if (to == null) to = LocalDate.now().plusDays(30);
+
+        return cashFlowRepository.findByDateBetween(from, to, pageable).map(CashFlowResponse::fromEntity);
     }
 
     @Transactional

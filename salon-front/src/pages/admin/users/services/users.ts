@@ -1,4 +1,6 @@
 import api from '../../../../services/api';
+import { normalizePage, type SpringPageResponse } from '../../../../utils/pagination';
+export type { PageResponse } from '../../../../utils/pagination';
 
 export interface UserData {
   id: number;
@@ -17,14 +19,6 @@ export interface UserFilter {
   phone?: string;
   active?: boolean;
   roleId?: number;
-}
-
-export interface PageResponse<T> {
-  content: T[];
-  totalPages: number;
-  totalElements: number;
-  size: number;
-  number: number;
 }
 
 export interface UserUpdateRequest {
@@ -57,14 +51,14 @@ export interface UserCpfInfoResponse {
 
 export const usersApi = {
   findAll: async (filter: UserFilter, page: number, size: number) => {
-    const { data } = await api.get<PageResponse<UserData>>('/users', {
+    const { data } = await api.get<SpringPageResponse<UserData>>('/users', {
       params: {
         ...filter,
         page,
         size,
       },
     });
-    return data;
+    return normalizePage(data);
   },
 
   create: async (createData: UserCreateRequest) => {

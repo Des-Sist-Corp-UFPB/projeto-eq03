@@ -1,6 +1,8 @@
 package com.cristiane.salon.models.cashflow.repository;
 
 import com.cristiane.salon.models.cashflow.entity.CashFlow;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -11,7 +13,14 @@ import java.util.List;
 
 @Repository
 public interface CashFlowRepository extends JpaRepository<CashFlow, Long> {
-    
+
+    // Usado pelo relatório financeiro (ReportService), que precisa do período inteiro
+    // de uma vez para somar entradas/saídas — não é uma listagem para o usuário navegar.
     @Query("SELECT c FROM CashFlow c WHERE c.date >= :startDate AND c.date <= :endDate ORDER BY c.date DESC")
     List<CashFlow> findByDateBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate);
+
+    // Usado pela tela de Fluxo de Caixa (listagem paginada) — mesmo filtro, mas sem
+    // carregar o período inteiro de uma vez.
+    @Query("SELECT c FROM CashFlow c WHERE c.date >= :startDate AND c.date <= :endDate")
+    Page<CashFlow> findByDateBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
 }

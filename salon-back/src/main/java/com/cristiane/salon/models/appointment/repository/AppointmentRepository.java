@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -38,5 +39,19 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
             @Param("from") LocalDateTime from,
             @Param("to") LocalDateTime to,
             Pageable pageable
+    );
+
+    // Replica no banco a mesma cadeia de fallback que os relatórios usavam em memória
+    // (scheduledAt > preferredDate > createdAt): evita carregar a tabela inteira via
+    // findAll() só para filtrar por período depois em Java (gargalo achado no OpenTelemetry).
+    @Query("SELECT a FROM Appointment a WHERE "
+            + "(a.scheduledAt IS NOT NULL AND a.scheduledAt BETWEEN :startOfDay AND :endOfDay) "
+            + "OR (a.scheduledAt IS NULL AND a.preferredDate IS NOT NULL AND a.preferredDate BETWEEN :from AND :to) "
+            + "OR (a.scheduledAt IS NULL AND a.preferredDate IS NULL AND a.createdAt IS NOT NULL AND a.createdAt BETWEEN :startOfDay AND :endOfDay)")
+    List<Appointment> findAllInPeriod(
+            @Param("from") LocalDate from,
+            @Param("to") LocalDate to,
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay
     );
 }

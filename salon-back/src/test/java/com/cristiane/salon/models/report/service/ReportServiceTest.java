@@ -137,7 +137,7 @@ class ReportServiceTest {
         aptAlice.setSalonService(service);
         aptAlice.setScheduledAt(LocalDateTime.now());
 
-        when(appointmentRepository.findAll()).thenReturn(List.of(aptBob, aptAlice));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice));
 
         // When
         FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now());
@@ -189,7 +189,7 @@ class ReportServiceTest {
         apt.setSalonService(service);
         apt.setScheduledAt(LocalDateTime.now());
 
-        when(appointmentRepository.findAll()).thenReturn(List.of(apt));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
 
         // When
         FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now());
@@ -230,7 +230,7 @@ class ReportServiceTest {
         apt2.setEmployee(employee);
         apt2.setSalonService(salonService);
 
-        when(appointmentRepository.findAll()).thenReturn(List.of(apt1, apt2));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
 
         // When
         AppointmentReportResponse report = reportService.generateAppointmentReport(LocalDate.now(), LocalDate.now());
@@ -307,7 +307,7 @@ class ReportServiceTest {
         aptDave.setScheduledAt(LocalDateTime.now());
 
         // Total done appointments value = 200 (Bob) + 200 (Alice) + 200 (Dave) = 600
-        when(appointmentRepository.findAll()).thenReturn(List.of(aptBob, aptAlice, aptDave));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice, aptDave));
 
         // When
         PayrollReportResponse response = reportService.generatePayrollReport(LocalDate.now(), LocalDate.now());
@@ -386,17 +386,11 @@ class ReportServiceTest {
         apt2.setPreferredDate(null);
         apt2.setCreatedAt(LocalDateTime.now().plusDays(3));
 
-        // Appointment 3: using nothing (should not match)
-        Appointment apt3 = new Appointment();
-        apt3.setStatus(AppointmentStatus.DONE);
-        apt3.setEmployee(emp);
-        apt3.setSalonService(service);
-        apt3.setScheduledAt(null);
-        apt3.setPreferredDate(null);
-        apt3.setCreatedAt(null);
+        // Appointment 3: sem nenhuma data — não seria retornado pela query real
+        // (findAllInPeriod), então nem é incluído no mock do repositório abaixo.
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
-        when(appointmentRepository.findAll()).thenReturn(List.of(apt1, apt2, apt3));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
         when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
 
@@ -432,7 +426,7 @@ class ReportServiceTest {
         apt.setScheduledAt(LocalDateTime.now());
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
-        when(appointmentRepository.findAll()).thenReturn(List.of(apt));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
         when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
 
@@ -473,7 +467,7 @@ class ReportServiceTest {
         apt.setScheduledAt(LocalDateTime.now());
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
-        when(appointmentRepository.findAll()).thenReturn(List.of(apt));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
         when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
 

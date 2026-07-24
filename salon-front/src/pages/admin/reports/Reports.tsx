@@ -51,12 +51,12 @@ export const Reports = () => {
       const [finData, aptData, cfData, payData] = await Promise.all([
         reportsApi.getFinancialReport(dateFrom || undefined, dateTo || undefined),
         reportsApi.getAppointmentReport(dateFrom || undefined, dateTo || undefined),
-        cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined),
+        cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined, 0, 1000),
         reportsApi.getPayrollReport(dateFrom || undefined, dateTo || undefined),
       ]);
       setFinancial(finData);
       setAppointments(aptData);
-      setCashFlows(cfData);
+      setCashFlows(cfData.content);
       setPayroll(payData);
     } catch (err) {
       const msg = getApiErrorMessage(err, 'Erro ao carregar relatórios');
@@ -74,10 +74,11 @@ export const Reports = () => {
     setIsGeneratingPDF(true);
     try {
       // Fetch fresh cash flow and payroll data before drawing the PDF (user requirement)
-      const [cfData, payData] = await Promise.all([
-        cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined),
+      const [cfPage, payData] = await Promise.all([
+        cashFlowApi.findByPeriod(dateFrom || undefined, dateTo || undefined, 0, 1000),
         reportsApi.getPayrollReport(dateFrom || undefined, dateTo || undefined),
       ]);
+      const cfData = cfPage.content;
 
       const doc = new jsPDF();
       const margin = 15;

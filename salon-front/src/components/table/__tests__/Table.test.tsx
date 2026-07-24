@@ -95,8 +95,8 @@ describe('Table Component', () => {
     expect(screen.getByText('2')).toBeInTheDocument();
     expect(screen.getByText('3')).toBeInTheDocument();
 
-    // Click "Anterior"
-    const prevButton = screen.getByText('Anterior');
+    // Click "Página anterior"
+    const prevButton = screen.getByLabelText('Página anterior');
     fireEvent.click(prevButton);
     expect(handlePageChange).toHaveBeenCalledWith(1);
 
@@ -105,8 +105,8 @@ describe('Table Component', () => {
     fireEvent.click(page3Button);
     expect(handlePageChange).toHaveBeenCalledWith(3);
 
-    // Click "Próxima"
-    const nextButton = screen.getByText('Próxima');
+    // Click "Próxima página"
+    const nextButton = screen.getByLabelText('Próxima página');
     fireEvent.click(nextButton);
     expect(handlePageChange).toHaveBeenCalledWith(3);
   });
@@ -125,8 +125,8 @@ describe('Table Component', () => {
       />
     );
 
-    expect(screen.getByText('Anterior')).toBeDisabled();
-    expect(screen.getByText('Próxima')).not.toBeDisabled();
+    expect(screen.getByLabelText('Página anterior')).toBeDisabled();
+    expect(screen.getByLabelText('Próxima página')).not.toBeDisabled();
 
     // Rerender as last page
     rerender(
@@ -140,8 +140,38 @@ describe('Table Component', () => {
       />
     );
 
-    expect(screen.getByText('Anterior')).not.toBeDisabled();
-    expect(screen.getByText('Próxima')).toBeDisabled();
+    expect(screen.getByLabelText('Página anterior')).not.toBeDisabled();
+    expect(screen.getByLabelText('Próxima página')).toBeDisabled();
+  });
+
+  it('should truncate page numbers with ellipsis when there are many pages', () => {
+    const handlePageChange = vi.fn();
+
+    render(
+      <Table
+        columns={columns}
+        data={mockData}
+        keyExtractor={(item) => item.id}
+        currentPage={500}
+        totalPages={1536}
+        onPageChange={handlePageChange}
+      />
+    );
+
+    // Only a handful of page buttons should exist, not one per page
+    const pageButtons = screen.getAllByRole('button').filter((b) => /^\d+$/.test(b.textContent || ''));
+    expect(pageButtons.length).toBeLessThan(10);
+
+    expect(screen.getByText('1')).toBeInTheDocument();
+    expect(screen.getByText('1536')).toBeInTheDocument();
+    expect(screen.getByText('500')).toBeInTheDocument();
+    expect(screen.getAllByText('…').length).toBeGreaterThan(0);
+
+    fireEvent.click(screen.getByLabelText('Primeira página'));
+    expect(handlePageChange).toHaveBeenCalledWith(1);
+
+    fireEvent.click(screen.getByLabelText('Última página'));
+    expect(handlePageChange).toHaveBeenCalledWith(1536);
   });
 
   it('should render empty string when value is missing/falsy for a column without render function', () => {
