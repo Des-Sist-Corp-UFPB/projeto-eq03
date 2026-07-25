@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClient;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -46,6 +47,7 @@ class EmailServiceTest {
         ReflectionTestUtils.setField(emailService, "fromEmail", "notificacoes@elksandro.com");
         ReflectionTestUtils.setField(emailService, "businessEmail", "elksandrosandro19@gmail.com");
         ReflectionTestUtils.setField(emailService, "apiUrl", "http://test-email-api.com");
+        ReflectionTestUtils.setField(emailService, "frontendUrl", "http://localhost:5173");
 
         client = new User();
         client.setId(10L);
@@ -113,6 +115,25 @@ class EmailServiceTest {
                     eq("E-mail de solicitação de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
                     eq("SUCCESS")
             );
+        }
+    }
+
+    @Test
+    void sendRequestNotificationToStaff_whenSuccessful_shouldPassFrontendUrlToTemplateContext() {
+        // Arrange
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        org.mockito.ArgumentCaptor<Context> contextCaptor = org.mockito.ArgumentCaptor.forClass(Context.class);
+        when(templateEngine.process(eq("mail/appointment-request"), contextCaptor.capture())).thenReturn("<html>Request HTML</html>");
+
+        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
+            setupRestClientMock(mockedRestClient, false);
+
+            // Act
+            emailService.sendRequestNotificationToStaff(appointment);
+
+            // Assert: sem isso, o link "Visualizar no Painel" do e-mail apontaria pra
+            // localhost mesmo em produção (bug real corrigido nesta mudança).
+            assertThat(contextCaptor.getValue().getVariable("frontendUrl")).isEqualTo("http://localhost:5173");
         }
     }
 
@@ -362,6 +383,63 @@ class EmailServiceTest {
                 eq("Falha ao enviar e-mail de cancelamento para a equipe (elksandrosandro19@gmail.com)"),
                 eq("FAILURE"),
                 eq("Template load error")
+        );
+    }
+
+    // --- sendPasswordResetEmail ---
+
+    @Test
+    void sendPasswordResetEmail_whenFeatureFlagDisabled_shouldReturnImmediately() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(false);
+
+        emailService.sendPasswordResetEmail(client, "raw-token");
+
+        verifyNoInteractions(templateEngine, auditLogService);
+    }
+
+    @Test
+    void sendPasswordResetEmail_whenSuccessful_shouldBuildLinkWithFrontendUrlAndAuditSuccess() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        org.mockito.ArgumentCaptor<Context> contextCaptor = org.mockito.ArgumentCaptor.forClass(Context.class);
+        when(templateEngine.process(eq("mail/password-reset"), contextCaptor.capture())).thenReturn("<html>Reset HTML</html>");
+
+        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
+            setupRestClientMock(mockedRestClient, false);
+
+            emailService.sendPasswordResetEmail(client, "raw-token");
+
+            assertThat(contextCaptor.getValue().getVariable("resetLink"))
+                    .isEqualTo("http://localhost:5173/reset-password?token=raw-token");
+
+            verify(auditLogService).logAction(
+                    eq(10L),
+                    eq("SYSTEM"),
+                    eq("EMAIL_SENT"),
+                    eq("User"),
+                    eq(10L),
+                    eq("E-mail de redefinição de senha enviado para: client@example.com"),
+                    eq("SUCCESS")
+            );
+        }
+    }
+
+    @Test
+    void sendPasswordResetEmail_whenTemplateProcessingThrows_shouldAuditFailure() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        when(templateEngine.process(eq("mail/password-reset"), any(Context.class)))
+                .thenThrow(new RuntimeException("Thymeleaf parsing error"));
+
+        emailService.sendPasswordResetEmail(client, "raw-token");
+
+        verify(auditLogService).logAction(
+                eq(10L),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("User"),
+                eq(10L),
+                eq("Falha ao enviar e-mail de redefinição de senha para: client@example.com"),
+                eq("FAILURE"),
+                eq("Thymeleaf parsing error")
         );
     }
 }

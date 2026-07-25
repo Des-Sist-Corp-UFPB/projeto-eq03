@@ -12,6 +12,8 @@ import { AiConfig } from './pages/sysadmin/AiConfig';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { Login } from './pages/auth/Login';
 import { Register } from './pages/auth/Register';
+import { ForgotPassword } from './pages/auth/ForgotPassword';
+import { ResetPassword } from './pages/auth/ResetPassword';
 import { AdminServices } from './pages/admin/services/AdminServices';
 import { Products } from './pages/admin/products/Products';
 import { Users } from './pages/admin/users/Users';
@@ -140,6 +142,8 @@ export const Router = () => {
 
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route element={<AdminLayout />}>
         <Route path="/admin/dashboard" element={<AdminIndexRedirect />} />
