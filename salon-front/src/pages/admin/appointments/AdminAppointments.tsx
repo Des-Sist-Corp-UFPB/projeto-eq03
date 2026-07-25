@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Clock, User as UserIcon, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Plus, Clock, User as UserIcon, Calendar as CalendarIcon, X, PencilLine } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PixPaymentModal } from '../../../components/modal/PixPaymentModal';
@@ -20,6 +20,11 @@ import {
   emptyAppointmentFilters,
   type AppointmentFiltersState,
 } from './components/AppointmentFiltersBar';
+import {
+  ServiceCustomizationPanel,
+  type ServiceCustomizationValues,
+} from './components/ServiceCustomizationPanel';
+import { AppointmentDetailModal } from './components/AppointmentDetailModal';
 import {
   canCancel,
   getCancelBlockReason,
@@ -62,6 +67,12 @@ export const AdminAppointments = () => {
   const [selectedService, setSelectedService] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedDateTime, setSelectedDateTime] = useState('');
+  const [customization, setCustomization] = useState<ServiceCustomizationValues>({
+    price: '',
+    durationMin: '',
+    notes: '',
+  });
+  const [detailTarget, setDetailTarget] = useState<AppointmentResponse | null>(null);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
@@ -153,6 +164,18 @@ export const AdminAppointments = () => {
   }, []);
 
   useEffect(() => {
+    // Serviço como template: ao trocar de serviço, os campos de personalização voltam a
+    // refletir os valores padrão do novo serviço (o usuário decide se quer editá-los).
+    const service = allServices.find((s) => s.id === Number(selectedService));
+    setCustomization({
+      price: service?.price != null ? String(service.price) : '',
+      durationMin: service?.durationMin != null ? String(service.durationMin) : '',
+      notes: '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedService]);
+
+  useEffect(() => {
     // Dados do formulário (clientes/serviços) só são úteis para quem pode abrir o modal
     // de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
     if (canCreateAppointment) {
@@ -187,11 +210,24 @@ export const AdminAppointments = () => {
     }
     setIsSaving(true);
     try {
+      const service = allServices.find((s) => s.id === Number(selectedService));
+
+      // Serviço como template: só manda override se o valor realmente difere do
+      // catálogo — se o usuário não mexeu no campo, ele fica null (usa o padrão).
+      const priceNum = customization.price === '' ? null : Number(customization.price);
+      const durationNum = customization.durationMin === '' ? null : Number(customization.durationMin);
+      const customPrice = priceNum != null && priceNum !== service?.price ? priceNum : null;
+      const customDurationMin =
+        durationNum != null && durationNum !== service?.durationMin ? durationNum : null;
+
       await appointmentsApi.create({
         clientId: Number(selectedClient),
         serviceId: Number(selectedService),
         employeeId: Number(selectedEmployee),
         scheduledAt: toLocalDateTimeIso(selectedDateTime),
+        customPrice,
+        customDurationMin,
+        customServiceNotes: customization.notes || null,
       });
       setShowModal(false);
       loadAppointments();
@@ -378,7 +414,29 @@ export const AdminAppointments = () => {
     },
     { key: 'clientName', label: 'Cliente' },
     { key: 'employeeName', label: 'Profissional' },
-    { key: 'serviceName', label: 'Serviço' },
+    {
+      key: 'serviceName',
+      label: 'Serviço',
+      render: (item: AppointmentResponse) => {
+        const isCustomized =
+          item.customPrice != null || item.customDurationMin != null || !!item.customServiceNotes;
+        return (
+          <button
+            type="button"
+            onClick={() => setDetailTarget(item)}
+            className="flex items-center gap-1.5 text-left hover:underline cursor-pointer"
+            title="Ver detalhes do agendamento"
+          >
+            <span>{item.serviceName}</span>
+            {isCustomized && (
+              <span title="Serviço personalizado para este agendamento" className="shrink-0 inline-flex">
+                <PencilLine size={13} className="text-[#be8a83]" />
+              </span>
+            )}
+          </button>
+        );
+      },
+    },
     {
       key: 'notes',
       label: 'Obs.',
@@ -671,6 +729,18 @@ export const AdminAppointments = () => {
                     </p>
                   </div>
                 </div>
+
+                {selectedService && (
+                  <ServiceCustomizationPanel
+                    defaultPrice={allServices.find((s) => s.id === Number(selectedService))?.price ?? null}
+                    defaultDurationMin={
+                      allServices.find((s) => s.id === Number(selectedService))?.durationMin ?? null
+                    }
+                    values={customization}
+                    onChange={setCustomization}
+                  />
+                )}
+
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
                   O agendamento nasce já <strong>confirmado</strong>. Clientes pelo site enviam uma{' '}
                   <strong>solicitação</strong> para você aceitar e marcar o horário.
@@ -748,6 +818,19 @@ export const AdminAppointments = () => {
           </div>
         </div>
       )}
+
+      <AppointmentDetailModal
+        appointment={detailTarget}
+        catalogPrice={
+          detailTarget ? allServices.find((s) => s.id === detailTarget.serviceId)?.price ?? null : null
+        }
+        catalogDurationMin={
+          detailTarget
+            ? allServices.find((s) => s.id === detailTarget.serviceId)?.durationMin ?? null
+            : null
+        }
+        onClose={() => setDetailTarget(null)}
+      />
 
       <ConfirmDialog
         show={showConfirm}
