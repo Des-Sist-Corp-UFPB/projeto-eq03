@@ -61,7 +61,10 @@ public class AppointmentService {
     private final MercadoPagoPaymentService mercadoPagoPaymentService;
     private final AuditLogService auditLogService;
 
-    private static int blockingMinutes(SalonService service) {
+    private static int blockingMinutes(Integer overrideDurationMin, SalonService service) {
+        if (overrideDurationMin != null && overrideDurationMin > 0) {
+            return overrideDurationMin;
+        }
         if (service.getDurationMin() != null && service.getDurationMin() > 0) {
             return service.getDurationMin();
         }
@@ -80,21 +83,21 @@ public class AppointmentService {
     }
 
     private void assertNoScheduleConflict(Long employeeId, LocalDateTime scheduledAt, SalonService service,
-                                         Long ignoreAppointmentId) {
+                                         Integer overrideDurationMin, Long ignoreAppointmentId) {
         List<Appointment> existing = appointmentRepository.findActiveAppointmentsByEmployeeAndDate(
                 employeeId,
                 scheduledAt.toLocalDate().atStartOfDay(),
                 scheduledAt.toLocalDate().atTime(LocalTime.MAX)
         );
 
-        LocalDateTime requestEnd = scheduledAt.plusMinutes(blockingMinutes(service));
+        LocalDateTime requestEnd = scheduledAt.plusMinutes(blockingMinutes(overrideDurationMin, service));
 
         for (Appointment apt : existing) {
             if (ignoreAppointmentId != null && apt.getId().equals(ignoreAppointmentId)) {
                 continue;
             }
             LocalDateTime aptStart = apt.getScheduledAt();
-            LocalDateTime aptEnd = aptStart.plusMinutes(blockingMinutes(apt.getSalonService()));
+            LocalDateTime aptEnd = aptStart.plusMinutes(blockingMinutes(apt.getCustomDurationMin(), apt.getSalonService()));
 
             boolean overlaps = scheduledAt.isBefore(aptEnd) && aptStart.isBefore(requestEnd);
             if (overlaps) {
@@ -142,7 +145,15 @@ public class AppointmentService {
             if (request.scheduledAt().isBefore(LocalDateTime.now())) {
                 throw new BadRequestException("Não é possível agendar no passado");
             }
-            assertNoScheduleConflict(employee.getId(), request.scheduledAt(), service, null);
+
+            if (request.customPrice() != null && request.customPrice().compareTo(BigDecimal.ZERO) < 0) {
+                throw new BadRequestException("O preço customizado não pode ser negativo");
+            }
+            if (request.customDurationMin() != null && request.customDurationMin() <= 0) {
+                throw new BadRequestException("A duração customizada deve ser maior que zero");
+            }
+
+            assertNoScheduleConflict(employee.getId(), request.scheduledAt(), service, request.customDurationMin(), null);
 
             if (request.preferredDate() != null && request.preferredDate().isBefore(LocalDate.now())) {
                 throw new BadRequestException("A data preferida deve ser hoje ou uma data futura");
@@ -156,6 +167,11 @@ public class AppointmentService {
             appointment.setPreferredDate(request.preferredDate());
             appointment.setClientNotes(request.clientNotes());
             appointment.setStatus(AppointmentStatus.CONFIRMED);
+            // Serviço como template: sobrescreve preço/duração/observações só para este
+            // agendamento, sem alterar o cadastro do serviço (fluxo administrativo apenas).
+            appointment.setCustomPrice(request.customPrice());
+            appointment.setCustomDurationMin(request.customDurationMin());
+            appointment.setCustomServiceNotes(request.customServiceNotes());
 
             Appointment saved = appointmentRepository.save(appointment);
             emailService.sendConfirmationNotificationToClient(saved);
@@ -205,7 +221,8 @@ public class AppointmentService {
             throw new BadRequestException("Não é possível confirmar um horário no passado");
         }
 
-        assertNoScheduleConflict(appointment.getEmployee().getId(), scheduledAt, appointment.getSalonService(), null);
+        assertNoScheduleConflict(appointment.getEmployee().getId(), scheduledAt, appointment.getSalonService(),
+                appointment.getCustomDurationMin(), null);
 
         appointment.setScheduledAt(scheduledAt);
         appointment.setStatus(AppointmentStatus.CONFIRMED);
@@ -295,7 +312,7 @@ public class AppointmentService {
             throw new BadRequestException("Não é possível gerar PIX para um agendamento cancelado.");
         }
 
-        BigDecimal amount = appointment.getSalonService().getPrice();
+        BigDecimal amount = appointment.getEffectivePrice();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Este serviço não possui um valor configurado para cobrança.");
         }
@@ -469,7 +486,7 @@ public class AppointmentService {
 
             if (status == AppointmentStatus.DONE) {
                 SalonService svc = appointment.getSalonService();
-                BigDecimal servicePrice = svc.getPrice();
+                BigDecimal servicePrice = appointment.getEffectivePrice();
                 boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
 
                 if (shouldAutoBill) {
@@ -538,7 +555,7 @@ public class AppointmentService {
 
             if (paymentStatus == PaymentStatus.PAID) {
                 SalonService svc = appointment.getSalonService();
-                BigDecimal servicePrice = svc.getPrice();
+                BigDecimal servicePrice = appointment.getEffectivePrice();
                 boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
 
                 if (shouldAutoBill) {

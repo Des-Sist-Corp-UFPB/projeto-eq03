@@ -13,6 +13,7 @@ import lombok.Setter;
 
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -69,4 +70,26 @@ public class Appointment {
     /** A string "Copia e Cola" do PIX gerada pela API */
     @Column(name = "pix_qr_code", columnDefinition = "TEXT")
     private String pixQrCode;
+
+    /**
+     * O serviço cadastrado funciona como um template: estes três campos sobrescrevem
+     * preço/duração/observações só para este agendamento, sem alterar o cadastro do serviço.
+     * Nulo = usa o valor do serviço (ver {@link #getEffectivePrice()}/{@link #getEffectiveDurationMin()}).
+     */
+    @Column(name = "custom_price", precision = 10, scale = 2)
+    private BigDecimal customPrice;
+
+    @Column(name = "custom_duration_min")
+    private Integer customDurationMin;
+
+    @Column(name = "custom_service_notes", columnDefinition = "TEXT")
+    private String customServiceNotes;
+
+    public BigDecimal getEffectivePrice() {
+        return customPrice != null ? customPrice : salonService.getPrice();
+    }
+
+    public Integer getEffectiveDurationMin() {
+        return customDurationMin != null ? customDurationMin : salonService.getDurationMin();
+    }
 }

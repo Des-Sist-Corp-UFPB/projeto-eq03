@@ -2,6 +2,7 @@ package com.cristiane.salon.models.appointment.dto;
 
 import com.cristiane.salon.models.appointment.entity.Appointment;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
@@ -21,7 +22,14 @@ public record AppointmentResponse(
         Long paymentId,
         String pixQrCode,
         Boolean clientHasSavedCpf,
-        String clientCpfMasked
+        String clientCpfMasked,
+        /** Sobrescreve o preço do serviço só para este agendamento (nulo = usa o valor do catálogo). */
+        BigDecimal customPrice,
+        Integer customDurationMin,
+        String customServiceNotes,
+        /** Valor realmente cobrado/considerado: customPrice se preenchido, senão o preço do serviço. */
+        BigDecimal effectivePrice,
+        Integer effectiveDurationMin
 ) {
     public AppointmentResponse(
             Long id,
@@ -37,7 +45,8 @@ public record AppointmentResponse(
             String status
     ) {
         this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
-                scheduledAt, preferredDate, clientNotes, status, null, null, null, false, "");
+                scheduledAt, preferredDate, clientNotes, status, null, null, null, false, "",
+                null, null, null, null, null);
     }
 
     public AppointmentResponse(
@@ -57,7 +66,8 @@ public record AppointmentResponse(
             String pixQrCode
     ) {
         this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
-                scheduledAt, preferredDate, clientNotes, status, paymentStatus, paymentId, pixQrCode, false, "");
+                scheduledAt, preferredDate, clientNotes, status, paymentStatus, paymentId, pixQrCode, false, "",
+                null, null, null, null, null);
     }
 
     public static AppointmentResponse fromEntity(Appointment appointment) {
@@ -89,7 +99,12 @@ public record AppointmentResponse(
                 appointment.getPaymentId(),
                 appointment.getPixQrCode(),
                 hasSavedCpf,
-                maskedCpf
+                maskedCpf,
+                appointment.getCustomPrice(),
+                appointment.getCustomDurationMin(),
+                appointment.getCustomServiceNotes(),
+                appointment.getEffectivePrice(),
+                appointment.getEffectiveDurationMin()
         );
     }
 }

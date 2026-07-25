@@ -11,6 +11,10 @@ export interface AppointmentRequestBody {
   preferredDate?: string | null;
   clientNotes?: string | null;
   clientId?: number;
+  /** Serviço como template: sobrescreve preço/duração/observações só para este agendamento. */
+  customPrice?: number | null;
+  customDurationMin?: number | null;
+  customServiceNotes?: string | null;
 }
 
 export interface AppointmentResponse {
@@ -30,6 +34,11 @@ export interface AppointmentResponse {
   pixQrCode?: string | null;
   clientHasSavedCpf?: boolean;
   clientCpfMasked?: string;
+  customPrice?: number | null;
+  customDurationMin?: number | null;
+  customServiceNotes?: string | null;
+  effectivePrice?: number | null;
+  effectiveDurationMin?: number | null;
 }
 
 interface AppointmentCreatePayload {
@@ -39,6 +48,9 @@ interface AppointmentCreatePayload {
   clientId?: number | null;
   preferredDate?: string | null;
   clientNotes?: string | null;
+  customPrice?: number | null;
+  customDurationMin?: number | null;
+  customServiceNotes?: string | null;
 }
 
 function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreatePayload {
@@ -57,6 +69,15 @@ function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreateP
   }
   if (request.clientNotes != null && request.clientNotes.trim() !== '') {
     body.clientNotes = request.clientNotes.trim();
+  }
+  if (request.customPrice != null) {
+    body.customPrice = request.customPrice;
+  }
+  if (request.customDurationMin != null) {
+    body.customDurationMin = request.customDurationMin;
+  }
+  if (request.customServiceNotes != null && request.customServiceNotes.trim() !== '') {
+    body.customServiceNotes = request.customServiceNotes.trim();
   }
   return body;
 }
