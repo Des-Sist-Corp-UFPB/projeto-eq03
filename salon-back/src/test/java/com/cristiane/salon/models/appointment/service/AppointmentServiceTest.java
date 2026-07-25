@@ -611,7 +611,7 @@ class AppointmentServiceTest {
 
         // Act
         org.springframework.data.domain.Page<AppointmentResponse> result = appointmentService.findAll(
-                new com.cristiane.salon.models.appointment.dto.AppointmentFilter(null, null, null, null), pageable);
+                new com.cristiane.salon.models.appointment.dto.AppointmentFilter(null, null, null, null, null, null, null), pageable);
 
         // Assert
         assertThat(result.getContent()).hasSize(1);
