@@ -16,6 +16,11 @@ import { usePermission } from '../../../hooks/usePermission';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
 import {
+  AppointmentFiltersBar,
+  emptyAppointmentFilters,
+  type AppointmentFiltersState,
+} from './components/AppointmentFiltersBar';
+import {
   canCancel,
   getCancelBlockReason,
   canChangeStatus,
@@ -44,6 +49,7 @@ export const AdminAppointments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState<AppointmentFiltersState>(emptyAppointmentFilters);
 
   const [showModal, setShowModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -86,7 +92,17 @@ export const AdminAppointments = () => {
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
-      const response = await appointmentsApi.findAll({}, currentPage - 1, 20);
+      const response = await appointmentsApi.findAll(
+        {
+          status: filters.status || undefined,
+          employeeId: filters.employeeId ? Number(filters.employeeId) : undefined,
+          clientName: filters.clientName || undefined,
+          startDate: filters.startDate || undefined,
+          endDate: filters.endDate || undefined,
+        },
+        currentPage - 1,
+        20
+      );
       const data = response.content;
       data.sort((a, b) => {
         const ta = a.scheduledAt
@@ -112,16 +128,14 @@ export const AdminAppointments = () => {
 
   const loadFormData = async () => {
     try {
-      const [clientsResponse, servicesResponse, employeesData] = await Promise.all([
+      const [clientsResponse, servicesResponse] = await Promise.all([
         clientsApi.findAll({ active: true }, 0, 1000),
         salonServicesApi.findAll({}, 0, 1000),
-        employeesApi.findAllForBooking(),
       ]);
       const servicesData = servicesResponse.content;
       setClients(clientsResponse.content);
       setServices(servicesData.filter((s) => s.active));
       setAllServices(servicesData);
-      setEmployees(employeesData);
     } catch (err) {
       await showError('Erro ao carregar dados do formulário');
     }
@@ -129,15 +143,32 @@ export const AdminAppointments = () => {
 
   useEffect(() => {
     loadAppointments();
-  }, [currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, filters]);
 
   useEffect(() => {
-    // Dados do formulário (clientes/serviços/profissionais) só são úteis para quem
-    // pode abrir o modal de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
+    // Endpoint de booking (permission-safe) — usado tanto pro filtro de profissional
+    // quanto pelo modal de criação, evita 403 pra quem só visualiza (ex.: FUNCIONARIA).
+    employeesApi.findAllForBooking().then(setEmployees).catch(() => setEmployees([]));
+  }, []);
+
+  useEffect(() => {
+    // Dados do formulário (clientes/serviços) só são úteis para quem pode abrir o modal
+    // de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
     if (canCreateAppointment) {
       loadFormData();
     }
   }, [canCreateAppointment]);
+
+  const handleFilterChange = (patch: Partial<AppointmentFiltersState>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilters(emptyAppointmentFilters);
+    setCurrentPage(1);
+  };
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
@@ -524,6 +555,13 @@ export const AdminAppointments = () => {
             </button>
           </PermissionGate>
         </div>
+
+        <AppointmentFiltersBar
+          filters={filters}
+          employees={employees}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">

@@ -183,10 +183,11 @@ describe('AdminAppointments Component', () => {
     });
 
     const selects = screen.getAllByRole('combobox');
-    
-    // Row 0 is Joao (REQUESTED): renders paymentStatus select (index 0, value PENDING)
-    // Row 1 is Elksandro (CONFIRMED): renders status select (index 1) and paymentStatus select (index 2)
-    const appStatusSelect = selects[1];
+
+    // Index 0-1 are the filter bar's Status/Profissional selects.
+    // Row 0 is Joao (REQUESTED): renders paymentStatus select (index 2, value PENDING)
+    // Row 1 is Elksandro (CONFIRMED): renders status select (index 3) and paymentStatus select (index 4)
+    const appStatusSelect = selects[3];
     expect(appStatusSelect).toHaveValue('CONFIRMED');
 
     await act(async () => {
@@ -202,9 +203,9 @@ describe('AdminAppointments Component', () => {
     });
 
     const selects = screen.getAllByRole('combobox');
-    
-    // Row 1 is Elksandro (CONFIRMED): paymentStatus select is index 2
-    const paymentStatusSelect = selects[2];
+
+    // Row 1 is Elksandro (CONFIRMED): paymentStatus select is index 4 (see comment above)
+    const paymentStatusSelect = selects[4];
     expect(paymentStatusSelect).toHaveValue('PENDING');
 
     await act(async () => {
