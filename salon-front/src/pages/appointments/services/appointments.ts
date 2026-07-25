@@ -71,6 +71,9 @@ export interface AppointmentFilter {
   paymentStatus?: string;
   employeeId?: number;
   clientId?: number;
+  clientName?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const appointmentsApi = {
