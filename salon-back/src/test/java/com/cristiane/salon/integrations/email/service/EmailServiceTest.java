@@ -385,4 +385,61 @@ class EmailServiceTest {
                 eq("Template load error")
         );
     }
+
+    // --- sendPasswordResetEmail ---
+
+    @Test
+    void sendPasswordResetEmail_whenFeatureFlagDisabled_shouldReturnImmediately() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(false);
+
+        emailService.sendPasswordResetEmail(client, "raw-token");
+
+        verifyNoInteractions(templateEngine, auditLogService);
+    }
+
+    @Test
+    void sendPasswordResetEmail_whenSuccessful_shouldBuildLinkWithFrontendUrlAndAuditSuccess() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        org.mockito.ArgumentCaptor<Context> contextCaptor = org.mockito.ArgumentCaptor.forClass(Context.class);
+        when(templateEngine.process(eq("mail/password-reset"), contextCaptor.capture())).thenReturn("<html>Reset HTML</html>");
+
+        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
+            setupRestClientMock(mockedRestClient, false);
+
+            emailService.sendPasswordResetEmail(client, "raw-token");
+
+            assertThat(contextCaptor.getValue().getVariable("resetLink"))
+                    .isEqualTo("http://localhost:5173/reset-password?token=raw-token");
+
+            verify(auditLogService).logAction(
+                    eq(10L),
+                    eq("SYSTEM"),
+                    eq("EMAIL_SENT"),
+                    eq("User"),
+                    eq(10L),
+                    eq("E-mail de redefinição de senha enviado para: client@example.com"),
+                    eq("SUCCESS")
+            );
+        }
+    }
+
+    @Test
+    void sendPasswordResetEmail_whenTemplateProcessingThrows_shouldAuditFailure() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        when(templateEngine.process(eq("mail/password-reset"), any(Context.class)))
+                .thenThrow(new RuntimeException("Thymeleaf parsing error"));
+
+        emailService.sendPasswordResetEmail(client, "raw-token");
+
+        verify(auditLogService).logAction(
+                eq(10L),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("User"),
+                eq(10L),
+                eq("Falha ao enviar e-mail de redefinição de senha para: client@example.com"),
+                eq("FAILURE"),
+                eq("Thymeleaf parsing error")
+        );
+    }
 }

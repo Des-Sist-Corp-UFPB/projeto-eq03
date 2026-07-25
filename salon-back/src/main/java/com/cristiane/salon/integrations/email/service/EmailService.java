@@ -3,6 +3,7 @@ package com.cristiane.salon.integrations.email.service;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.audit.AuditLogService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import com.cristiane.salon.models.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -254,6 +255,45 @@ public class EmailService {
                     "Appointment",
                     appointment.getId(),
                     "Falha ao enviar e-mail de cancelamento para a equipe (" + businessEmail + ")",
+                    "FAILURE",
+                    e.getMessage());
+        }
+    }
+
+    @Async
+    public void sendPasswordResetEmail(User user, String rawToken) {
+        if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
+            log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
+            return;
+        }
+
+        try {
+            String resetLink = frontendUrl + "/reset-password?token=" + rawToken;
+            Context context = new Context();
+            context.setVariable("userName", user.getName());
+            context.setVariable("resetLink", resetLink);
+            String htmlContent = templateEngine.process("mail/password-reset", context);
+
+            sendViaHttpApi(user.getEmail(), "Redefinição de Senha", htmlContent, businessEmail);
+            log.info("E-mail de redefinição de senha enviado com sucesso para: {}", user.getEmail());
+
+            auditLogService.logAction(
+                    user.getId(),
+                    "SYSTEM",
+                    "EMAIL_SENT",
+                    "User",
+                    user.getId(),
+                    "E-mail de redefinição de senha enviado para: " + user.getEmail(),
+                    "SUCCESS");
+        } catch (Exception e) {
+            log.warn("Falha ao enviar e-mail de redefinição de senha para {}: {}", user.getEmail(), e.getMessage());
+            auditLogService.logAction(
+                    user.getId(),
+                    "SYSTEM",
+                    "EMAIL_SENT",
+                    "User",
+                    user.getId(),
+                    "Falha ao enviar e-mail de redefinição de senha para: " + user.getEmail(),
                     "FAILURE",
                     e.getMessage());
         }
