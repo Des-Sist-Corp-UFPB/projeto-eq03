@@ -18,6 +18,7 @@ import org.springframework.web.client.RestClient;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
@@ -46,6 +47,7 @@ class EmailServiceTest {
         ReflectionTestUtils.setField(emailService, "fromEmail", "notificacoes@elksandro.com");
         ReflectionTestUtils.setField(emailService, "businessEmail", "elksandrosandro19@gmail.com");
         ReflectionTestUtils.setField(emailService, "apiUrl", "http://test-email-api.com");
+        ReflectionTestUtils.setField(emailService, "frontendUrl", "http://localhost:5173");
 
         client = new User();
         client.setId(10L);
@@ -113,6 +115,25 @@ class EmailServiceTest {
                     eq("E-mail de solicitação de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
                     eq("SUCCESS")
             );
+        }
+    }
+
+    @Test
+    void sendRequestNotificationToStaff_whenSuccessful_shouldPassFrontendUrlToTemplateContext() {
+        // Arrange
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        org.mockito.ArgumentCaptor<Context> contextCaptor = org.mockito.ArgumentCaptor.forClass(Context.class);
+        when(templateEngine.process(eq("mail/appointment-request"), contextCaptor.capture())).thenReturn("<html>Request HTML</html>");
+
+        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
+            setupRestClientMock(mockedRestClient, false);
+
+            // Act
+            emailService.sendRequestNotificationToStaff(appointment);
+
+            // Assert: sem isso, o link "Visualizar no Painel" do e-mail apontaria pra
+            // localhost mesmo em produção (bug real corrigido nesta mudança).
+            assertThat(contextCaptor.getValue().getVariable("frontendUrl")).isEqualTo("http://localhost:5173");
         }
     }
 

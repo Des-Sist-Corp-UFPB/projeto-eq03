@@ -39,6 +39,9 @@ public class EmailService {
     @Value("${mail.api-url}")
     private String apiUrl;
 
+    @Value("${app.frontend-url}")
+    private String frontendUrl;
+
     private void sendViaHttpApi(String to, String subject, String htmlContent, String replyTo) {
         RestClient restClient = RestClient.create(apiUrl);
 
@@ -69,6 +72,7 @@ public class EmailService {
         try {
             Context context = new Context();
             context.setVariable("appointment", appointment);
+            context.setVariable("frontendUrl", frontendUrl);
             String htmlContent = templateEngine.process("mail/appointment-request", context);
 
             sendViaHttpApi(businessEmail, "Novo Pedido de Agendamento Recebido", htmlContent, businessEmail);

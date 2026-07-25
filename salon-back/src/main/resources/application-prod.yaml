@@ -21,6 +21,11 @@ mail:
   from: ${MAIL_FROM}
   business: ${MAIL_BUSINESS}
 
+app:
+  # Sem default em prod: se FRONTEND_URL não estiver setado, falha no boot em vez de
+  # silenciosamente mandar link de localhost em e-mail real.
+  frontend-url: ${FRONTEND_URL}
+
 security:
   jwt:
     secret: ${JWT_SECRET}
