@@ -34,6 +34,10 @@ app:
     cleanup-cron: ${EMAIL_OUTBOX_CLEANUP_CRON:0 0 3 * * *}
     sent-retention-days: ${EMAIL_OUTBOX_SENT_RETENTION_DAYS:7}
     dead-letter-retention-days: ${EMAIL_OUTBOX_DEAD_LETTER_RETENTION_DAYS:90}
+  # Lembrete de agendamento D-1 (issue #111) — roda 09h no fuso America/Recife (não o fuso
+  # padrão da JVM, que é UTC).
+  appointment-reminder:
+    cron: ${APPOINTMENT_REMINDER_CRON:0 0 9 * * *}
 
 logging:
   level:

@@ -244,6 +244,51 @@ public class EmailService {
     }
 
     @Async
+    public void sendAppointmentReminder(Appointment appointment) {
+        if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
+            log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
+            return;
+        }
+
+        String clientEmail = appointment.getClient().getEmail();
+        if (clientEmail == null || clientEmail.trim().isEmpty()) {
+            log.info("Cliente não possui e-mail cadastrado.");
+            return;
+        }
+
+        try {
+            Context context = new Context();
+            context.setVariable("appointment", appointment);
+            context.setVariable("frontendUrl", frontendUrl);
+            String htmlContent = templateEngine.process("mail/appointment-reminder", context);
+
+            sendViaHttpApi(clientEmail, "Lembrete: seu agendamento é amanhã!", htmlContent, businessEmail,
+                    "Appointment", appointment.getId());
+            log.info("E-mail de lembrete de agendamento (D-1) enviado com sucesso para: {}", clientEmail);
+
+            auditLogService.logAction(
+                    null,
+                    "SYSTEM",
+                    "EMAIL_SENT",
+                    "Appointment",
+                    appointment.getId(),
+                    "Lembrete de agendamento (D-1) enviado para: " + clientEmail,
+                    "SUCCESS");
+        } catch (Exception e) {
+            log.warn("Falha ao enviar lembrete de agendamento (D-1) para o cliente {}: {}", clientEmail, e.getMessage());
+            auditLogService.logAction(
+                    null,
+                    "SYSTEM",
+                    "EMAIL_SENT",
+                    "Appointment",
+                    appointment.getId(),
+                    "Falha ao enviar lembrete de agendamento (D-1) para: " + clientEmail,
+                    "FAILURE",
+                    e.getMessage());
+        }
+    }
+
+    @Async
     public void sendPasswordResetEmail(User user, String rawToken) {
         if (!featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")) {
             log.info("Envio de e-mail desativado por Feature Flag (EMAIL_NOTIFICATIONS).");
