@@ -22,10 +22,11 @@ describe('adminNav', () => {
     expect(getVisibleAdminNavItems('ADMIN')).toHaveLength(ADMIN_NAV_ITEMS.length);
   });
 
-  it('GERENTE_DE_ATENDIMENTO sees everything except Produtos', () => {
+  it('GERENTE_DE_ATENDIMENTO sees everything except Produtos and Perfil do Salão', () => {
     const visible = getVisibleAdminNavItems('GERENTE_DE_ATENDIMENTO');
     expect(visible.map((i) => i.to)).not.toContain('/admin/products');
-    expect(visible).toHaveLength(ADMIN_NAV_ITEMS.length - 1);
+    expect(visible.map((i) => i.to)).not.toContain('/admin/salon-profile');
+    expect(visible).toHaveLength(ADMIN_NAV_ITEMS.length - 2);
   });
 
   it('returns no items for a role without admin access', () => {
