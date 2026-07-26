@@ -14,7 +14,7 @@ O sistema cumpre todos os requisitos exigidos utilizando padrões modernos de de
   - **Backend:** Interceptação de requisições usando a anotação `@Auditable` e filtro HTTP. Captura IP real, User-Agent e mascara dados sensíveis (senhas, cartões) antes de salvar no banco.
   - **Frontend:** Console administrativo com filtros combinados e leitor de JSON com _syntax highlighting_.
 - **Integração com Serviços Externos (Resend API & Mercado Pago):**
-  - **E-mails Transacionais (Resend API):** Envio de confirmações e cancelamentos em segundo plano (`@Async`) usando templates Thymeleaf e o `RestClient` do Spring.
+  - **E-mails Transacionais (Resend API):** Envio de confirmações, cancelamentos e lembrete D-1 de agendamento em segundo plano (`@Async`) usando templates Thymeleaf e o `RestClient` do Spring.
   - **Pagamentos via PIX (Mercado Pago API):** Geração de QR Code e Pix Copia e Cola (Checkout Transparente) com coleta JIT (Just-In-Time) de CPF (validação por Módulo 11) e Webhooks protegidos por assinatura de segurança (`x-signature` via HMAC-SHA256) para conciliação automática.
 - **Suporte a PWA (Progressive Web App):**
   - O frontend foi construído como um PWA (Progressive Web App) utilizando `vite-plugin-pwa`. Isso permite a instalação local do aplicativo, cache inteligente de recursos estáticos com Workbox e funcionamento offline-first da interface, com estratégias *NetworkFirst* de cache para rotas públicas e feature flags.
@@ -53,7 +53,7 @@ O sistema de auditoria registra ações críticas de gravação ou autenticaçã
 O sistema integra-se com serviços de e-mail e gateways de pagamento em produção.
 
 - **Serviços Externos Utilizados:**
-  1. **Resend API:** Envio de e-mails transacionais (solicitações, confirmações e cancelamentos de agendamento).
+  1. **Resend API:** Envio de e-mails transacionais (solicitações, confirmações, cancelamentos e lembrete D-1 de agendamento).
   2. **Mercado Pago API (PIX):** Checkout transparente para geração JIT de chaves PIX (cópia e cola) e QR Codes, além de recepção de Webhooks para atualização automatizada do status da reserva.
   3. **Provedor de IA (via proxy LiteLLM):** gera as recomendações financeiras/de retenção do painel admin — ver seção [🤖 Recomendações de IA e Servidor MCP](#-recomendações-de-ia-e-servidor-mcp) para os detalhes completos (é tratado à parte por ter documentação própria).
   4. **ViaCEP:** autopreenchimento de endereço (rua/bairro/cidade/UF) a partir do CEP na tela de Cadastro de Equipe — puramente conveniência de UX: se a chamada falhar, o formulário segue funcionando normalmente e a pessoa digita o endereço à mão.
@@ -112,6 +112,19 @@ O Circuit Breaker/Retry acima resolve blips curtos (Resend cai por 1-2 segundos)
   - [EmailOutboxController.java](./salon-back/src/main/java/com/cristiane/salon/integrations/email/outbox/controller/EmailOutboxController.java)
   - [V35\_\_create_email_outbox.sql](./salon-back/src/main/resources/db/migration/V35__create_email_outbox.sql)
   - [EmailOutbox.tsx](./salon-front/src/pages/admin/email-outbox/EmailOutbox.tsx) (tela de admin)
+
+### 📅 Lembrete de agendamento (D-1)
+
+Reduz no-show avisando o cliente na véspera. Um job diário (09h, horário de Recife) busca agendamentos `CONFIRMED` cujo horário cai no dia seguinte e ainda não foram lembrados, e dispara um e-mail por cliente — que passa pelo mesmo `EmailService`/fila de retry descritos acima, sem nenhum código novo de resiliência.
+
+- **Fuso horário explícito:** a aplicação roda com timezone padrão UTC (`SalonApplication.init()`), mas o negócio é em `America/Recife` (UTC-3). "Amanhã" é calculado explicitamente nesse fuso — calcular com `LocalDate.now()` puro erraria o dia perto da meia-noite.
+- **Não duplica se o job cair no meio:** cada agendamento tem uma coluna `reminded_at` (NULL = ainda não lembrado), marcada individualmente logo após disparar aquele e-mail específico — não em lote no fim do job. Se o processo reiniciar no meio da execução, os agendamentos já processados não são notificados de novo.
+- **Sem link de cancelamento por token:** o e-mail linka para "Meus Agendamentos" (autenticado), não um link público de um clique — criar um endpoint de cancelamento sem login seria uma superfície de abuso nova que o resto do sistema não tem hoje (cancelamento sempre passa pelo app autenticado).
+- Configurável via `APPOINTMENT_REMINDER_CRON` (padrão: `0 0 9 * * *`, horário de Recife).
+- **Classes e arquivos participantes:**
+  - [AppointmentReminderService.java](./salon-back/src/main/java/com/cristiane/salon/models/appointment/service/AppointmentReminderService.java) (job agendado)
+  - [appointment-reminder.html](./salon-back/src/main/resources/templates/mail/appointment-reminder.html)
+  - [V37\_\_add_appointment_reminded_at.sql](./salon-back/src/main/resources/db/migration/V37__add_appointment_reminded_at.sql)
 
 ---
 
