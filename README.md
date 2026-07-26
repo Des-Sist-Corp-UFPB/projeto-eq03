@@ -69,6 +69,26 @@ O sistema integra-se com serviços de e-mail e gateways de pagamento em produç�
 
 ---
 
+## 🛡️ Resiliência a Falha de Sistemas Externos
+
+O sistema depende de três serviços externos (Mercado Pago, provedor de e-mail Resend, provedor de IA) e nenhum deles pode derrubar ou travar o resto da aplicação se sair do ar. Isso é resolvido com uma infraestrutura genérica e reaproveitável, não com tratamento de erro reescrito a cada integração:
+
+- **Timeout compartilhado:** todo cliente HTTP para um sistema externo usa o mesmo `RestClient.Builder` configurado com timeout de conexão/leitura ([HttpClientConfig.java](./salon-back/src/main/java/com/cristiane/salon/config/HttpClientConfig.java)), evitando que uma dependência lenta prenda uma thread da aplicação indefinidamente e esgote o pool sob carga. O SDK do Mercado Pago (que gerencia seu próprio HTTP client) recebe o mesmo timeout via `MercadoPagoConfig` ([MercadoPagoConfiguration.java](./salon-back/src/main/java/com/cristiane/salon/integrations/payment/MercadoPagoConfiguration.java)).
+- **Circuit Breaker + Retry ([Resilience4j](https://resilience4j.readme.io/)):** cada integração tem uma *instance* nomeada em `application.yaml` que herda de um template `default` compartilhado (limiar de falha, quantas tentativas, tempo de espera) — uma integração nova não precisa reimplementar nada, só criar uma instance referenciando `base-config: default` e anotar o método com `@CircuitBreaker`/`@Retry`. Exceções que são recusa de negócio (ex.: `MPApiException` do Mercado Pago recusando um CPF inválido, `IllegalStateException` de uma resposta de IA fora do schema) são explicitamente ignoradas nessas configs — não é falha do provedor, então não deve nem tentar de novo nem contar para abrir o circuito.
+- **Gateway isolado por integração:** `MercadoPagoGateway`, `EmailGateway` e `OpenAiCompatibleChatClient` são o único ponto de contato com cada sistema externo, cada um com as anotações de resiliência. Isso não é só organização — anotações do Resilience4j são aplicadas via proxy do Spring, e uma chamada de um método para outro dentro da MESMA classe não passa pelo proxy (self-invocation), então a lógica teria que ficar isolada de qualquer forma. O serviço de negócio (`MercadoPagoPaymentService`, `EmailService`, `RecommendationService`) continua sendo quem decide o que fazer com a falha.
+- **Degradação graciosa por integração:**
+  - **E-mail:** já era `@Async` e falha é só registrada em auditoria — um Resend fora do ar nunca impede a criação/confirmação de um agendamento, só atrasa a notificação.
+  - **Mercado Pago:** falha (timeout, circuito aberto, recusa de negócio) vira `BadRequestException` — o cliente recebe um erro claro em vez do sistema travar esperando resposta.
+  - **IA:** já era isolado da lógica de negócio principal (dashboard de recomendações); falha vira `BusinessException` sem afetar agendamentos, financeiro ou qualquer outra tela.
+- **Testado simulando falha real:** [ResiliencePatternsTest.java](./salon-back/src/test/java/com/cristiane/salon/config/resilience/ResiliencePatternsTest.java) força um "serviço externo" a falhar repetidamente e comprova que o retry tenta de novo, que o circuito abre depois do limiar configurado e passa a falhar rápido (sem sequer chamar o serviço), e que exceções de negócio são corretamente ignoradas — o mesmo comportamento documentado acima, não só a configuração.
+- **Classes e arquivos participantes:**
+  - [HttpClientConfig.java](./salon-back/src/main/java/com/cristiane/salon/config/HttpClientConfig.java) (timeout HTTP compartilhado)
+  - [MercadoPagoGateway.java](./salon-back/src/main/java/com/cristiane/salon/integrations/payment/service/MercadoPagoGateway.java) / [EmailGateway.java](./salon-back/src/main/java/com/cristiane/salon/integrations/email/service/EmailGateway.java) / [OpenAiCompatibleChatClient.java](./salon-back/src/main/java/com/cristiane/salon/models/ai/client/OpenAiCompatibleChatClient.java)
+  - `resilience4j.*` em [application.yaml](./salon-back/src/main/resources/application.yaml) (configuração central nomeada)
+  - [ResiliencePatternsTest.java](./salon-back/src/test/java/com/cristiane/salon/config/resilience/ResiliencePatternsTest.java)
+
+---
+
 ## 🤖 Recomendações de IA e Servidor MCP
 
 O sistema integra IA em duas frentes, construídas sobre a mesma configuração central (**Central de IA**, no painel sysadmin) e o mesmo motor de negócio — nenhuma das duas duplica lógica:
@@ -112,6 +132,7 @@ O relatório da entrega, com evidências (traces reais, spans, queries SQL captu
 - **Global Exception Handler:** Centralização de erros (`@RestControllerAdvice`). Oculta metadados do banco em falhas e formata respostas de erro de forma amigável.
 - **Igualdade Referencial:** Uso de `useCallback` e `useMemo` no React para evitar re-renderizações e travamentos na interface.
 - **Feature Flags Dinâmicas:** Toggles no banco de dados (`CLIENT_BOOKING`, `EMAIL_NOTIFICATIONS`) que ligam/desligam funcionalidades no sistema em tempo real, sem precisar de novo deploy.
+- **Circuit Breaker / Retry (Resilience4j):** Infraestrutura genérica de resiliência a falha de sistema externo — timeout compartilhado, circuito e retry configurados uma vez e reaproveitados por qualquer integração nova (ver seção [🛡️ Resiliência a Falha de Sistemas Externos](#%EF%B8%8F-resiliência-a-falha-de-sistemas-externos)).
 
 ---
 
