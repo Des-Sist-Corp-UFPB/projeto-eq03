@@ -39,7 +39,7 @@ export const PublicAppointment = () => {
   const [services, setServices] = useState<SalonServiceData[]>([]);
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
 
-  const [selectedService, setSelectedService] = useState<number | null>(null);
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
   const [selectedEmployee, setSelectedEmployee] = useState<number | null>(null);
   const [preferredDate, setPreferredDate] = useState<string>('');
   const [clientNotes, setClientNotes] = useState<string>('');
@@ -57,17 +57,17 @@ export const PublicAppointment = () => {
     if (raw) {
       try {
         const p = JSON.parse(raw) as {
-          serviceId?: number;
+          serviceIds?: number[];
           employeeId?: number;
           preferredDate?: string;
           clientNotes?: string;
         };
-        if (p.serviceId) setSelectedService(p.serviceId);
+        if (p.serviceIds && p.serviceIds.length > 0) setSelectedServiceIds(p.serviceIds);
         if (p.employeeId) setSelectedEmployee(p.employeeId);
         if (p.preferredDate) setPreferredDate(p.preferredDate);
         if (p.clientNotes) setClientNotes(p.clientNotes);
-        if (p.serviceId && p.employeeId) setStep(4);
-        else if (p.serviceId) setStep(2);
+        if (p.serviceIds?.length && p.employeeId) setStep(4);
+        else if (p.serviceIds?.length) setStep(2);
       } catch {
         /* ignore */
       }
@@ -99,8 +99,14 @@ export const PublicAppointment = () => {
     fetchInitialData();
   }, []);
 
+  const toggleService = (serviceId: number) => {
+    setSelectedServiceIds((prev) =>
+      prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId]
+    );
+  };
+
   const handleNext = () => {
-    if (step === 1 && !selectedService) return;
+    if (step === 1 && selectedServiceIds.length === 0) return;
     if (step === 2 && !selectedEmployee) return;
     if (step === 3) {
       if (preferredDate && preferredDate < localTodayIso()) {
@@ -123,7 +129,7 @@ export const PublicAppointment = () => {
       localStorage.setItem(
         'pending_appointment',
         JSON.stringify({
-          serviceId: selectedService,
+          serviceIds: selectedServiceIds,
           employeeId: selectedEmployee,
           preferredDate: preferredDate || undefined,
           clientNotes: clientNotes || undefined,
@@ -136,7 +142,7 @@ export const PublicAppointment = () => {
     setErrorMsg('');
     try {
       await appointmentsApi.create({
-        serviceId: selectedService!,
+        services: selectedServiceIds.map((serviceId) => ({ serviceId })),
         employeeId: selectedEmployee!,
         preferredDate: preferredDate || undefined,
         clientNotes: clientNotes.trim() || undefined,
@@ -189,8 +195,11 @@ export const PublicAppointment = () => {
     { n: 4, label: 'Enviar', icon: <CheckCircle size={16} /> },
   ];
 
-  const selectedSrv = services.find((s) => s.id === selectedService);
-  const priceLabel = priceTagLabel(selectedSrv?.price);
+  const selectedServices = services.filter((s) => selectedServiceIds.includes(s.id!));
+  const totalPrice = selectedServices.some((s) => s.price == null)
+    ? null
+    : selectedServices.reduce((sum, s) => sum + (s.price ?? 0), 0);
+  const priceLabel = priceTagLabel(totalPrice);
 
   return (
     <div className="max-w-4xl mx-auto px-4 py-8 space-y-8 animate-fadeIn">
@@ -262,6 +271,9 @@ export const PublicAppointment = () => {
             <h4 className="font-heading text-lg font-bold text-center text-[#3b3036]">
               O que vamos fazer?
             </h4>
+            <p className="text-xs text-[#3b3036]/60 text-center -mt-2">
+              Você pode selecionar mais de um serviço.
+            </p>
             {services.length === 0 ? (
               <div className="text-center py-12 px-4 bg-gray-50/50 rounded-2xl border border-dashed border-gray-200 max-w-md mx-auto">
                 <Scissors size={36} className="mx-auto text-gray-300 mb-3" />
@@ -280,9 +292,9 @@ export const PublicAppointment = () => {
                   return (
                     <div
                       key={srv.id}
-                      onClick={() => setSelectedService(srv.id!)}
+                      onClick={() => toggleService(srv.id!)}
                       className={`relative cursor-pointer p-5 rounded-2xl border-2 transition-all duration-200 ${
-                        selectedService === srv.id
+                        selectedServiceIds.includes(srv.id!)
                           ? 'border-[#be8a83] bg-[#be8a83]/5 shadow-md shadow-[#be8a83]/10'
                           : 'border-gray-100 bg-white hover:border-[#be8a83]/50'
                       }`}
@@ -299,7 +311,7 @@ export const PublicAppointment = () => {
                       <div className="flex items-center gap-1.5 text-xs text-gray-400">
                         <Clock size={14} /> {displayServiceDuration(srv)}
                       </div>
-                      {selectedService === srv.id && (
+                      {selectedServiceIds.includes(srv.id!) && (
                         <CheckCircle size={20} className="absolute top-3 right-3 text-[#be8a83]" />
                       )}
                     </div>
@@ -418,7 +430,7 @@ export const PublicAppointment = () => {
               </div>
               <div className="divide-y divide-gray-50 px-6">
                 {[
-                  { label: 'Serviço', value: selectedSrv?.name },
+                  { label: 'Serviços', value: selectedServices.map((s) => s.name).join(', ') },
                   {
                     label: 'Profissional',
                     value: employees.find((e) => e.id === selectedEmployee)?.name,
@@ -470,7 +482,7 @@ export const PublicAppointment = () => {
           {step < 4 ? (
             <button
               onClick={handleNext}
-              disabled={(step === 1 && !selectedService) || (step === 2 && !selectedEmployee)}
+              disabled={(step === 1 && selectedServiceIds.length === 0) || (step === 2 && !selectedEmployee)}
               className="flex items-center gap-2 px-6 py-2.5 bg-[#be8a83] text-white hover:bg-[#a6726b] font-semibold text-sm rounded-xl transition-all disabled:opacity-40 disabled:pointer-events-none"
             >
               Próximo <ArrowRight size={18} />

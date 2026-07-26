@@ -13,6 +13,7 @@ vi.mock('../../../../hooks/usePermission', () => ({
 vi.mock('../../../appointments/services/appointments', () => ({
   appointmentsApi: {
     findAll: vi.fn(),
+    create: vi.fn(),
     confirm: vi.fn(),
     decline: vi.fn(),
     cancel: vi.fn(),
@@ -62,6 +63,20 @@ vi.mock('../../../../hooks/useAlert', () => ({
   }),
 }));
 
+function buildServiceItem(serviceId: number, serviceName: string, price: number) {
+  return {
+    serviceId,
+    serviceName,
+    catalogPrice: price,
+    catalogDurationMin: null,
+    customPrice: null,
+    customDurationMin: null,
+    customServiceNotes: null,
+    effectivePrice: price,
+    effectiveDurationMin: null,
+  };
+}
+
 const mockAppointments = [
   {
     id: 1,
@@ -69,8 +84,9 @@ const mockAppointments = [
     clientName: 'Elksandro',
     employeeId: 10,
     employeeName: 'Mariana',
-    serviceId: 100,
-    serviceName: 'Corte de Cabelo',
+    services: [buildServiceItem(100, 'Corte de Cabelo', 85.0)],
+    totalPrice: 85.0,
+    totalDurationMin: null,
     scheduledAt: '2026-06-25T14:00:00Z',
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
@@ -84,8 +100,9 @@ const mockAppointments = [
     clientName: 'Joao',
     employeeId: 10,
     employeeName: 'Mariana',
-    serviceId: 101,
-    serviceName: 'Manicure',
+    services: [buildServiceItem(101, 'Manicure', 40.0)],
+    totalPrice: 40.0,
+    totalDurationMin: null,
     scheduledAt: null,
     preferredDate: '2026-06-26',
     status: 'REQUESTED',
@@ -156,13 +173,14 @@ describe('AdminAppointments Component', () => {
       clientName: 'Elksandro',
       employeeId: 10,
       employeeName: 'Mariana',
-      serviceId: 100,
-      serviceName: 'Corte de Cabelo',
+      services: [buildServiceItem(100, 'Corte de Cabelo', 85.0)],
+      totalPrice: 85.0,
+      totalDurationMin: null,
       scheduledAt: '2026-06-25T14:00:00Z',
       status: 'CONFIRMED',
       paymentStatus: 'PENDING',
       pixQrCode: 'pix-generated-code-admin-1',
-    });
+    } as any);
   });
 
   it('renders the appointments table and lists all entries', async () => {
@@ -291,5 +309,89 @@ describe('AdminAppointments Component', () => {
     });
 
     expect(appointmentsApi.confirm).toHaveBeenCalledWith(2, '2026-06-26T10:00:00');
+  });
+
+  it('creates an appointment with multiple selected services', async () => {
+    vi.mocked(appointmentsApi.create).mockResolvedValue({} as any);
+
+    await act(async () => {
+      renderAdminAppointments();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Novo Agendamento/i }));
+
+    const clientSelect = screen.getByText('Selecione o cliente').closest('select')!;
+    fireEvent.change(clientSelect, { target: { value: '5' } });
+
+    fireEvent.click(screen.getByLabelText(/Corte de Cabelo/i));
+    fireEvent.click(screen.getByLabelText(/Manicure/i));
+
+    const employeeSelect = screen.getByText('Selecione a profissional').closest('select')!;
+    fireEvent.change(employeeSelect, { target: { value: '10' } });
+
+    const dateTimeInput = screen.getByLabelText(/Data e hora/i);
+    fireEvent.change(dateTimeInput, { target: { value: '2026-07-01T09:00' } });
+
+    const submitBtn = screen.getByRole('button', { name: 'Criar Agendamento' });
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(appointmentsApi.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        clientId: 5,
+        employeeId: 10,
+        scheduledAt: '2026-07-01T09:00:00',
+        services: expect.arrayContaining([
+          expect.objectContaining({ serviceId: 100 }),
+          expect.objectContaining({ serviceId: 101 }),
+        ]),
+      })
+    );
+    const call = vi.mocked(appointmentsApi.create).mock.calls[0][0];
+    expect(call.services).toHaveLength(2);
+  });
+
+  it('shows a search box to filter services when there are more than 6, and filters the list', async () => {
+    const manyServices = Array.from({ length: 7 }, (_, i) => ({
+      id: 200 + i,
+      name: `Serviço ${i}`,
+      price: 10 + i,
+      active: true,
+      description: '',
+    }));
+    vi.mocked(salonServicesApi.findAll).mockResolvedValue({
+      content: manyServices,
+      totalPages: 1,
+      totalElements: manyServices.length,
+      size: 1000,
+      number: 0,
+    } as any);
+
+    await act(async () => {
+      renderAdminAppointments();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Novo Agendamento/i }));
+
+    const searchInput = screen.getByPlaceholderText('Buscar serviço por nome...');
+    expect(searchInput).toBeInTheDocument();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(7);
+
+    fireEvent.change(searchInput, { target: { value: 'Serviço 3' } });
+
+    const checkboxes = screen.getAllByRole('checkbox');
+    expect(checkboxes).toHaveLength(1);
+    expect(screen.getByLabelText(/Serviço 3/i)).toBeInTheDocument();
+  });
+
+  it('does not show a search box when there are 6 or fewer services', async () => {
+    await act(async () => {
+      renderAdminAppointments();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: /Novo Agendamento/i }));
+
+    expect(screen.queryByPlaceholderText('Buscar serviço por nome...')).not.toBeInTheDocument();
   });
 });

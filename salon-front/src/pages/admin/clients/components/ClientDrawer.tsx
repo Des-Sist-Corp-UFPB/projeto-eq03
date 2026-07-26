@@ -149,7 +149,7 @@ export function ClientDrawer({ isOpen, onClose, clientId }: ClientDrawerProps) {
                         <div className="flex justify-between items-start">
                           <div>
                             <span className="text-sm font-bold text-[#3b3036] dark:text-white">
-                              {appt.serviceName}
+                              {appt.services.map((s) => s.serviceName).join(', ')}
                             </span>
                             <div className="text-xs text-[#7a7074] dark:text-gray-400 mt-1 flex items-center gap-1">
                               <span>Profissional:</span>
