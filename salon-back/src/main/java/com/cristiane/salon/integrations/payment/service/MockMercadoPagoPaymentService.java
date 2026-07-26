@@ -12,6 +12,10 @@ public class MockMercadoPagoPaymentService extends MercadoPagoPaymentService {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    public MockMercadoPagoPaymentService() {
+        super(null);
+    }
+
     @Override
     public Payment createPixPayment(BigDecimal amount, String description, String payerEmail, String payerName,
             String payerCpf, Long appointmentId) {

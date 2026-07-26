@@ -56,8 +56,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 }
             }
         } catch (Exception e) {
-            // Can handle specific JWT exceptions here if needed
-            logger.error("Error authenticating user with JWT", e);
+            // WARN, não ERROR: um JWT malformado/expirado quase sempre vem de entrada de
+            // cliente (token vencido, bot/scanner testando o endpoint com um valor qualquer),
+            // não de uma falha do servidor. A requisição segue como não autenticada normalmente
+            // logo abaixo — não é um incidente, então não deveria disparar alerta como um.
+            logger.warn("Error authenticating user with JWT: " + e.getMessage());
         }
 
         filterChain.doFilter(request, response);
