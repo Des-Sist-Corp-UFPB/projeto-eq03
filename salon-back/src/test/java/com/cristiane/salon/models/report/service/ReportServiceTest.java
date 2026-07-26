@@ -52,6 +52,14 @@ class ReportServiceTest {
     void setUp() {
     }
 
+    private void withService(Appointment appointment, SalonService svc) {
+        com.cristiane.salon.models.appointment.entity.AppointmentServiceItem item =
+                new com.cristiane.salon.models.appointment.entity.AppointmentServiceItem();
+        item.setAppointment(appointment);
+        item.setSalonService(svc);
+        appointment.getServices().add(item);
+    }
+
     @Test
     void shouldGenerateFinancialReportCorrectly() {
         // Given
@@ -128,13 +136,13 @@ class ReportServiceTest {
         Appointment aptBob = new Appointment();
         aptBob.setStatus(AppointmentStatus.DONE);
         aptBob.setEmployee(emp2);
-        aptBob.setSalonService(service);
+        withService(aptBob, service);
         aptBob.setScheduledAt(LocalDateTime.now());
 
         Appointment aptAlice = new Appointment();
         aptAlice.setStatus(AppointmentStatus.DONE);
         aptAlice.setEmployee(emp1);
-        aptAlice.setSalonService(service);
+        withService(aptAlice, service);
         aptAlice.setScheduledAt(LocalDateTime.now());
 
         when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice));
@@ -186,7 +194,7 @@ class ReportServiceTest {
         Appointment apt = new Appointment();
         apt.setStatus(AppointmentStatus.DONE);
         apt.setEmployee(emp);
-        apt.setSalonService(service);
+        withService(apt, service);
         apt.setScheduledAt(LocalDateTime.now());
 
         when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
@@ -222,13 +230,13 @@ class ReportServiceTest {
         apt1.setStatus(AppointmentStatus.DONE);
         apt1.setScheduledAt(LocalDateTime.now().withHour(10));
         apt1.setEmployee(employee);
-        apt1.setSalonService(salonService);
+        withService(apt1, salonService);
 
         Appointment apt2 = new Appointment();
         apt2.setStatus(AppointmentStatus.PENDING);
         apt2.setScheduledAt(LocalDateTime.now().withHour(14));
         apt2.setEmployee(employee);
-        apt2.setSalonService(salonService);
+        withService(apt2, salonService);
 
         when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
 
@@ -291,19 +299,19 @@ class ReportServiceTest {
         Appointment aptBob = new Appointment();
         aptBob.setStatus(AppointmentStatus.DONE);
         aptBob.setEmployee(emp2);
-        aptBob.setSalonService(service);
+        withService(aptBob, service);
         aptBob.setScheduledAt(LocalDateTime.now());
 
         Appointment aptAlice = new Appointment();
         aptAlice.setStatus(AppointmentStatus.DONE);
         aptAlice.setEmployee(emp1);
-        aptAlice.setSalonService(service);
+        withService(aptAlice, service);
         aptAlice.setScheduledAt(LocalDateTime.now());
 
         Appointment aptDave = new Appointment();
         aptDave.setStatus(AppointmentStatus.DONE);
         aptDave.setEmployee(emp4);
-        aptDave.setSalonService(service);
+        withService(aptDave, service);
         aptDave.setScheduledAt(LocalDateTime.now());
 
         // Total done appointments value = 200 (Bob) + 200 (Alice) + 200 (Dave) = 600
@@ -373,7 +381,7 @@ class ReportServiceTest {
         Appointment apt1 = new Appointment();
         apt1.setStatus(AppointmentStatus.DONE);
         apt1.setEmployee(emp);
-        apt1.setSalonService(service);
+        withService(apt1, service);
         apt1.setScheduledAt(null);
         apt1.setPreferredDate(LocalDate.now().plusDays(2));
 
@@ -381,7 +389,7 @@ class ReportServiceTest {
         Appointment apt2 = new Appointment();
         apt2.setStatus(AppointmentStatus.DONE);
         apt2.setEmployee(emp);
-        apt2.setSalonService(service);
+        withService(apt2, service);
         apt2.setScheduledAt(null);
         apt2.setPreferredDate(null);
         apt2.setCreatedAt(LocalDateTime.now().plusDays(3));
@@ -422,7 +430,7 @@ class ReportServiceTest {
         Appointment apt = new Appointment();
         apt.setStatus(AppointmentStatus.DONE);
         apt.setEmployee(emp);
-        apt.setSalonService(service);
+        withService(apt, service);
         apt.setScheduledAt(LocalDateTime.now());
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
@@ -463,7 +471,7 @@ class ReportServiceTest {
         Appointment apt = new Appointment();
         apt.setStatus(AppointmentStatus.DONE);
         apt.setEmployee(emp);
-        apt.setSalonService(service);
+        withService(apt, service);
         apt.setScheduledAt(LocalDateTime.now());
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
@@ -491,7 +499,7 @@ class ReportServiceTest {
         Appointment appointment = new Appointment();
         appointment.setId(1L);
         appointment.setEmployee(employee);
-        appointment.setSalonService(service);
+        withService(appointment, service);
         appointment.setStatus(AppointmentStatus.DONE);
         appointment.setScheduledAt(LocalDateTime.now());
 

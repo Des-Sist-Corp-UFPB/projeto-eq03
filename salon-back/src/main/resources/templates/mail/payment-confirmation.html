@@ -108,7 +108,7 @@
             <div class="details-card">
                 <div class="details-row">
                     <span class="label">Serviço</span>
-                    <span class="value" th:text="${appointment.salonService.name}">Corte Feminino</span>
+                    <span class="value" th:text="${appointment.serviceNames}">Corte Feminino</span>
                 </div>
                 <div class="details-row">
                     <span class="label">Profissional</span>
@@ -120,7 +120,7 @@
                 </div>
                 <div class="details-row">
                     <span class="label">Valor Pago</span>
-                    <span class="value" th:text="${appointment.salonService.price != null ? 'R$ ' + #numbers.formatDecimal(appointment.salonService.price, 1, 2) : 'Não definido'}">R$ 85,00</span>
+                    <span class="value" th:text="${appointment.totalEffectivePrice != null ? 'R$ ' + #numbers.formatDecimal(appointment.totalEffectivePrice, 1, 2) : 'Não definido'}">R$ 85,00</span>
                 </div>
             </div>
             <div class="alert-box">

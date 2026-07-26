@@ -113,7 +113,7 @@ class ErrorScenariosTest extends BaseControllerTest {
     void whenServiceThrows_thenReturns500() throws Exception {
         when(appointmentService.create(any())).thenThrow(new RuntimeException("boom"));
 
-        String body = "{\"employeeId\":1,\"serviceId\":1}";
+        String body = "{\"employeeId\":1,\"services\":[{\"serviceId\":1}]}";
 
         mvc.perform(post("/v1/appointments")
                 .contentType(MediaType.APPLICATION_JSON)

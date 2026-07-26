@@ -11,6 +11,7 @@ export interface ServiceCustomizationValues {
 }
 
 interface ServiceCustomizationPanelProps {
+  serviceName?: string;
   defaultPrice: number | null;
   defaultDurationMin: number | null;
   values: ServiceCustomizationValues;
@@ -18,6 +19,7 @@ interface ServiceCustomizationPanelProps {
 }
 
 export const ServiceCustomizationPanel = ({
+  serviceName,
   defaultPrice,
   defaultDurationMin,
   values,
@@ -34,7 +36,7 @@ export const ServiceCustomizationPanel = ({
       >
         <span className="flex items-center gap-2">
           <PencilLine size={15} className="text-[#be8a83]" />
-          Personalizar para este cliente
+          Personalizar{serviceName ? ` "${serviceName}"` : ' para este cliente'}
         </span>
         {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>

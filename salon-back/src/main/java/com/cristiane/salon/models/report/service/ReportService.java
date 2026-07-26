@@ -87,7 +87,7 @@ public class ReportService {
                 .collect(Collectors.toList());
 
         BigDecimal globalDoneAppointmentsValue = doneAppointments.stream()
-                .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
+                .map(a -> a.getTotalEffectivePrice() != null ? a.getTotalEffectivePrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<Employee> employees = employeeRepository.findAll();
@@ -103,7 +103,7 @@ public class ReportService {
 
             long doneCount = empDoneAppointments.size();
             BigDecimal empDoneValue = empDoneAppointments.stream()
-                    .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
+                    .map(a -> a.getTotalEffectivePrice() != null ? a.getTotalEffectivePrice() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             PayoutBreakdown breakdown = calcularPagamentoFuncionaria(employee, empDoneValue, globalDoneAppointmentsValue);
@@ -211,7 +211,8 @@ public class ReportService {
                 .collect(Collectors.groupingBy(a -> a.getEmployee().getUser().getName(), Collectors.counting()));
 
         Map<String, Long> byService = appointments.stream()
-                .collect(Collectors.groupingBy(a -> a.getSalonService().getName(), Collectors.counting()));
+                .flatMap(a -> a.getServices().stream())
+                .collect(Collectors.groupingBy(item -> item.getSalonService().getName(), Collectors.counting()));
 
         String period = fromDate + " a " + toDate;
 
@@ -237,7 +238,7 @@ public class ReportService {
                 .collect(Collectors.toList());
 
         BigDecimal globalDoneAppointmentsValue = doneAppointments.stream()
-                .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
+                .map(a -> a.getTotalEffectivePrice() != null ? a.getTotalEffectivePrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
         List<Employee> employees = employeeRepository.findAll();
@@ -249,7 +250,7 @@ public class ReportService {
                     .collect(Collectors.toList());
 
             BigDecimal empDoneValue = empDoneAppointments.stream()
-                    .map(a -> a.getSalonService().getPrice() != null ? a.getSalonService().getPrice() : BigDecimal.ZERO)
+                    .map(a -> a.getTotalEffectivePrice() != null ? a.getTotalEffectivePrice() : BigDecimal.ZERO)
                     .reduce(BigDecimal.ZERO, BigDecimal::add);
 
             BigDecimal payout = BigDecimal.ZERO;

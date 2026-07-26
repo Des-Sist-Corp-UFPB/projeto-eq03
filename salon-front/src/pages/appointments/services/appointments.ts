@@ -2,19 +2,35 @@ import api from '../../../services/api';
 import { normalizePage, type SpringPageResponse } from '../../../utils/pagination';
 export type { PageResponse } from '../../../utils/pagination';
 
+export interface AppointmentServiceRequestItem {
+  serviceId: number;
+  /** Serviço como template: sobrescreve preço/duração/observações só para este item. */
+  customPrice?: number | null;
+  customDurationMin?: number | null;
+  customServiceNotes?: string | null;
+}
+
 export interface AppointmentRequestBody {
   employeeId: number;
-  serviceId: number;
+  services: AppointmentServiceRequestItem[];
   /** Fluxo admin: horário já definido */
   scheduledAt?: string | null;
   /** Fluxo cliente: dia preferido */
   preferredDate?: string | null;
   clientNotes?: string | null;
   clientId?: number;
-  /** Serviço como template: sobrescreve preço/duração/observações só para este agendamento. */
-  customPrice?: number | null;
-  customDurationMin?: number | null;
-  customServiceNotes?: string | null;
+}
+
+export interface AppointmentServiceResponse {
+  serviceId: number;
+  serviceName: string;
+  catalogPrice: number | null;
+  catalogDurationMin: number | null;
+  customPrice: number | null;
+  customDurationMin: number | null;
+  customServiceNotes: string | null;
+  effectivePrice: number | null;
+  effectiveDurationMin: number | null;
 }
 
 export interface AppointmentResponse {
@@ -23,8 +39,9 @@ export interface AppointmentResponse {
   clientName: string;
   employeeId: number;
   employeeName: string;
-  serviceId: number;
-  serviceName: string;
+  services: AppointmentServiceResponse[];
+  totalPrice: number | null;
+  totalDurationMin: number | null;
   scheduledAt: string | null;
   preferredDate?: string | null;
   clientNotes?: string | null;
@@ -34,29 +51,33 @@ export interface AppointmentResponse {
   pixQrCode?: string | null;
   clientHasSavedCpf?: boolean;
   clientCpfMasked?: string;
-  customPrice?: number | null;
-  customDurationMin?: number | null;
-  customServiceNotes?: string | null;
-  effectivePrice?: number | null;
-  effectiveDurationMin?: number | null;
 }
 
 interface AppointmentCreatePayload {
   employeeId: number;
-  serviceId: number;
+  services: AppointmentServiceRequestItem[];
   scheduledAt?: string | null;
   clientId?: number | null;
   preferredDate?: string | null;
   clientNotes?: string | null;
-  customPrice?: number | null;
-  customDurationMin?: number | null;
-  customServiceNotes?: string | null;
 }
 
 function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreatePayload {
   const body: AppointmentCreatePayload = {
     employeeId: request.employeeId,
-    serviceId: request.serviceId,
+    services: request.services.map((s) => {
+      const item: AppointmentServiceRequestItem = { serviceId: s.serviceId };
+      if (s.customPrice != null) {
+        item.customPrice = s.customPrice;
+      }
+      if (s.customDurationMin != null) {
+        item.customDurationMin = s.customDurationMin;
+      }
+      if (s.customServiceNotes != null && s.customServiceNotes.trim() !== '') {
+        item.customServiceNotes = s.customServiceNotes.trim();
+      }
+      return item;
+    }),
   };
   if (request.scheduledAt != null && String(request.scheduledAt).trim() !== '') {
     body.scheduledAt = request.scheduledAt;
@@ -69,15 +90,6 @@ function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreateP
   }
   if (request.clientNotes != null && request.clientNotes.trim() !== '') {
     body.clientNotes = request.clientNotes.trim();
-  }
-  if (request.customPrice != null) {
-    body.customPrice = request.customPrice;
-  }
-  if (request.customDurationMin != null) {
-    body.customDurationMin = request.customDurationMin;
-  }
-  if (request.customServiceNotes != null && request.customServiceNotes.trim() !== '') {
-    body.customServiceNotes = request.customServiceNotes.trim();
   }
   return body;
 }

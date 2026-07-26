@@ -9,19 +9,28 @@ const baseAppointment: AppointmentResponse = {
   clientName: 'Maria',
   employeeId: 1,
   employeeName: 'Ana',
-  serviceId: 1,
-  serviceName: 'Coloração',
+  services: [
+    {
+      serviceId: 1,
+      serviceName: 'Coloração',
+      catalogPrice: 150,
+      catalogDurationMin: 60,
+      customPrice: null,
+      customDurationMin: null,
+      customServiceNotes: null,
+      effectivePrice: 150,
+      effectiveDurationMin: 60,
+    },
+  ],
+  totalPrice: 150,
+  totalDurationMin: 60,
   scheduledAt: '2026-08-01T10:00:00',
   status: 'CONFIRMED',
-  effectivePrice: 150,
-  effectiveDurationMin: 60,
 };
 
 describe('AppointmentDetailModal', () => {
   it('renders nothing when there is no appointment', () => {
-    const { container } = render(
-      <AppointmentDetailModal appointment={null} onClose={vi.fn()} />
-    );
+    const { container } = render(<AppointmentDetailModal appointment={null} onClose={vi.fn()} />);
     expect(container).toBeEmptyDOMElement();
   });
 
@@ -38,27 +47,58 @@ describe('AppointmentDetailModal', () => {
   it('shows both the catalog value and the custom effective value when customized', () => {
     const customized: AppointmentResponse = {
       ...baseAppointment,
-      customPrice: 200,
-      customDurationMin: 90,
-      customServiceNotes: 'Cabelo mais longo',
-      effectivePrice: 200,
-      effectiveDurationMin: 90,
+      services: [
+        {
+          serviceId: 1,
+          serviceName: 'Coloração',
+          catalogPrice: 150,
+          catalogDurationMin: 60,
+          customPrice: 200,
+          customDurationMin: 90,
+          customServiceNotes: 'Cabelo mais longo',
+          effectivePrice: 200,
+          effectiveDurationMin: 90,
+        },
+      ],
+      totalPrice: 200,
+      totalDurationMin: 90,
     };
 
-    render(
-      <AppointmentDetailModal
-        appointment={customized}
-        catalogPrice={150}
-        catalogDurationMin={60}
-        onClose={vi.fn()}
-      />
-    );
+    render(<AppointmentDetailModal appointment={customized} onClose={vi.fn()} />);
 
     expect(screen.getByText('Catálogo: R$ 150.00')).toBeInTheDocument();
     expect(screen.getByText('Catálogo: 60 min')).toBeInTheDocument();
     expect(screen.getByText('R$ 200.00')).toBeInTheDocument();
     expect(screen.getByText('90 min')).toBeInTheDocument();
     expect(screen.getByText('Cabelo mais longo')).toBeInTheDocument();
+  });
+
+  it('shows a total row when there is more than one service', () => {
+    const multi: AppointmentResponse = {
+      ...baseAppointment,
+      services: [
+        ...baseAppointment.services,
+        {
+          serviceId: 2,
+          serviceName: 'Corte',
+          catalogPrice: 50,
+          catalogDurationMin: 30,
+          customPrice: null,
+          customDurationMin: null,
+          customServiceNotes: null,
+          effectivePrice: 50,
+          effectiveDurationMin: 30,
+        },
+      ],
+      totalPrice: 200,
+      totalDurationMin: 90,
+    };
+
+    render(<AppointmentDetailModal appointment={multi} onClose={vi.fn()} />);
+
+    expect(screen.getByText('Total')).toBeInTheDocument();
+    expect(screen.getByText('R$ 200.00')).toBeInTheDocument();
+    expect(screen.getByText('90 min')).toBeInTheDocument();
   });
 
   it('calls onClose when the close button is clicked', () => {

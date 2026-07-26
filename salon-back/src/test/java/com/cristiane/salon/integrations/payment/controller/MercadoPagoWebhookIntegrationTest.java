@@ -2,6 +2,7 @@ package com.cristiane.salon.integrations.payment.controller;
 
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
 import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.entity.AppointmentServiceItem;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.enums.PaymentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
@@ -157,13 +158,18 @@ class MercadoPagoWebhookIntegrationTest {
         appointment = new Appointment();
         appointment.setClient(clientUser);
         appointment.setEmployee(employee);
-        appointment.setSalonService(salonService);
         appointment.setScheduledAt(LocalDateTime.now().plusDays(1));
         appointment.setPreferredDate(LocalDate.now().plusDays(1));
         appointment.setStatus(AppointmentStatus.CONFIRMED);
         appointment.setPaymentStatus(PaymentStatus.PENDING);
         appointment.setPaymentId(987654321L);
         appointment.setPixQrCode("mocked_pix_copia_e_cola_code");
+
+        AppointmentServiceItem serviceItem = new AppointmentServiceItem();
+        serviceItem.setAppointment(appointment);
+        serviceItem.setSalonService(salonService);
+        appointment.getServices().add(serviceItem);
+
         appointment = appointmentRepository.save(appointment);
 
         when(mercadoPagoPaymentService.isValidSignature(any(), any(), any())).thenAnswer(invocation -> {
