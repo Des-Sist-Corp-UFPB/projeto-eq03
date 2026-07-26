@@ -18,6 +18,7 @@ O sistema cumpre todos os requisitos exigidos utilizando padrões modernos de de
   - **Pagamentos via PIX (Mercado Pago API):** Geração de QR Code e Pix Copia e Cola (Checkout Transparente) com coleta JIT (Just-In-Time) de CPF (validação por Módulo 11) e Webhooks protegidos por assinatura de segurança (`x-signature` via HMAC-SHA256) para conciliação automática.
 - **Suporte a PWA (Progressive Web App):**
   - O frontend foi construído como um PWA (Progressive Web App) utilizando `vite-plugin-pwa`. Isso permite a instalação local do aplicativo, cache inteligente de recursos estáticos com Workbox e funcionamento offline-first da interface, com estratégias *NetworkFirst* de cache para rotas públicas e feature flags.
+  - **Notificações Push (Web Push API):** com o PWA instalado, o usuário recebe notificação nativa do sistema operacional (mesmo com o app fechado) nos mesmos eventos que já disparam e-mail — ver seção [🔔 Notificações Push](#-notificações-push-web-push-api) para os detalhes completos.
 - **Testes de Qualidade e Cobertura Comprovável:**
   - **Backend (JaCoCo - Linhas: 92.78% | Instruções: 93.56% | Branches: 78.61%):** Testes unitários/integração com JUnit 5 e Mockito. Relatório de cobertura disponível em [cobertura/backend/index.html](./cobertura/backend/index.html).
   - **Frontend (Vitest - Linhas: 99.15% | Branches: 91.87%):** Relatório de cobertura disponível em [cobertura/frontend/index.html](./cobertura/frontend/index.html).
@@ -125,6 +126,33 @@ Reduz no-show avisando o cliente na véspera. Um job diário (09h, horário de R
   - [AppointmentReminderService.java](./salon-back/src/main/java/com/cristiane/salon/models/appointment/service/AppointmentReminderService.java) (job agendado)
   - [appointment-reminder.html](./salon-back/src/main/resources/templates/mail/appointment-reminder.html)
   - [V37\_\_add_appointment_reminded_at.sql](./salon-back/src/main/resources/db/migration/V37__add_appointment_reminded_at.sql)
+
+---
+
+## 🔔 Notificações Push (Web Push API)
+
+Com o PWA instalado, o usuário recebe notificações nativas do sistema operacional mesmo com o app fechado — a mesma UI de notificação do Windows/macOS/Android, não um toast dentro do navegador. Requer o PWA instalado e HTTPS em produção (pré-requisito já atendido, ver seção de PWA acima).
+
+- **O que gera notificação hoje** (os mesmos 4 eventos que já disparam e-mail, mais o lembrete D-1):
+  1. Agendamento confirmado → push para o **cliente**.
+  2. Agendamento cancelado/recusado → push para o **cliente**.
+  3. Novo pedido de agendamento → push para todos os usuários **ADMIN** ativos.
+  4. Pagamento PIX confirmado → push para o **cliente**.
+  5. Lembrete de agendamento D-1 → push para o **cliente**, junto com o e-mail.
+
+  Clicar na notificação abre o app direto na tela relevante (`/my-appointments` ou `/admin/appointments`).
+- **iOS:** só recebe push se o PWA estiver **instalado na tela inicial** (Safari numa aba comum não implementa a Push API) e o iOS for 16.4+ — limitação da Apple, documentada no próprio código (`usePushNotification.ts`).
+- **Chaves VAPID — cuidado crítico:** autenticam o servidor perante os serviços de push do navegador (FCM, Mozilla autopush, etc.). Geradas uma única vez com `npx web-push generate-vapid-keys` e **nunca regeneradas** depois: trocar a chave privada invalida instantaneamente TODAS as subscriptions já salvas no banco, e cada usuário precisaria autorizar notificações de novo. Configuração em `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (backend) e `VITE_VAPID_PUBLIC_KEY` (frontend, mesma chave pública) — ver `.env.example` para instruções completas.
+- **Service worker escrito à mão (`injectManifest`):** registrar os listeners de `push`/`notificationclick` exigiu trocar a estratégia do `vite-plugin-pwa` de `generateSW` (automática) para `injectManifest` — o cache `NetworkFirst` de rotas públicas que existia antes foi reescrito manualmente em `src/sw.ts` (workbox-routing) para preservar o comportamento anterior.
+- **Falha isolada por assinatura, nunca bloqueia a resposta HTTP:** `PushService.sendToUser` é `@Async` e trata cada subscription (cada navegador/dispositivo autorizado) de forma independente — uma subscription expirada (HTTP 410 Gone) é removida do banco automaticamente, e falha em uma nunca impede o envio para as demais.
+- **Sem Circuit Breaker aqui, ao contrário das outras integrações externas** (ver seção de Resiliência): cada envio de push vai para um endpoint diferente por assinatura (o navegador de cada usuário gera sua própria URL via FCM/Mozilla/etc.) — não é "um provedor" que pode cair inteiro como o Mercado Pago ou o Resend, então o padrão de circuito não se aplica da mesma forma.
+- **Classes e arquivos participantes:**
+  - [PushService.java](./salon-back/src/main/java/com/cristiane/salon/integrations/push/service/PushService.java) (envio, limpeza de subscription expirada)
+  - [PushController.java](./salon-back/src/main/java/com/cristiane/salon/integrations/push/controller/PushController.java) (assinar/cancelar)
+  - [WebPushConfig.java](./salon-back/src/main/java/com/cristiane/salon/integrations/push/config/WebPushConfig.java) (bean único da biblioteca `web-push`, provider BouncyCastle)
+  - [V38\_\_create_push_subscription.sql](./salon-back/src/main/resources/db/migration/V38__create_push_subscription.sql)
+  - [usePushNotification.ts](./salon-front/src/hooks/usePushNotification.ts) (opt-in no frontend)
+  - [sw.ts](./salon-front/src/sw.ts) (service worker customizado)
 
 ---
 

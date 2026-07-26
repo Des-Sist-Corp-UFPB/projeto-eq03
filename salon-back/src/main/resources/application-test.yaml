@@ -29,6 +29,10 @@ app:
   pii-encryption-key: Nzw/+MV8Zya7ouYkSiK98gMrF7iSQjPyQcIkx/hdEV8=
   pii-hash-pepper: rs/akrNxHDd9/qv389QsjCHUgW+AZf1fKBsgA41dDr4=
 
+vapid:
+  public-key: BGfvvJ3oyWUeh1TD_EJnKsb2FNL4mWCtlbTmfsPguq1PYxwVuteKRiHCDbQI9xSiSXjoeegrXsCtN_6G3KnLezg
+  private-key: tagfzYoD8pMnQ2sj3naATHd7RNuCoI6diRZ_ad2MM5I
+
 # Espera de retry/circuito mínima em teste — o comportamento (nº de tentativas, quando o
 # circuito abre) é o mesmo, só sem o tempo de espera real de produção.
 resilience4j:

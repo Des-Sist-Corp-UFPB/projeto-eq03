@@ -39,6 +39,12 @@ app:
   appointment-reminder:
     cron: ${APPOINTMENT_REMINDER_CRON:0 0 9 * * *}
 
+# Notificações push via Web Push API (issue #110). As chaves public-key/private-key vivem só
+# nos arquivos de perfil (dev/test têm valores reais gerados uma vez; prod exige env var, sem
+# default, e NUNCA deve ser regenerada — ver comentário em application-prod.yaml).
+vapid:
+  subject: ${VAPID_SUBJECT:mailto:admin@salao.com}
+
 logging:
   level:
     root: INFO
