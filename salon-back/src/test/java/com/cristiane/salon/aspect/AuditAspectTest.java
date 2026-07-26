@@ -428,6 +428,43 @@ class AuditAspectTest {
     }
 
     @Test
+    void testMaskingFailure_neverLeaksRawSensitiveFieldsInTheFallback() throws Exception {
+        // Regressão: se objectMapper.convertValue() falhar por qualquer motivo (ex.: um getter
+        // que lança), o fallback tinha um bug que devolvia o objeto CRU sem máscara — o que
+        // vazaria password/CPF/chave PIX em texto puro no log. O fallback correto é uma string
+        // segura que não contém nenhum dos campos sensíveis do objeto original.
+        JoinPoint joinPoint = mock(JoinPoint.class);
+        MethodSignature signature = mock(MethodSignature.class);
+        Method method = this.getClass().getMethod("dummyCreateMethod");
+        when(signature.getMethod()).thenReturn(method);
+        when(joinPoint.getSignature()).thenReturn(signature);
+
+        class ThrowsDuringConversion {
+            public String password = "mySecretPassword123";
+
+            public String getBroken() {
+                throw new RuntimeException("boom");
+            }
+        }
+
+        Object[] args = new Object[]{ new ThrowsDuringConversion() };
+        when(joinPoint.getArgs()).thenReturn(args);
+
+        Auditable auditable = mock(Auditable.class);
+        when(auditable.action()).thenReturn("CREATE");
+        when(auditable.entityType()).thenReturn("Dummy");
+        when(auditable.captureArgs()).thenReturn(true);
+
+        auditAspect.logSuccessfulAction(joinPoint, auditable, null);
+
+        verify(auditLogService).logAction(
+                any(), any(), any(), any(), any(),
+                argThat(details -> details != null && !details.contains("mySecretPassword123")),
+                eq("SUCCESS")
+        );
+    }
+
+    @Test
     void testLogSuccessfulAction_whenSecurityContextHasNoAuth_shouldUseDefaultSystemEmail() throws Exception {
         SecurityContextHolder.clearContext();
 

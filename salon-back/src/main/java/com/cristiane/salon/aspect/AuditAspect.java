@@ -235,7 +235,11 @@ public class AuditAspect {
             maskMap(map);
             return map;
         } catch (Exception e) {
-            return arg;
+            // Nunca devolver o objeto cru aqui: se a conversão para Map falhar por qualquer
+            // motivo, o mascaramento não roda, e devolver `arg` sem máscara arriscaria vazar
+            // senha/CPF/chave PIX em texto puro no log de auditoria. Fail-safe: registra que
+            // não foi possível mascarar, em vez de arriscar expor o valor.
+            return "[não foi possível serializar/mascarar: " + arg.getClass().getSimpleName() + "]";
         }
     }
     
@@ -244,8 +248,9 @@ public class AuditAspect {
         
         Set<String> sensitiveKeys = Set.of(
             "password", "senha", "token", "jwt", "refreshtoken", "clientnotes", "client_notes",
-            "card", "cartao", "creditcard", "bank", "banco", "cvv", "cardNumber", "card_number",
-            "apikey", "api_key", "accesstoken", "access_token", "secret"
+            "card", "cartao", "creditcard", "bank", "banco", "cvv", "cardnumber", "card_number",
+            "apikey", "api_key", "accesstoken", "access_token", "secret",
+            "cpf", "pixkey", "pix_key"
         );
         
         for (Map.Entry<String, Object> entry : new HashSet<>(map.entrySet())) {

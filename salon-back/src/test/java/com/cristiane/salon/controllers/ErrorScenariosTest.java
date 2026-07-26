@@ -10,6 +10,8 @@ import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.product.service.ProductService;
 import com.cristiane.salon.models.report.service.ReportService;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
+import com.cristiane.salon.models.staff.service.StaffPixService;
+import com.cristiane.salon.models.staff.service.StaffProfileService;
 import com.cristiane.salon.models.user.service.AuthService;
 import com.cristiane.salon.models.user.service.PasswordResetService;
 import com.cristiane.salon.models.user.service.RoleService;
@@ -83,6 +85,12 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private McpTokenService mcpTokenService;
+
+    @MockitoBean
+    private StaffProfileService staffProfileService;
+
+    @MockitoBean
+    private StaffPixService staffPixService;
 
     @Test
     void whenInvalidAppointment_thenReturns400() throws Exception {
