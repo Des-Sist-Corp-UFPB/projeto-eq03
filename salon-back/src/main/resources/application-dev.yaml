@@ -40,6 +40,14 @@ app:
   # Pepper do HMAC-SHA256 do hash determinístico do CPF (checagem de duplicidade sem decifrar).
   pii-hash-pepper: sezDL9n7czVKGBhKfv2cSfX8H/QIcS78rExJfv0FN1s=
 
+vapid:
+  # Par de chaves VAPID de DEV — gerado uma única vez com `npx web-push generate-vapid-keys`.
+  # ATENÇÃO: nunca regenere a chave privada de produção — isso invalida TODAS as subscriptions
+  # de push já salvas no banco, forçando todo usuário a autorizar notificações de novo. Em
+  # dev/test não tem problema recriar à vontade.
+  public-key: BB0lhFj8jFWS9XnPtWGBBsp0dZ7-F_HGT_YVPYSjBoMkP6wPsqUr7m1y0gZQH1PaD2T8vT53DSOZfejjiQsj0qY
+  private-key: zi8FsNAAo0HlDFm53KtOPhJBRSu2WM12UMyfdeOTIfk
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html

@@ -1,9 +1,11 @@
 package com.cristiane.salon.models.appointment.service;
 
 import com.cristiane.salon.integrations.email.service.EmailService;
+import com.cristiane.salon.integrations.push.service.PushService;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import com.cristiane.salon.models.user.entity.User;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -33,14 +35,21 @@ class AppointmentReminderServiceTest {
     private EmailService emailService;
 
     @Mock
+    private PushService pushService;
+
+    @Mock
     private FeatureFlagService featureFlagService;
 
     @InjectMocks
     private AppointmentReminderService reminderService;
 
     private Appointment appointment(Long id) {
+        User client = new User();
+        client.setId(id * 100);
+
         Appointment appointment = new Appointment();
         appointment.setId(id);
+        appointment.setClient(client);
         return appointment;
     }
 
