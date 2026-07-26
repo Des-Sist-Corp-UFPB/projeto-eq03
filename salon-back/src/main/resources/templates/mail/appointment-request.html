@@ -131,7 +131,7 @@
                 </div>
                 <div class="details-row">
                     <span class="label">Serviço</span>
-                    <span class="value" th:text="${appointment.salonService.name}">Corte Feminino</span>
+                    <span class="value" th:text="${appointment.serviceNames}">Corte Feminino</span>
                 </div>
                 <div class="details-row">
                     <span class="label">Profissional</span>
@@ -147,7 +147,7 @@
                 </div>
             </div>
             <div class="cta-container">
-                <a href="http://localhost:5173/admin/appointments" class="btn">Visualizar no Painel</a>
+                <a th:href="${frontendUrl} + '/admin/appointments'" class="btn">Visualizar no Painel</a>
             </div>
         </div>
         <div class="footer">

@@ -1,15 +1,17 @@
 package com.cristiane.salon.models.appointment.dto;
 
+import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record AppointmentRequest(
         @NotNull(message = "O funcionário é obrigatório")
         Long employeeId,
 
-        @NotNull(message = "O serviço é obrigatório")
-        Long serviceId,
+        @NotEmpty(message = "Ao menos um serviço é obrigatório")
+        List<AppointmentServiceRequest> services,
 
         /**
          * Obrigatório apenas no fluxo administrativo (agendamento com horário definido).

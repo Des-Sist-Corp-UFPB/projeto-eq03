@@ -15,6 +15,11 @@ mail:
   from: ${MAIL_FROM:dev@localhost.com}
   business: ${MAIL_BUSINESS:salao@localhost.com}
 
+app:
+  # Base do frontend usada para montar links clicáveis em e-mails (ex.: redefinição de
+  # senha). Sem isso, o link renderizado num e-mail de produção apontaria pra localhost.
+  frontend-url: ${FRONTEND_URL:http://localhost:5173}
+
 logging:
   level:
     root: INFO

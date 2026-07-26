@@ -32,6 +32,20 @@ vi.mock('../../../hooks/useAlert', () => ({
   }),
 }));
 
+function buildServiceItem(serviceId: number, serviceName: string) {
+  return {
+    serviceId,
+    serviceName,
+    catalogPrice: null,
+    catalogDurationMin: null,
+    customPrice: null,
+    customDurationMin: null,
+    customServiceNotes: null,
+    effectivePrice: null,
+    effectiveDurationMin: null,
+  };
+}
+
 const mockAppointments = [
   {
     id: 1,
@@ -39,8 +53,9 @@ const mockAppointments = [
     clientName: 'Elksandro',
     employeeId: 10,
     employeeName: 'Mariana',
-    serviceId: 1,
-    serviceName: 'Corte de Cabelo',
+    services: [buildServiceItem(1, 'Corte de Cabelo')],
+    totalPrice: null,
+    totalDurationMin: null,
     scheduledAt: '2026-06-25T14:00:00Z',
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
@@ -54,8 +69,9 @@ const mockAppointments = [
     clientName: 'Elksandro',
     employeeId: 10,
     employeeName: 'Mariana',
-    serviceId: 2,
-    serviceName: 'Manicure',
+    services: [buildServiceItem(2, 'Manicure')],
+    totalPrice: null,
+    totalDurationMin: null,
     scheduledAt: '2026-06-26T10:00:00Z',
     status: 'CONFIRMED',
     paymentStatus: 'PENDING',
@@ -69,8 +85,9 @@ const mockAppointments = [
     clientName: 'Elksandro',
     employeeId: 10,
     employeeName: 'Mariana',
-    serviceId: 1,
-    serviceName: 'Escova',
+    services: [buildServiceItem(1, 'Escova')],
+    totalPrice: null,
+    totalDurationMin: null,
     scheduledAt: '2026-06-27T16:00:00Z',
     status: 'PENDING',
     paymentStatus: null,
@@ -104,13 +121,14 @@ describe('MyAppointments Component', () => {
       clientName: 'Elksandro',
       employeeId: 10,
       employeeName: 'Mariana',
-      serviceId: 1,
-      serviceName: 'Corte de Cabelo',
+      services: [buildServiceItem(1, 'Corte de Cabelo')],
+      totalPrice: null,
+      totalDurationMin: null,
       scheduledAt: '2026-06-25T14:00:00Z',
       status: 'CONFIRMED',
       paymentStatus: 'PENDING',
       pixQrCode: 'pix-generated-qr-code-1',
-    });
+    } as any);
   });
 
   it('renders loading indicator then lists appointments with proper badges', async () => {

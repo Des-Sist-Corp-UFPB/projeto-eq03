@@ -10,7 +10,10 @@ import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.product.service.ProductService;
 import com.cristiane.salon.models.report.service.ReportService;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
+import com.cristiane.salon.models.staff.service.StaffPixService;
+import com.cristiane.salon.models.staff.service.StaffProfileService;
 import com.cristiane.salon.models.user.service.AuthService;
+import com.cristiane.salon.models.user.service.PasswordResetService;
 import com.cristiane.salon.models.user.service.RoleService;
 import com.cristiane.salon.models.user.service.UserService;
 import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentService;
@@ -60,6 +63,9 @@ class ErrorScenariosTest extends BaseControllerTest {
     private AuthService authService;
 
     @MockitoBean
+    private PasswordResetService passwordResetService;
+
+    @MockitoBean
     private FeatureFlagService featureFlagService;
 
     @MockitoBean
@@ -79,6 +85,12 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private McpTokenService mcpTokenService;
+
+    @MockitoBean
+    private StaffProfileService staffProfileService;
+
+    @MockitoBean
+    private StaffPixService staffPixService;
 
     @Test
     void whenInvalidAppointment_thenReturns400() throws Exception {
@@ -109,7 +121,7 @@ class ErrorScenariosTest extends BaseControllerTest {
     void whenServiceThrows_thenReturns500() throws Exception {
         when(appointmentService.create(any())).thenThrow(new RuntimeException("boom"));
 
-        String body = "{\"employeeId\":1,\"serviceId\":1}";
+        String body = "{\"employeeId\":1,\"services\":[{\"serviceId\":1}]}";
 
         mvc.perform(post("/v1/appointments")
                 .contentType(MediaType.APPLICATION_JSON)

@@ -109,6 +109,17 @@ class UserServiceTest {
         inactiveUser.setCreatedAt(LocalDateTime.now());
     }
 
+    private void attachService(Appointment appointment, String serviceName) {
+        com.cristiane.salon.models.service.entity.SalonService svc =
+                new com.cristiane.salon.models.service.entity.SalonService();
+        svc.setName(serviceName);
+        com.cristiane.salon.models.appointment.entity.AppointmentServiceItem item =
+                new com.cristiane.salon.models.appointment.entity.AppointmentServiceItem();
+        item.setAppointment(appointment);
+        item.setSalonService(svc);
+        appointment.getServices().add(item);
+    }
+
     @Test
     void findAll_whenIncludeInactiveIsTrue_shouldReturnAllUsers() {
         // Arrange
@@ -625,8 +636,7 @@ class UserServiceTest {
         app1.setClient(activeUser);
         app1.setEmployee(new Employee());
         app1.getEmployee().setUser(activeUser);
-        app1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        app1.getSalonService().setName("Service A");
+        attachService(app1, "Service A");
         app1.setScheduledAt(LocalDateTime.of(2026, 6, 24, 10, 0));
         app1.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.CONFIRMED);
 
@@ -635,8 +645,7 @@ class UserServiceTest {
         app2.setClient(activeUser);
         app2.setEmployee(new Employee());
         app2.getEmployee().setUser(activeUser);
-        app2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        app2.getSalonService().setName("Service B");
+        attachService(app2, "Service B");
         app2.setScheduledAt(LocalDateTime.of(2026, 6, 25, 14, 0)); // Later date
         app2.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.CONFIRMED);
 
@@ -669,8 +678,7 @@ class UserServiceTest {
         app1.setClient(activeUser);
         app1.setEmployee(new Employee());
         app1.getEmployee().setUser(activeUser);
-        app1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        app1.getSalonService().setName("Service A");
+        attachService(app1, "Service A");
         app1.setScheduledAt(null);
         app1.setCreatedAt(LocalDateTime.of(2026, 6, 24, 10, 0));
         app1.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
@@ -680,8 +688,7 @@ class UserServiceTest {
         app2.setClient(activeUser);
         app2.setEmployee(new Employee());
         app2.getEmployee().setUser(activeUser);
-        app2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        app2.getSalonService().setName("Service B");
+        attachService(app2, "Service B");
         app2.setScheduledAt(null);
         app2.setCreatedAt(LocalDateTime.of(2026, 6, 25, 14, 0)); // Later createdAt
         app2.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
@@ -691,8 +698,7 @@ class UserServiceTest {
         app3.setClient(activeUser);
         app3.setEmployee(new Employee());
         app3.getEmployee().setUser(activeUser);
-        app3.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        app3.getSalonService().setName("Service C");
+        attachService(app3, "Service C");
         app3.setScheduledAt(null);
         app3.setCreatedAt(null); // Both scheduledAt and createdAt null
         app3.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
@@ -850,8 +856,7 @@ class UserServiceTest {
         appNull1.setClient(activeUser);
         appNull1.setEmployee(new Employee());
         appNull1.getEmployee().setUser(activeUser);
-        appNull1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        appNull1.getSalonService().setName("Service");
+        attachService(appNull1, "Service");
         appNull1.setScheduledAt(null);
         appNull1.setCreatedAt(null);
 
@@ -860,8 +865,7 @@ class UserServiceTest {
         appNull2.setClient(activeUser);
         appNull2.setEmployee(new Employee());
         appNull2.getEmployee().setUser(activeUser);
-        appNull2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        appNull2.getSalonService().setName("Service");
+        attachService(appNull2, "Service");
         appNull2.setScheduledAt(null);
         appNull2.setCreatedAt(null);
 
@@ -870,8 +874,7 @@ class UserServiceTest {
         appDate1.setClient(activeUser);
         appDate1.setEmployee(new Employee());
         appDate1.getEmployee().setUser(activeUser);
-        appDate1.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        appDate1.getSalonService().setName("Service");
+        attachService(appDate1, "Service");
         appDate1.setScheduledAt(LocalDateTime.of(2026, 6, 24, 10, 0));
 
         Appointment appDate2 = new Appointment();
@@ -879,8 +882,7 @@ class UserServiceTest {
         appDate2.setClient(activeUser);
         appDate2.setEmployee(new Employee());
         appDate2.getEmployee().setUser(activeUser);
-        appDate2.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        appDate2.getSalonService().setName("Service");
+        attachService(appDate2, "Service");
         appDate2.setScheduledAt(LocalDateTime.of(2026, 6, 25, 10, 0));
 
         Appointment appDate3 = new Appointment();
@@ -888,8 +890,7 @@ class UserServiceTest {
         appDate3.setClient(activeUser);
         appDate3.setEmployee(new Employee());
         appDate3.getEmployee().setUser(activeUser);
-        appDate3.setSalonService(new com.cristiane.salon.models.service.entity.SalonService());
-        appDate3.getSalonService().setName("Service");
+        attachService(appDate3, "Service");
         appDate3.setScheduledAt(LocalDateTime.of(2026, 6, 24, 10, 0));
 
         when(appointmentRepository.findByClientId(10L)).thenReturn(List.of(appNull1, appNull2, appDate1, appDate2, appDate3));

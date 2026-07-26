@@ -7,6 +7,7 @@ import com.cristiane.salon.exception.BusinessException;
 import com.cristiane.salon.models.appointment.dto.GeneratePixRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
+import com.cristiane.salon.models.appointment.dto.AppointmentServiceRequest;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
@@ -29,6 +30,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -128,6 +130,25 @@ class AppointmentServiceTest {
         lenient().when(userRepository.findByEmail(user.getEmail())).thenReturn(Optional.of(user));
     }
 
+    private com.cristiane.salon.models.appointment.entity.AppointmentServiceItem withService(
+            Appointment appointment, SalonService svc) {
+        return withService(appointment, svc, null, null, null);
+    }
+
+    private com.cristiane.salon.models.appointment.entity.AppointmentServiceItem withService(
+            Appointment appointment, SalonService svc, BigDecimal customPrice, Integer customDurationMin,
+            String customServiceNotes) {
+        com.cristiane.salon.models.appointment.entity.AppointmentServiceItem item =
+                new com.cristiane.salon.models.appointment.entity.AppointmentServiceItem();
+        item.setAppointment(appointment);
+        item.setSalonService(svc);
+        item.setCustomPrice(customPrice);
+        item.setCustomDurationMin(customDurationMin);
+        item.setCustomServiceNotes(customServiceNotes);
+        appointment.getServices().add(item);
+        return item;
+    }
+
     @Test
     void create_whenUserNotAuthenticated_shouldThrowUnauthorizedException() {
         // Arrange
@@ -138,7 +159,7 @@ class AppointmentServiceTest {
         SecurityContextHolder.setContext(secCtx);
         when(userRepository.findByEmail("unknown@example.com")).thenReturn(Optional.empty());
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -151,7 +172,7 @@ class AppointmentServiceTest {
         // Arrange
         mockAuthenticatedUser(clientUser);
         when(featureFlagService.isEnabled("ENABLE_CUSTOMER_PORTAL")).thenReturn(false);
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -165,7 +186,7 @@ class AppointmentServiceTest {
         mockAuthenticatedUser(clientUser);
         when(featureFlagService.isEnabled("ENABLE_CUSTOMER_PORTAL")).thenReturn(true);
         when(featureFlagService.isEnabled("CLIENT_BOOKING")).thenReturn(false);
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -178,7 +199,7 @@ class AppointmentServiceTest {
         // Arrange
         mockAuthenticatedUser(staffUser);
         when(userRepository.findById(99L)).thenReturn(Optional.empty());
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, 99L);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, 99L);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -194,7 +215,7 @@ class AppointmentServiceTest {
         when(featureFlagService.isEnabled("CLIENT_BOOKING")).thenReturn(true);
         when(employeeRepository.findById(5L)).thenReturn(Optional.empty());
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -211,7 +232,7 @@ class AppointmentServiceTest {
         when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.empty());
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -229,12 +250,12 @@ class AppointmentServiceTest {
         salonService.setActive(false);
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
                 .isInstanceOf(BadRequestException.class)
-                .hasMessage("Este serviço não está disponível");
+                .hasMessage("Este serviço não está disponível: Corte");
     }
 
     // --- Staff create flow tests ---
@@ -247,7 +268,7 @@ class AppointmentServiceTest {
         when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, null, 10L);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, 10L);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -263,7 +284,7 @@ class AppointmentServiceTest {
         when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, LocalDateTime.now().minusDays(1), null, null, 10L);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), LocalDateTime.now().minusDays(1), null, null, 10L);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -279,7 +300,7 @@ class AppointmentServiceTest {
         when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, LocalDateTime.now().plusDays(1), LocalDate.now().minusDays(1), null, 10L);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), LocalDateTime.now().plusDays(1), LocalDate.now().minusDays(1), null, 10L);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -299,12 +320,12 @@ class AppointmentServiceTest {
         Appointment conflicting = new Appointment();
         conflicting.setId(20L);
         conflicting.setScheduledAt(targetTime.plusMinutes(10));
-        conflicting.setSalonService(salonService);
+        withService(conflicting, salonService);
 
         when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
                 .thenReturn(List.of(conflicting));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, targetTime, null, null, 10L);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), targetTime, null, null, 10L);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -328,13 +349,13 @@ class AppointmentServiceTest {
         saved.setId(100L);
         saved.setClient(clientUser);
         saved.setEmployee(employee);
-        saved.setSalonService(salonService);
+        withService(saved, salonService);
         saved.setScheduledAt(targetTime);
         saved.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.save(any(Appointment.class))).thenReturn(saved);
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, targetTime, LocalDate.now().plusDays(1), "notes", 10L);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), targetTime, LocalDate.now().plusDays(1), "notes", 10L);
 
         // Act
         AppointmentResponse result = appointmentService.create(request);
@@ -344,6 +365,270 @@ class AppointmentServiceTest {
         assertThat(result.id()).isEqualTo(100L);
         assertThat(result.status()).isEqualTo(AppointmentStatus.CONFIRMED.name());
         verify(emailService).sendConfirmationNotificationToClient(saved);
+    }
+
+    // --- Serviço como template (customPrice/customDurationMin/customServiceNotes) ---
+
+    @Test
+    void create_whenStaffFlowWithCustomServiceValues_shouldPersistThemOnTheAppointment() {
+        // Arrange
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        LocalDateTime targetTime = LocalDateTime.now().plusDays(1);
+        when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
+                .thenReturn(List.of());
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, new BigDecimal("200.00"), 90, "Cabelo mais longo, precisa de mais tempo")), targetTime, null, null, 10L);
+
+        // Act
+        AppointmentResponse result = appointmentService.create(request);
+
+        // Assert: cadastro do serviço (salonService) permanece intacto — só o agendamento leva o override.
+        assertThat(result.services()).hasSize(1);
+        var item = result.services().get(0);
+        assertThat(item.customPrice()).isEqualByComparingTo("200.00");
+        assertThat(item.customDurationMin()).isEqualTo(90);
+        assertThat(item.customServiceNotes()).isEqualTo("Cabelo mais longo, precisa de mais tempo");
+        assertThat(item.effectivePrice()).isEqualByComparingTo("200.00");
+        assertThat(item.effectiveDurationMin()).isEqualTo(90);
+        assertThat(result.totalPrice()).isEqualByComparingTo("200.00");
+        assertThat(result.totalDurationMin()).isEqualTo(90);
+        assertThat(salonService.getPrice()).isEqualByComparingTo("100.00");
+        assertThat(salonService.getDurationMin()).isEqualTo(45);
+    }
+
+    @Test
+    void create_whenStaffFlowWithoutCustomServiceValues_shouldFallBackToCatalogValues() {
+        // Arrange
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        LocalDateTime targetTime = LocalDateTime.now().plusDays(1);
+        when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
+                .thenReturn(List.of());
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), targetTime, null, null, 10L);
+
+        // Act
+        AppointmentResponse result = appointmentService.create(request);
+
+        // Assert
+        assertThat(result.services()).hasSize(1);
+        var item = result.services().get(0);
+        assertThat(item.customPrice()).isNull();
+        assertThat(item.customDurationMin()).isNull();
+        assertThat(result.totalPrice()).isEqualByComparingTo(salonService.getPrice());
+        assertThat(result.totalDurationMin()).isEqualTo(salonService.getDurationMin());
+    }
+
+    // --- Múltiplos serviços por agendamento ---
+
+    @Test
+    void create_whenStaffFlowWithMultipleServices_shouldSumPricesAndDurationsAndPersistBothItems() {
+        // Arrange: dois serviços no mesmo agendamento, cada um com seu próprio override.
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        SalonService coloring = new SalonService();
+        coloring.setId(9L);
+        coloring.setName("Coloração");
+        coloring.setPrice(BigDecimal.valueOf(150.00));
+        coloring.setDurationMin(60);
+        coloring.setActive(true);
+        when(salonServiceRepository.findById(9L)).thenReturn(Optional.of(coloring));
+
+        LocalDateTime targetTime = LocalDateTime.now().plusDays(1);
+        when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
+                .thenReturn(List.of());
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentRequest request = new AppointmentRequest(
+                5L,
+                List.of(
+                        new AppointmentServiceRequest(8L, null, null, null),
+                        new AppointmentServiceRequest(9L, new BigDecimal("120.00"), null, null)
+                ),
+                targetTime, null, null, 10L
+        );
+
+        // Act
+        AppointmentResponse result = appointmentService.create(request);
+
+        // Assert: soma dos dois serviços (100 catálogo + 120 customizado) e (45min + 60min)
+        assertThat(result.services()).hasSize(2);
+        assertThat(result.totalPrice()).isEqualByComparingTo("220.00");
+        assertThat(result.totalDurationMin()).isEqualTo(105);
+    }
+
+    @Test
+    void create_whenClientFlowWithMultipleServices_shouldIgnoreCustomPriceOverride() {
+        // Arrange: cliente tenta injetar customPrice, mas o fluxo do cliente deve ignorá-lo.
+        mockAuthenticatedUser(clientUser);
+        when(featureFlagService.isEnabled("ENABLE_CUSTOMER_PORTAL")).thenReturn(true);
+        when(featureFlagService.isEnabled("CLIENT_BOOKING")).thenReturn(true);
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        SalonService coloring = new SalonService();
+        coloring.setId(9L);
+        coloring.setName("Coloração");
+        coloring.setPrice(BigDecimal.valueOf(150.00));
+        coloring.setDurationMin(60);
+        coloring.setActive(true);
+        when(salonServiceRepository.findById(9L)).thenReturn(Optional.of(coloring));
+
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        AppointmentRequest request = new AppointmentRequest(
+                5L,
+                List.of(
+                        new AppointmentServiceRequest(8L, null, null, null),
+                        new AppointmentServiceRequest(9L, new BigDecimal("1.00"), null, null)
+                ),
+                null, null, null, null
+        );
+
+        // Act
+        AppointmentResponse result = appointmentService.create(request);
+
+        // Assert: preço customizado enviado pelo cliente é ignorado — usa o catálogo (100 + 150 = 250)
+        assertThat(result.services()).hasSize(2);
+        assertThat(result.totalPrice()).isEqualByComparingTo("250.00");
+        result.services().forEach(item -> assertThat(item.customPrice()).isNull());
+    }
+
+    @Test
+    void create_whenMultipleServicesCombinedDurationOverlapsExistingAppointment_shouldThrowBadRequestException() {
+        // Arrange: cada serviço isolado (45min, 60min) caberia no horário, mas a soma (105min) invade
+        // o agendamento existente marcado 60min depois.
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        SalonService coloring = new SalonService();
+        coloring.setId(9L);
+        coloring.setName("Coloração");
+        coloring.setPrice(BigDecimal.valueOf(150.00));
+        coloring.setDurationMin(60);
+        coloring.setActive(true);
+        when(salonServiceRepository.findById(9L)).thenReturn(Optional.of(coloring));
+
+        LocalDateTime targetTime = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0);
+        Appointment conflicting = new Appointment();
+        conflicting.setId(20L);
+        conflicting.setScheduledAt(targetTime.plusMinutes(60));
+        withService(conflicting, salonService);
+
+        when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
+                .thenReturn(List.of(conflicting));
+
+        AppointmentRequest request = new AppointmentRequest(
+                5L,
+                List.of(
+                        new AppointmentServiceRequest(8L, null, null, null),
+                        new AppointmentServiceRequest(9L, null, null, null)
+                ),
+                targetTime, null, null, 10L
+        );
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.create(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Este horário já está ocupado para esta profissional");
+    }
+
+    @Test
+    void create_whenCustomPriceIsNegative_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, new BigDecimal("-1.00"), null, null)), LocalDateTime.now().plusDays(1), null, null, 10L);
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.create(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("O preço customizado não pode ser negativo");
+    }
+
+    @Test
+    void create_whenCustomDurationIsZeroOrNegative_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, 0, null)), LocalDateTime.now().plusDays(1), null, null, 10L);
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.create(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("A duração customizada deve ser maior que zero");
+    }
+
+    @Test
+    void create_whenCustomDurationExtendsPastAnExistingAppointment_shouldThrowBadRequestException() {
+        // Arrange: salonService dura 45min, mas o override de 90min do novo agendamento
+        // avança sobre um horário que, com a duração padrão, estaria livre.
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        LocalDateTime targetTime = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0);
+        Appointment conflicting = new Appointment();
+        conflicting.setId(20L);
+        conflicting.setScheduledAt(targetTime.plusMinutes(60)); // livre se o novo durasse só 45min
+        withService(conflicting, salonService);
+
+        when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
+                .thenReturn(List.of(conflicting));
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, 90, null)), targetTime, null, null, 10L);
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.create(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Este horário já está ocupado para esta profissional");
+    }
+
+    @Test
+    void create_whenExistingAppointmentHasCustomDuration_shouldBlockOverlapUsingItsCustomDuration() {
+        // Arrange: o agendamento existente tem duração padrão de 45min (livre pro novo horário),
+        // mas seu customDurationMin de 120min avança sobre o novo horário pretendido.
+        mockAuthenticatedUser(staffUser);
+        when(userRepository.findById(10L)).thenReturn(Optional.of(clientUser));
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        LocalDateTime existingStart = LocalDateTime.now().plusDays(1).withHour(10).withMinute(0);
+        Appointment conflicting = new Appointment();
+        conflicting.setId(20L);
+        conflicting.setScheduledAt(existingStart);
+        withService(conflicting, salonService, null, 120, null);
+
+        when(appointmentRepository.findActiveAppointmentsByEmployeeAndDate(eq(5L), any(), any()))
+                .thenReturn(List.of(conflicting));
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), existingStart.plusMinutes(60), null, null, 10L);
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.create(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("Este horário já está ocupado para esta profissional");
     }
 
     // --- Client create flow tests ---
@@ -357,7 +642,7 @@ class AppointmentServiceTest {
         when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, LocalDateTime.now().plusDays(1), null, null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), LocalDateTime.now().plusDays(1), null, null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -374,7 +659,7 @@ class AppointmentServiceTest {
         when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, LocalDate.now().minusDays(1), null, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, LocalDate.now().minusDays(1), null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -392,7 +677,7 @@ class AppointmentServiceTest {
         when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
 
         String longNotes = "a".repeat(4001);
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, null, longNotes, null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, longNotes, null);
 
         // Act & Assert
         assertThatThrownBy(() -> appointmentService.create(request))
@@ -413,12 +698,12 @@ class AppointmentServiceTest {
         saved.setId(101L);
         saved.setClient(clientUser);
         saved.setEmployee(employee);
-        saved.setSalonService(salonService);
+        withService(saved, salonService);
         saved.setStatus(AppointmentStatus.REQUESTED);
 
         when(appointmentRepository.save(any(Appointment.class))).thenReturn(saved);
 
-        AppointmentRequest request = new AppointmentRequest(5L, 8L, null, LocalDate.now().plusDays(2), "my notes", null);
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, LocalDate.now().plusDays(2), "my notes", null);
 
         // Act
         AppointmentResponse result = appointmentService.create(request);
@@ -493,7 +778,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setStatus(AppointmentStatus.REQUESTED);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setClient(clientUser);
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
 
@@ -559,7 +844,7 @@ class AppointmentServiceTest {
         apt.setStatus(AppointmentStatus.REQUESTED);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -581,7 +866,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         when(appointmentRepository.findByClientId(10L)).thenReturn(List.of(apt));
 
         // Act
@@ -601,7 +886,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
         org.springframework.data.domain.Page<Appointment> page =
                 new org.springframework.data.domain.PageImpl<>(List.of(apt));
@@ -611,7 +896,7 @@ class AppointmentServiceTest {
 
         // Act
         org.springframework.data.domain.Page<AppointmentResponse> result = appointmentService.findAll(
-                new com.cristiane.salon.models.appointment.dto.AppointmentFilter(null, null, null, null), pageable);
+                new com.cristiane.salon.models.appointment.dto.AppointmentFilter(null, null, null, null, null, null, null), pageable);
 
         // Assert
         assertThat(result.getContent()).hasSize(1);
@@ -625,7 +910,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         when(appointmentRepository.findAll()).thenReturn(List.of(apt));
 
         // Act
@@ -723,7 +1008,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -744,7 +1029,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.REQUESTED);
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -838,7 +1123,7 @@ class AppointmentServiceTest {
         apt.setScheduledAt(LocalDateTime.now().plusDays(1));
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -858,7 +1143,7 @@ class AppointmentServiceTest {
         apt.setScheduledAt(LocalDateTime.now().plusDays(1));
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -880,7 +1165,7 @@ class AppointmentServiceTest {
         apt.setEmployee(employee);
         
         salonService.setPrice(null); // Price is null
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -903,7 +1188,7 @@ class AppointmentServiceTest {
         apt.setEmployee(employee);
         
         salonService.setPrice(BigDecimal.ZERO); // Price is zero
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -924,7 +1209,7 @@ class AppointmentServiceTest {
         apt.setScheduledAt(LocalDateTime.now().plusDays(1));
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -949,7 +1234,7 @@ class AppointmentServiceTest {
         apt.setScheduledAt(LocalDateTime.now().plusDays(1));
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
@@ -960,8 +1245,35 @@ class AppointmentServiceTest {
 
         // Assert
         assertThat(result.status()).isEqualTo(AppointmentStatus.DONE.name());
-        
-        verify(cashFlowRepository).save(any(CashFlow.class));
+
+        ArgumentCaptor<CashFlow> cashFlowCaptor = ArgumentCaptor.forClass(CashFlow.class);
+        verify(cashFlowRepository).save(cashFlowCaptor.capture());
+        assertThat(cashFlowCaptor.getValue().getAmount()).isEqualByComparingTo(salonService.getPrice());
+    }
+
+    @Test
+    void updateStatus_whenStatusDoneWithCustomPrice_shouldBillCustomPriceInsteadOfCatalogPrice() {
+        // Arrange: preço customizado (R$200) para este agendamento específico, sem alterar o
+        // preço de catálogo do serviço (R$100 no fixture salonService).
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setScheduledAt(LocalDateTime.now().plusDays(1));
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        withService(apt, salonService, new BigDecimal("200.00"), null, null);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+        when(cashFlowRepository.findAll()).thenReturn(new ArrayList<>());
+
+        // Act
+        appointmentService.updateStatus(1L, "DONE");
+
+        // Assert
+        ArgumentCaptor<CashFlow> cashFlowCaptor = ArgumentCaptor.forClass(CashFlow.class);
+        verify(cashFlowRepository).save(cashFlowCaptor.capture());
+        assertThat(cashFlowCaptor.getValue().getAmount()).isEqualByComparingTo("200.00");
+        assertThat(salonService.getPrice()).isEqualByComparingTo("100.00");
     }
 
     // --- generatePixPayment tests ---
@@ -975,7 +1287,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -995,7 +1307,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
         apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PAID);
 
@@ -1038,7 +1350,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.REQUESTED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1060,7 +1372,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.DONE);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1112,7 +1424,7 @@ class AppointmentServiceTest {
         Appointment apt = new Appointment();
         apt.setId(1L);
         apt.setClient(clientUser);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1121,6 +1433,41 @@ class AppointmentServiceTest {
         assertThatThrownBy(() -> appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null)))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining("não possui um valor configurado");
+    }
+
+    @Test
+    void generatePixPayment_whenCustomPriceSet_shouldChargeCustomPriceInsteadOfCatalogPrice() {
+        // Arrange
+        clientUser.setCpf("09123456752");
+        mockAuthenticatedUser(clientUser);
+
+        Appointment apt = new Appointment();
+        apt.setId(1L);
+        apt.setClient(clientUser);
+        apt.setEmployee(employee);
+        withService(apt, salonService, new BigDecimal("200.00"), null, null);
+        apt.setStatus(AppointmentStatus.CONFIRMED);
+
+        when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
+
+        Payment payment = mock(Payment.class);
+        PaymentPointOfInteraction poi = mock(PaymentPointOfInteraction.class);
+        PaymentTransactionData td = mock(PaymentTransactionData.class);
+        when(payment.getPointOfInteraction()).thenReturn(poi);
+        when(poi.getTransactionData()).thenReturn(td);
+        when(td.getQrCode()).thenReturn("mocked_qr_custom_price");
+        when(payment.getId()).thenReturn(88L);
+        when(mercadoPagoPaymentService.createPixPayment(any(), any(), any(), any(), any(), any()))
+                .thenReturn(payment);
+        when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        // Act
+        appointmentService.generatePixPayment(1L, new GeneratePixRequest(true, null));
+
+        // Assert: cobra os R$200 customizados, não os R$100 do catálogo
+        ArgumentCaptor<BigDecimal> amountCaptor = ArgumentCaptor.forClass(BigDecimal.class);
+        verify(mercadoPagoPaymentService).createPixPayment(amountCaptor.capture(), any(), any(), any(), any(), any());
+        assertThat(amountCaptor.getValue()).isEqualByComparingTo("200.00");
     }
 
 
@@ -1133,7 +1480,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1152,7 +1499,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setScheduledAt(LocalDateTime.now().plusDays(1));
         apt.setStatus(AppointmentStatus.CONFIRMED);
         apt.setPaymentStatus(com.cristiane.salon.models.appointment.enums.PaymentStatus.PAID);
@@ -1215,7 +1562,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1252,7 +1599,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1325,7 +1672,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
@@ -1346,7 +1693,7 @@ class AppointmentServiceTest {
         apt.setId(1L);
         apt.setClient(clientUser);
         apt.setEmployee(employee);
-        apt.setSalonService(salonService);
+        withService(apt, salonService);
         apt.setStatus(AppointmentStatus.CONFIRMED);
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));

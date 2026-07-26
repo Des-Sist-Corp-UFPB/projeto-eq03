@@ -1,12 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import api from '../../services/api';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { getDefaultAdminPath } from '../../config/adminNav';
-import { AlertCircle, ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { AlertCircle, ArrowLeft, CheckCircle2, Eye, EyeOff } from 'lucide-react';
 import { loginFormSchema } from './login.schema';
 import type { LoginFormValues } from './login.schema';
 
@@ -21,6 +21,8 @@ export const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+  const passwordResetSuccess = Boolean((location.state as { passwordResetSuccess?: boolean } | null)?.passwordResetSuccess);
 
   const images = [
     '/images/salon1.png',
@@ -166,6 +168,13 @@ export const Login = () => {
             </p>
           </div>
 
+          {passwordResetSuccess && (
+            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-xl text-emerald-700 text-sm flex items-start gap-2.5 animate-fadeIn">
+              <CheckCircle2 size={18} className="shrink-0 mt-0.5" />
+              <span>Senha redefinida com sucesso! Faça login com sua nova senha.</span>
+            </div>
+          )}
+
           {errorMsg && (
             <div className="p-4 bg-rose-50 border border-rose-100 rounded-xl text-rose-700 text-sm flex items-start gap-2.5 animate-fadeIn">
               <AlertCircle size={18} className="shrink-0 mt-0.5" />
@@ -190,7 +199,12 @@ export const Login = () => {
             </div>
 
             <div className="space-y-1.5">
-              <label className="label-premium">Senha *</label>
+              <div className="flex items-center justify-between">
+                <label className="label-premium">Senha *</label>
+                <Link to="/forgot-password" className="text-xs text-[#be8a83] font-semibold hover:underline">
+                  Esqueci minha senha
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}

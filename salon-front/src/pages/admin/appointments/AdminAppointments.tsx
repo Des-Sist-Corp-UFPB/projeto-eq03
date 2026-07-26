@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Plus, Clock, User as UserIcon, Calendar as CalendarIcon, X } from 'lucide-react';
+import { Plus, Clock, User as UserIcon, Calendar as CalendarIcon, X, PencilLine } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PixPaymentModal } from '../../../components/modal/PixPaymentModal';
@@ -15,6 +15,16 @@ import { clientsApi } from '../clients/services/clients';
 import { usePermission } from '../../../hooks/usePermission';
 import { useAlert } from '../../../hooks/useAlert';
 import { getApiErrorMessage } from '../../../utils/apiError';
+import {
+  AppointmentFiltersBar,
+  emptyAppointmentFilters,
+  type AppointmentFiltersState,
+} from './components/AppointmentFiltersBar';
+import {
+  ServiceCustomizationPanel,
+  type ServiceCustomizationValues,
+} from './components/ServiceCustomizationPanel';
+import { AppointmentDetailModal } from './components/AppointmentDetailModal';
 import {
   canCancel,
   getCancelBlockReason,
@@ -44,6 +54,7 @@ export const AdminAppointments = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+  const [filters, setFilters] = useState<AppointmentFiltersState>(emptyAppointmentFilters);
 
   const [showModal, setShowModal] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -53,9 +64,12 @@ export const AdminAppointments = () => {
   const [employees, setEmployees] = useState<EmployeeData[]>([]);
 
   const [selectedClient, setSelectedClient] = useState('');
-  const [selectedService, setSelectedService] = useState('');
+  const [selectedServiceIds, setSelectedServiceIds] = useState<number[]>([]);
+  const [serviceSearch, setServiceSearch] = useState('');
   const [selectedEmployee, setSelectedEmployee] = useState('');
   const [selectedDateTime, setSelectedDateTime] = useState('');
+  const [customizations, setCustomizations] = useState<Record<number, ServiceCustomizationValues>>({});
+  const [detailTarget, setDetailTarget] = useState<AppointmentResponse | null>(null);
 
   const [showConfirm, setShowConfirm] = useState(false);
   const [appointmentToCancel, setAppointmentToCancel] = useState<number | null>(null);
@@ -86,7 +100,17 @@ export const AdminAppointments = () => {
   const loadAppointments = async () => {
     setIsLoading(true);
     try {
-      const response = await appointmentsApi.findAll({}, currentPage - 1, 20);
+      const response = await appointmentsApi.findAll(
+        {
+          status: filters.status || undefined,
+          employeeId: filters.employeeId ? Number(filters.employeeId) : undefined,
+          clientName: filters.clientName || undefined,
+          startDate: filters.startDate || undefined,
+          endDate: filters.endDate || undefined,
+        },
+        currentPage - 1,
+        20
+      );
       const data = response.content;
       data.sort((a, b) => {
         const ta = a.scheduledAt
@@ -112,16 +136,14 @@ export const AdminAppointments = () => {
 
   const loadFormData = async () => {
     try {
-      const [clientsResponse, servicesResponse, employeesData] = await Promise.all([
+      const [clientsResponse, servicesResponse] = await Promise.all([
         clientsApi.findAll({ active: true }, 0, 1000),
         salonServicesApi.findAll({}, 0, 1000),
-        employeesApi.findAllForBooking(),
       ]);
       const servicesData = servicesResponse.content;
       setClients(clientsResponse.content);
       setServices(servicesData.filter((s) => s.active));
       setAllServices(servicesData);
-      setEmployees(employeesData);
     } catch (err) {
       await showError('Erro ao carregar dados do formulário');
     }
@@ -129,15 +151,55 @@ export const AdminAppointments = () => {
 
   useEffect(() => {
     loadAppointments();
-  }, [currentPage]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, filters]);
 
   useEffect(() => {
-    // Dados do formulário (clientes/serviços/profissionais) só são úteis para quem
-    // pode abrir o modal de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
+    // Endpoint de booking (permission-safe) — usado tanto pro filtro de profissional
+    // quanto pelo modal de criação, evita 403 pra quem só visualiza (ex.: FUNCIONARIA).
+    employeesApi.findAllForBooking().then(setEmployees).catch(() => setEmployees([]));
+  }, []);
+
+  const toggleService = (serviceId: number) => {
+    setSelectedServiceIds((prev) => {
+      if (prev.includes(serviceId)) {
+        return prev.filter((id) => id !== serviceId);
+      }
+      return [...prev, serviceId];
+    });
+    // Serviço como template: ao selecionar um serviço, os campos de personalização
+    // partem dos valores padrão do catálogo (o usuário decide se quer editá-los).
+    setCustomizations((prev) => {
+      if (prev[serviceId]) return prev;
+      const service = allServices.find((s) => s.id === serviceId);
+      return {
+        ...prev,
+        [serviceId]: {
+          price: service?.price != null ? String(service.price) : '',
+          durationMin: service?.durationMin != null ? String(service.durationMin) : '',
+          notes: '',
+        },
+      };
+    });
+  };
+
+  useEffect(() => {
+    // Dados do formulário (clientes/serviços) só são úteis para quem pode abrir o modal
+    // de "Novo Agendamento" — evita 403 para quem só visualiza (ex.: FUNCIONARIA).
     if (canCreateAppointment) {
       loadFormData();
     }
   }, [canCreateAppointment]);
+
+  const handleFilterChange = (patch: Partial<AppointmentFiltersState>) => {
+    setFilters((prev) => ({ ...prev, ...patch }));
+    setCurrentPage(1);
+  };
+
+  const handleClearFilters = () => {
+    setFilters(emptyAppointmentFilters);
+    setCurrentPage(1);
+  };
 
   const handleStatusChange = async (id: number, newStatus: string) => {
     try {
@@ -150,22 +212,42 @@ export const AdminAppointments = () => {
 
   const handleCreateAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!selectedClient || !selectedService || !selectedEmployee || !selectedDateTime) {
-      await showError('Preencha todos os campos, incluindo data e hora');
+    if (!selectedClient || selectedServiceIds.length === 0 || !selectedEmployee || !selectedDateTime) {
+      await showError('Preencha todos os campos, incluindo ao menos um serviço, data e hora');
       return;
     }
     setIsSaving(true);
     try {
+      // Serviço como template: só manda override se o valor realmente difere do
+      // catálogo — se o usuário não mexeu no campo, ele fica null (usa o padrão).
+      const services = selectedServiceIds.map((serviceId) => {
+        const service = allServices.find((s) => s.id === serviceId);
+        const values = customizations[serviceId] ?? { price: '', durationMin: '', notes: '' };
+        const priceNum = values.price === '' ? null : Number(values.price);
+        const durationNum = values.durationMin === '' ? null : Number(values.durationMin);
+        const customPrice = priceNum != null && priceNum !== service?.price ? priceNum : null;
+        const customDurationMin =
+          durationNum != null && durationNum !== service?.durationMin ? durationNum : null;
+        return {
+          serviceId,
+          customPrice,
+          customDurationMin,
+          customServiceNotes: values.notes || null,
+        };
+      });
+
       await appointmentsApi.create({
         clientId: Number(selectedClient),
-        serviceId: Number(selectedService),
+        services,
         employeeId: Number(selectedEmployee),
         scheduledAt: toLocalDateTimeIso(selectedDateTime),
       });
       setShowModal(false);
       loadAppointments();
       setSelectedClient('');
-      setSelectedService('');
+      setSelectedServiceIds([]);
+      setCustomizations({});
+      setServiceSearch('');
       setSelectedEmployee('');
       setSelectedDateTime('');
     } catch (error) {
@@ -347,7 +429,31 @@ export const AdminAppointments = () => {
     },
     { key: 'clientName', label: 'Cliente' },
     { key: 'employeeName', label: 'Profissional' },
-    { key: 'serviceName', label: 'Serviço' },
+    {
+      key: 'serviceName',
+      label: 'Serviço',
+      render: (item: AppointmentResponse) => {
+        const isCustomized = item.services.some(
+          (s) => s.customPrice != null || s.customDurationMin != null || !!s.customServiceNotes
+        );
+        const names = item.services.map((s) => s.serviceName).join(', ');
+        return (
+          <button
+            type="button"
+            onClick={() => setDetailTarget(item)}
+            className="flex items-center gap-1.5 text-left hover:underline cursor-pointer"
+            title="Ver detalhes do agendamento"
+          >
+            <span>{names}</span>
+            {isCustomized && (
+              <span title="Serviço personalizado para este agendamento" className="shrink-0 inline-flex">
+                <PencilLine size={13} className="text-[#be8a83]" />
+              </span>
+            )}
+          </button>
+        );
+      },
+    },
     {
       key: 'notes',
       label: 'Obs.',
@@ -456,8 +562,8 @@ export const AdminAppointments = () => {
       key: 'actions',
       label: 'Ações',
       render: (item: AppointmentResponse) => {
-        const service = allServices.find((s) => s.id === item.serviceId);
-        const price = service ? (service.price ?? null) : null;
+        const price = item.totalPrice;
+        const serviceNames = item.services.map((s) => s.serviceName).join(', ');
         const cancelDisabled = !canCancel(item);
         const cancelReason = getCancelBlockReason(item);
 
@@ -488,7 +594,7 @@ export const AdminAppointments = () => {
                 {item.pixQrCode ? (
                   <button
                     type="button"
-                    onClick={() => handleOpenPixModal(item.id, item.serviceName, price, item.pixQrCode)}
+                    onClick={() => handleOpenPixModal(item.id, serviceNames, price, item.pixQrCode)}
                     className="w-full text-center px-2.5 py-1.5 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
                   >
                     Ver PIX
@@ -496,7 +602,7 @@ export const AdminAppointments = () => {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleOpenPixModal(item.id, item.serviceName, price, null)}
+                    onClick={() => handleOpenPixModal(item.id, serviceNames, price, null)}
                     className="w-full text-center px-2.5 py-1.5 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-lg text-xs font-semibold transition-all whitespace-nowrap cursor-pointer"
                   >
                     Pagar com PIX
@@ -524,6 +630,13 @@ export const AdminAppointments = () => {
             </button>
           </PermissionGate>
         </div>
+
+        <AppointmentFiltersBar
+          filters={filters}
+          employees={employees}
+          onChange={handleFilterChange}
+          onClear={handleClearFilters}
+        />
 
         {isLoading ? (
           <div className="flex items-center gap-3 text-sm text-[#3b3036]/60 py-10 justify-center">
@@ -579,25 +692,6 @@ export const AdminAppointments = () => {
                   </div>
                   <div>
                     <label className={labelCls}>
-                      <Clock size={14} className="inline mr-1" />
-                      Serviço
-                    </label>
-                    <select
-                      value={selectedService}
-                      onChange={(e) => setSelectedService(e.target.value)}
-                      required
-                      className={selectCls}
-                    >
-                      <option value="">Selecione o serviço</option>
-                      {services.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {formatServiceOption(s)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                  <div>
-                    <label className={labelCls}>
                       <UserIcon size={14} className="inline mr-1" />
                       Profissional
                     </label>
@@ -633,6 +727,60 @@ export const AdminAppointments = () => {
                     </p>
                   </div>
                 </div>
+
+                <div>
+                  <label className={labelCls}>
+                    <Clock size={14} className="inline mr-1" />
+                    Serviços
+                  </label>
+                  {services.length > 6 && (
+                    <input
+                      type="text"
+                      value={serviceSearch}
+                      onChange={(e) => setServiceSearch(e.target.value)}
+                      placeholder="Buscar serviço por nome..."
+                      className={`${selectCls} mb-2`}
+                    />
+                  )}
+                  <div className="border border-[#eae1e1] rounded-xl max-h-40 overflow-y-auto divide-y divide-[#eae1e1]/70">
+                    {services
+                      .filter((s) => s.name.toLowerCase().includes(serviceSearch.trim().toLowerCase()))
+                      .map((s) => (
+                        <label
+                          key={s.id}
+                          className="flex items-center gap-2.5 px-3.5 py-2.5 text-sm text-[#3b3036] hover:bg-[#fdf6f5] cursor-pointer transition-all"
+                        >
+                          <input
+                            type="checkbox"
+                            checked={selectedServiceIds.includes(s.id!)}
+                            onChange={() => toggleService(s.id!)}
+                            className="accent-[#be8a83]"
+                          />
+                          {formatServiceOption(s)}
+                        </label>
+                      ))}
+                  </div>
+                  {selectedServiceIds.length === 0 && (
+                    <p className="text-xs text-gray-400 mt-1">Selecione ao menos um serviço.</p>
+                  )}
+                </div>
+
+                {selectedServiceIds.map((serviceId) => {
+                  const service = allServices.find((s) => s.id === serviceId);
+                  return (
+                    <ServiceCustomizationPanel
+                      key={serviceId}
+                      serviceName={service?.name}
+                      defaultPrice={service?.price ?? null}
+                      defaultDurationMin={service?.durationMin ?? null}
+                      values={customizations[serviceId] ?? { price: '', durationMin: '', notes: '' }}
+                      onChange={(values) =>
+                        setCustomizations((prev) => ({ ...prev, [serviceId]: values }))
+                      }
+                    />
+                  );
+                })}
+
                 <div className="p-3.5 bg-amber-50 border border-amber-100 rounded-xl text-xs text-amber-700">
                   O agendamento nasce já <strong>confirmado</strong>. Clientes pelo site enviam uma{' '}
                   <strong>solicitação</strong> para você aceitar e marcar o horário.
@@ -710,6 +858,8 @@ export const AdminAppointments = () => {
           </div>
         </div>
       )}
+
+      <AppointmentDetailModal appointment={detailTarget} onClose={() => setDetailTarget(null)} />
 
       <ConfirmDialog
         show={showConfirm}

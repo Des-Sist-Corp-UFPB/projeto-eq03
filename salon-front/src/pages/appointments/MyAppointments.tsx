@@ -266,7 +266,7 @@ export const MyAppointments = () => {
               <div className="flex-1 p-4 flex flex-col">
                 <div className="flex justify-between items-start gap-2 mb-2">
                   <h4 className="font-bold text-[#3b3036] text-sm leading-tight">
-                    {apt.serviceName}
+                    {apt.services.map((s) => s.serviceName).join(', ')}
                   </h4>
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     {getStatusBadge(apt.status)}
@@ -296,7 +296,13 @@ export const MyAppointments = () => {
                         {apt.pixQrCode ? (
                           <button
                             type="button"
-                            onClick={() => handleOpenPixModal(apt.id, apt.serviceName, apt.pixQrCode)}
+                            onClick={() =>
+                              handleOpenPixModal(
+                                apt.id,
+                                apt.services.map((s) => s.serviceName).join(', '),
+                                apt.pixQrCode
+                              )
+                            }
                             className="w-full py-2 bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 rounded-xl text-xs font-semibold transition-all cursor-pointer"
                           >
                             Ver QR Code PIX
@@ -304,7 +310,9 @@ export const MyAppointments = () => {
                         ) : (
                           <button
                             type="button"
-                            onClick={() => handleOpenPixModal(apt.id, apt.serviceName, null)}
+                            onClick={() =>
+                              handleOpenPixModal(apt.id, apt.services.map((s) => s.serviceName).join(', '), null)
+                            }
                             className="w-full py-2 bg-[#be8a83] text-white hover:bg-[#a6726b] rounded-xl text-xs font-semibold transition-all cursor-pointer"
                           >
                             Pagar com PIX

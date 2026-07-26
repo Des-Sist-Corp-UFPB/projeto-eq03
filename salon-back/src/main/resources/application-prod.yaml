@@ -21,6 +21,15 @@ mail:
   from: ${MAIL_FROM}
   business: ${MAIL_BUSINESS}
 
+app:
+  # Sem default em prod: se FRONTEND_URL não estiver setado, falha no boot em vez de
+  # silenciosamente mandar link de localhost em e-mail real.
+  frontend-url: ${FRONTEND_URL}
+  # Idem para as chaves de cifragem de dados pessoais (CPF, chave PIX): sem default de
+  # propósito, a aplicação não sobe em produção se não forem fornecidas.
+  pii-encryption-key: ${APP_PII_ENCRYPTION_KEY}
+  pii-hash-pepper: ${APP_PII_HASH_PEPPER}
+
 security:
   jwt:
     secret: ${JWT_SECRET}

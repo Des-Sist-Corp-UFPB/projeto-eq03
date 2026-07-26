@@ -4,6 +4,7 @@ import com.cristiane.salon.controllers.BaseControllerTest;
 
 import com.cristiane.salon.models.appointment.controller.AppointmentController;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
+import com.cristiane.salon.models.appointment.dto.AppointmentServiceResponse;
 import com.cristiane.salon.models.appointment.service.AppointmentService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,7 @@ class AppointmentControllerTest extends BaseControllerTest {
     void createReturns201_whenValid() throws Exception {
         when(appointmentService.create(any())).thenReturn(null);
 
-        String body = "{\"employeeId\":1,\"serviceId\":1}";
+        String body = "{\"employeeId\":1,\"services\":[{\"serviceId\":1}]}";
 
         mvc.perform(post("/v1/appointments")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -63,8 +64,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void confirmReturns200() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED", null, null, null, false, ""
         );
         when(appointmentService.confirm(eq(1L), any())).thenReturn(response);
 
@@ -81,8 +84,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void declineReturns200() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "DECLINED"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "DECLINED", null, null, null, false, ""
         );
         when(appointmentService.decline(eq(1L))).thenReturn(response);
 
@@ -96,8 +101,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void getMyAppointmentsReturnsList() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "REQUESTED"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "REQUESTED", null, null, null, false, ""
         );
         when(appointmentService.getMyAppointments()).thenReturn(List.of(response));
 
@@ -111,8 +118,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void findAllReturnsPageOfAppointments() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED", null, null, null, false, ""
         );
         org.springframework.data.domain.Page<AppointmentResponse> page =
                 new org.springframework.data.domain.PageImpl<>(List.of(response));
@@ -128,8 +137,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void cancelReturns200() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "CANCELLED"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CANCELLED", null, null, null, false, ""
         );
         when(appointmentService.cancel(eq(1L))).thenReturn(response);
 
@@ -143,8 +154,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void updateStatusReturns200() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "DONE"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "DONE", null, null, null, false, ""
         );
         when(appointmentService.updateStatus(eq(1L), eq("DONE"))).thenReturn(response);
 
@@ -159,8 +172,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void updatePaymentStatusReturns200() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED", "PAID", null, null
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED", "PAID", null, null, false, ""
         );
         when(appointmentService.updatePaymentStatus(eq(1L), eq("PAID"))).thenReturn(response);
 
@@ -175,8 +190,10 @@ class AppointmentControllerTest extends BaseControllerTest {
     @WithMockUser
     void findByIdReturns200() throws Exception {
         AppointmentResponse response = new AppointmentResponse(
-                1L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED"
+                1L, 1L, "Client", 2L, "Employee",
+                List.of(new AppointmentServiceResponse(3L, "Service", null, null, null, null, null, null, null)),
+                null, null,
+                LocalDateTime.now(), LocalDate.now(), "Notes", "CONFIRMED", null, null, null, false, ""
         );
         when(appointmentService.findById(1L)).thenReturn(response);
 

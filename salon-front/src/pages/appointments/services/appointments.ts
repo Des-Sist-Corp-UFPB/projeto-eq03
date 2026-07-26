@@ -2,9 +2,17 @@ import api from '../../../services/api';
 import { normalizePage, type SpringPageResponse } from '../../../utils/pagination';
 export type { PageResponse } from '../../../utils/pagination';
 
+export interface AppointmentServiceRequestItem {
+  serviceId: number;
+  /** Serviço como template: sobrescreve preço/duração/observações só para este item. */
+  customPrice?: number | null;
+  customDurationMin?: number | null;
+  customServiceNotes?: string | null;
+}
+
 export interface AppointmentRequestBody {
   employeeId: number;
-  serviceId: number;
+  services: AppointmentServiceRequestItem[];
   /** Fluxo admin: horário já definido */
   scheduledAt?: string | null;
   /** Fluxo cliente: dia preferido */
@@ -13,14 +21,27 @@ export interface AppointmentRequestBody {
   clientId?: number;
 }
 
+export interface AppointmentServiceResponse {
+  serviceId: number;
+  serviceName: string;
+  catalogPrice: number | null;
+  catalogDurationMin: number | null;
+  customPrice: number | null;
+  customDurationMin: number | null;
+  customServiceNotes: string | null;
+  effectivePrice: number | null;
+  effectiveDurationMin: number | null;
+}
+
 export interface AppointmentResponse {
   id: number;
   clientId: number;
   clientName: string;
   employeeId: number;
   employeeName: string;
-  serviceId: number;
-  serviceName: string;
+  services: AppointmentServiceResponse[];
+  totalPrice: number | null;
+  totalDurationMin: number | null;
   scheduledAt: string | null;
   preferredDate?: string | null;
   clientNotes?: string | null;
@@ -34,7 +55,7 @@ export interface AppointmentResponse {
 
 interface AppointmentCreatePayload {
   employeeId: number;
-  serviceId: number;
+  services: AppointmentServiceRequestItem[];
   scheduledAt?: string | null;
   clientId?: number | null;
   preferredDate?: string | null;
@@ -44,7 +65,19 @@ interface AppointmentCreatePayload {
 function buildCreatePayload(request: AppointmentRequestBody): AppointmentCreatePayload {
   const body: AppointmentCreatePayload = {
     employeeId: request.employeeId,
-    serviceId: request.serviceId,
+    services: request.services.map((s) => {
+      const item: AppointmentServiceRequestItem = { serviceId: s.serviceId };
+      if (s.customPrice != null) {
+        item.customPrice = s.customPrice;
+      }
+      if (s.customDurationMin != null) {
+        item.customDurationMin = s.customDurationMin;
+      }
+      if (s.customServiceNotes != null && s.customServiceNotes.trim() !== '') {
+        item.customServiceNotes = s.customServiceNotes.trim();
+      }
+      return item;
+    }),
   };
   if (request.scheduledAt != null && String(request.scheduledAt).trim() !== '') {
     body.scheduledAt = request.scheduledAt;
@@ -71,6 +104,9 @@ export interface AppointmentFilter {
   paymentStatus?: string;
   employeeId?: number;
   clientId?: number;
+  clientName?: string;
+  startDate?: string;
+  endDate?: string;
 }
 
 export const appointmentsApi = {

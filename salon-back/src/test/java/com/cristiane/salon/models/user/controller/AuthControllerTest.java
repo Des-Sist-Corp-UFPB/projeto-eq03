@@ -4,6 +4,7 @@ import com.cristiane.salon.controllers.BaseControllerTest;
 import com.cristiane.salon.models.user.dto.TokenResponse;
 import com.cristiane.salon.models.user.dto.UserProfileResponse;
 import com.cristiane.salon.models.user.service.AuthService;
+import com.cristiane.salon.models.user.service.PasswordResetService;
 import com.cristiane.salon.models.user.service.UserService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,6 +17,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -33,6 +35,9 @@ class AuthControllerTest extends BaseControllerTest {
 
     @MockitoBean
     private UserService userService;
+
+    @MockitoBean
+    private PasswordResetService passwordResetService;
 
     @Test
     void loginReturns200_whenValid() throws Exception {
@@ -101,6 +106,50 @@ class AuthControllerTest extends BaseControllerTest {
         String body = "{}";
 
         mvc.perform(post("/v1/auth/refresh")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void forgotPasswordReturns200_whenValid() throws Exception {
+        String body = "{\"email\":\"a@b.com\"}";
+
+        mvc.perform(post("/v1/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk());
+
+        verify(passwordResetService).requestReset("a@b.com");
+    }
+
+    @Test
+    void forgotPasswordReturns400_whenEmailInvalid() throws Exception {
+        String body = "{\"email\":\"not-an-email\"}";
+
+        mvc.perform(post("/v1/auth/forgot-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void resetPasswordReturns200_whenValid() throws Exception {
+        String body = "{\"token\":\"raw-token\",\"newPassword\":\"NewPass123\"}";
+
+        mvc.perform(post("/v1/auth/reset-password")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body))
+                .andExpect(status().isOk());
+
+        verify(passwordResetService).resetPassword("raw-token", "NewPass123");
+    }
+
+    @Test
+    void resetPasswordReturns400_whenPasswordDoesNotMeetPolicy() throws Exception {
+        String body = "{\"token\":\"raw-token\",\"newPassword\":\"short\"}";
+
+        mvc.perform(post("/v1/auth/reset-password")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(body))
                 .andExpect(status().isBadRequest());

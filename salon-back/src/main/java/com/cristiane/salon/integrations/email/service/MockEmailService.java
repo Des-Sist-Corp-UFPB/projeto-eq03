@@ -1,6 +1,7 @@
 package com.cristiane.salon.integrations.email.service;
 
 import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.user.entity.User;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
@@ -23,4 +24,7 @@ public class MockEmailService extends EmailService {
 
     @Override
     public void sendCancellationNotification(Appointment appointment) {}
+
+    @Override
+    public void sendPasswordResetEmail(User user, String rawToken) {}
 }

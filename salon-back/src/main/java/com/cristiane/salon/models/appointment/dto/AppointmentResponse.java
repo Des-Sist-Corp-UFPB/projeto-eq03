@@ -2,8 +2,11 @@ package com.cristiane.salon.models.appointment.dto;
 
 import com.cristiane.salon.models.appointment.entity.Appointment;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.List;
+import java.util.stream.Collectors;
 
 public record AppointmentResponse(
         Long id,
@@ -11,8 +14,9 @@ public record AppointmentResponse(
         String clientName,
         Long employeeId,
         String employeeName,
-        Long serviceId,
-        String serviceName,
+        List<AppointmentServiceResponse> services,
+        BigDecimal totalPrice,
+        Integer totalDurationMin,
         LocalDateTime scheduledAt,
         LocalDate preferredDate,
         String clientNotes,
@@ -23,43 +27,6 @@ public record AppointmentResponse(
         Boolean clientHasSavedCpf,
         String clientCpfMasked
 ) {
-    public AppointmentResponse(
-            Long id,
-            Long clientId,
-            String clientName,
-            Long employeeId,
-            String employeeName,
-            Long serviceId,
-            String serviceName,
-            LocalDateTime scheduledAt,
-            LocalDate preferredDate,
-            String clientNotes,
-            String status
-    ) {
-        this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
-                scheduledAt, preferredDate, clientNotes, status, null, null, null, false, "");
-    }
-
-    public AppointmentResponse(
-            Long id,
-            Long clientId,
-            String clientName,
-            Long employeeId,
-            String employeeName,
-            Long serviceId,
-            String serviceName,
-            LocalDateTime scheduledAt,
-            LocalDate preferredDate,
-            String clientNotes,
-            String status,
-            String paymentStatus,
-            Long paymentId,
-            String pixQrCode
-    ) {
-        this(id, clientId, clientName, employeeId, employeeName, serviceId, serviceName,
-                scheduledAt, preferredDate, clientNotes, status, paymentStatus, paymentId, pixQrCode, false, "");
-    }
-
     public static AppointmentResponse fromEntity(Appointment appointment) {
         String rawCpf = appointment.getClient().getCpf();
         boolean hasSavedCpf = rawCpf != null && !rawCpf.isBlank();
@@ -73,14 +40,19 @@ public record AppointmentResponse(
             }
         }
 
+        List<AppointmentServiceResponse> services = appointment.getServices().stream()
+                .map(AppointmentServiceResponse::fromEntity)
+                .collect(Collectors.toList());
+
         return new AppointmentResponse(
                 appointment.getId(),
                 appointment.getClient().getId(),
                 appointment.getClient().getName(),
                 appointment.getEmployee().getId(),
                 appointment.getEmployee().getUser().getName(),
-                appointment.getSalonService().getId(),
-                appointment.getSalonService().getName(),
+                services,
+                appointment.getTotalEffectivePrice(),
+                appointment.getTotalEffectiveDurationMin(),
                 appointment.getScheduledAt(),
                 appointment.getPreferredDate(),
                 appointment.getClientNotes(),

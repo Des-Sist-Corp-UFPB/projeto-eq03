@@ -138,12 +138,65 @@ describe('PublicAppointment Wizard Integration', () => {
     });
 
     expect(appointmentsApi.create).toHaveBeenCalledWith({
-      serviceId: 1,
+      services: [{ serviceId: 1 }],
       employeeId: 10,
       preferredDate: '2026-12-25',
       clientNotes: 'Quero corte curto',
     });
     expect(mockNavigate).toHaveBeenCalledWith('/my-appointments');
+  });
+
+  it('should allow selecting multiple services and submit all of them', async () => {
+    await act(async () => {
+      customRender(<PublicAppointment />, {
+        isAuthenticated: true,
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
+      });
+    });
+
+    // STEP 1: select both services
+    fireEvent.click(screen.getByText('Corte'));
+    fireEvent.click(screen.getByText('Escova'));
+    const nextBtn = screen.getByText('Próximo');
+    expect(nextBtn).toBeEnabled();
+    fireEvent.click(nextBtn);
+
+    // STEP 2
+    fireEvent.click(screen.getByText('Mariana'));
+    fireEvent.click(nextBtn);
+
+    // STEP 3
+    fireEvent.click(nextBtn);
+
+    // STEP 4: both services listed in the summary
+    expect(screen.getByText('Corte, Escova')).toBeInTheDocument();
+
+    const submitBtn = screen.getByText('Enviar solicitação');
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    expect(appointmentsApi.create).toHaveBeenCalledWith({
+      services: [{ serviceId: 1 }, { serviceId: 2 }],
+      employeeId: 10,
+      preferredDate: undefined,
+      clientNotes: undefined,
+    });
+  });
+
+  it('should deselect a service when clicked again', async () => {
+    await act(async () => {
+      customRender(<PublicAppointment />, {
+        isAuthenticated: true,
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
+      });
+    });
+
+    fireEvent.click(screen.getByText('Corte'));
+    fireEvent.click(screen.getByText('Corte'));
+
+    const nextBtn = screen.getByText('Próximo');
+    expect(nextBtn).toBeDisabled();
   });
 
   it('should redirect to /login and save pending appointment if user is unauthenticated', async () => {
@@ -174,7 +227,7 @@ describe('PublicAppointment Wizard Integration', () => {
     fireEvent.click(submitBtn);
 
     const pending = JSON.parse(localStorage.getItem('pending_appointment') || '{}');
-    expect(pending.serviceId).toBe(1);
+    expect(pending.serviceIds).toEqual([1]);
     expect(pending.employeeId).toBe(10);
     expect(mockNavigate).toHaveBeenCalledWith('/login');
   });
@@ -315,7 +368,7 @@ describe('PublicAppointment Wizard Integration', () => {
     localStorage.setItem(
       'pending_appointment',
       JSON.stringify({
-        serviceId: 1,
+        serviceIds: [1],
         employeeId: 10,
         preferredDate: '2026-12-25',
         clientNotes: 'Recovered notes',
@@ -340,7 +393,7 @@ describe('PublicAppointment Wizard Integration', () => {
     localStorage.setItem(
       'pending_appointment',
       JSON.stringify({
-        serviceId: 1,
+        serviceIds: [1],
       })
     );
 
