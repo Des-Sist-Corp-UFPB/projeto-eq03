@@ -28,7 +28,7 @@ describe('staffFormSchema', () => {
   });
 
   it('accepts a valid GERENTE_DE_ATENDIMENTO submission without remuneration', () => {
-    const { remunerationType, remunerationValue, ...rest } = validBase;
+    const { remunerationType: _remunerationType, remunerationValue: _remunerationValue, ...rest } = validBase;
     const result = staffFormSchema.safeParse({ ...rest, roleName: 'GERENTE_DE_ATENDIMENTO' });
     expect(result.success).toBe(true);
   });
@@ -59,7 +59,7 @@ describe('staffFormSchema', () => {
   });
 
   it('rejects FUNCIONARIA without remunerationType', () => {
-    const { remunerationType, ...rest } = validBase;
+    const { remunerationType: _remunerationType, ...rest } = validBase;
     const result = staffFormSchema.safeParse(rest);
     expect(result.success).toBe(false);
     if (!result.success) {
