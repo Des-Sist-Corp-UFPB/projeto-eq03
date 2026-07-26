@@ -30,6 +30,14 @@ app:
   pii-encryption-key: ${APP_PII_ENCRYPTION_KEY}
   pii-hash-pepper: ${APP_PII_HASH_PEPPER}
 
+vapid:
+  # Gere UMA VEZ com `npx web-push generate-vapid-keys` e nunca regenere: trocar a chave
+  # privada invalida TODAS as subscriptions de push já salvas no banco, forçando todo usuário
+  # a autorizar notificações de novo.
+  public-key: ${VAPID_PUBLIC_KEY}
+  private-key: ${VAPID_PRIVATE_KEY}
+  subject: ${VAPID_SUBJECT}
+
 security:
   jwt:
     secret: ${JWT_SECRET}
