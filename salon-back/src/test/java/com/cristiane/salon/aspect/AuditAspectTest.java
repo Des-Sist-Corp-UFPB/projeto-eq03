@@ -127,8 +127,8 @@ class AuditAspectTest {
         when(joinPoint.getArgs()).thenReturn(new Object[0]);
 
         AppointmentResponse response = new AppointmentResponse(
-                99L, 1L, "Client", 2L, "Employee", 3L, "Service",
-                null, null, "Notes", "PENDING"
+                99L, 1L, "Client", 2L, "Employee", java.util.List.of(), null, null,
+                null, null, "Notes", "PENDING", null, null, null, false, ""
         );
         ResponseEntity<AppointmentResponse> result = ResponseEntity.ok(response);
 

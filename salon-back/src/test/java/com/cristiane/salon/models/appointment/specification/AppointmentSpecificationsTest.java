@@ -2,6 +2,7 @@ package com.cristiane.salon.models.appointment.specification;
 
 import com.cristiane.salon.models.appointment.dto.AppointmentFilter;
 import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.entity.AppointmentServiceItem;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
 import com.cristiane.salon.models.employee.entity.CommissionScope;
@@ -127,8 +128,11 @@ class AppointmentSpecificationsTest {
         Appointment a = new Appointment();
         a.setClient(client);
         a.setEmployee(employee);
-        a.setSalonService(salonService);
         a.setStatus(status);
+        AppointmentServiceItem item = new AppointmentServiceItem();
+        item.setAppointment(a);
+        item.setSalonService(salonService);
+        a.getServices().add(item);
         return a;
     }
 

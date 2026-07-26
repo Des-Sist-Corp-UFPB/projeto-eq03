@@ -3,7 +3,6 @@ package com.cristiane.salon.models.appointment.entity;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.enums.PaymentStatus;
 import com.cristiane.salon.models.employee.entity.Employee;
-import com.cristiane.salon.models.service.entity.SalonService;
 import com.cristiane.salon.models.user.entity.User;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -16,6 +15,9 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.stream.Collectors;
 
 @Getter
 @Setter
@@ -37,9 +39,8 @@ public class Appointment {
     @JoinColumn(name = "employee_id", nullable = false)
     private Employee employee;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "salon_service_id", nullable = false)
-    private SalonService salonService;
+    @OneToMany(mappedBy = "appointment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
+    private List<AppointmentServiceItem> services = new ArrayList<>();
 
     /** Definido pela equipe ao confirmar o pedido do cliente */
     @Column(name = "scheduled_at")
@@ -71,25 +72,23 @@ public class Appointment {
     @Column(name = "pix_qr_code", columnDefinition = "TEXT")
     private String pixQrCode;
 
-    /**
-     * O serviço cadastrado funciona como um template: estes três campos sobrescrevem
-     * preço/duração/observações só para este agendamento, sem alterar o cadastro do serviço.
-     * Nulo = usa o valor do serviço (ver {@link #getEffectivePrice()}/{@link #getEffectiveDurationMin()}).
-     */
-    @Column(name = "custom_price", precision = 10, scale = 2)
-    private BigDecimal customPrice;
-
-    @Column(name = "custom_duration_min")
-    private Integer customDurationMin;
-
-    @Column(name = "custom_service_notes", columnDefinition = "TEXT")
-    private String customServiceNotes;
-
-    public BigDecimal getEffectivePrice() {
-        return customPrice != null ? customPrice : salonService.getPrice();
+    public BigDecimal getTotalEffectivePrice() {
+        return services.stream()
+                .map(AppointmentServiceItem::getEffectivePrice)
+                .filter(price -> price != null)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
 
-    public Integer getEffectiveDurationMin() {
-        return customDurationMin != null ? customDurationMin : salonService.getDurationMin();
+    public Integer getTotalEffectiveDurationMin() {
+        return services.stream()
+                .map(AppointmentServiceItem::getEffectiveDurationMin)
+                .filter(duration -> duration != null)
+                .reduce(0, Integer::sum);
+    }
+
+    public String getServiceNames() {
+        return services.stream()
+                .map(item -> item.getSalonService().getName())
+                .collect(Collectors.joining(", "));
     }
 }

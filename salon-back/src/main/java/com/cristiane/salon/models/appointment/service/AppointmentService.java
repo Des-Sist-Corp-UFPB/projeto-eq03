@@ -10,7 +10,9 @@ import com.cristiane.salon.integrations.payment.service.MercadoPagoPaymentServic
 import com.cristiane.salon.models.appointment.dto.AppointmentFilter;
 import com.cristiane.salon.models.appointment.dto.AppointmentRequest;
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
+import com.cristiane.salon.models.appointment.dto.AppointmentServiceRequest;
 import com.cristiane.salon.models.appointment.entity.Appointment;
+import com.cristiane.salon.models.appointment.entity.AppointmentServiceItem;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
 import com.cristiane.salon.models.appointment.enums.PaymentStatus;
 import com.cristiane.salon.models.appointment.repository.AppointmentRepository;
@@ -71,6 +73,12 @@ public class AppointmentService {
         return 60;
     }
 
+    private static int totalBlockingMinutes(List<AppointmentServiceItem> items) {
+        return items.stream()
+                .mapToInt(item -> blockingMinutes(item.getCustomDurationMin(), item.getSalonService()))
+                .sum();
+    }
+
     private User getAuthenticatedUser() {
         String email = SecurityContextHolder.getContext().getAuthentication().getName();
         return userRepository.findByEmail(email)
@@ -82,22 +90,22 @@ public class AppointmentService {
         return "ADMIN".equals(role) || "GERENTE_DE_ATENDIMENTO".equals(role);
     }
 
-    private void assertNoScheduleConflict(Long employeeId, LocalDateTime scheduledAt, SalonService service,
-                                         Integer overrideDurationMin, Long ignoreAppointmentId) {
+    private void assertNoScheduleConflict(Long employeeId, LocalDateTime scheduledAt, int durationMinutes,
+                                         Long ignoreAppointmentId) {
         List<Appointment> existing = appointmentRepository.findActiveAppointmentsByEmployeeAndDate(
                 employeeId,
                 scheduledAt.toLocalDate().atStartOfDay(),
                 scheduledAt.toLocalDate().atTime(LocalTime.MAX)
         );
 
-        LocalDateTime requestEnd = scheduledAt.plusMinutes(blockingMinutes(overrideDurationMin, service));
+        LocalDateTime requestEnd = scheduledAt.plusMinutes(durationMinutes);
 
         for (Appointment apt : existing) {
             if (ignoreAppointmentId != null && apt.getId().equals(ignoreAppointmentId)) {
                 continue;
             }
             LocalDateTime aptStart = apt.getScheduledAt();
-            LocalDateTime aptEnd = aptStart.plusMinutes(blockingMinutes(apt.getCustomDurationMin(), apt.getSalonService()));
+            LocalDateTime aptEnd = aptStart.plusMinutes(totalBlockingMinutes(apt.getServices()));
 
             boolean overlaps = scheduledAt.isBefore(aptEnd) && aptStart.isBefore(requestEnd);
             if (overlaps) {
@@ -131,11 +139,16 @@ public class AppointmentService {
         Employee employee = employeeRepository.findById(request.employeeId())
                 .orElseThrow(() -> new ResourceNotFoundException("Profissional não encontrado"));
 
-        SalonService service = salonServiceRepository.findById(request.serviceId())
-                .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado"));
+        List<AppointmentServiceRequest> serviceRequests = request.services();
+        List<SalonService> resolvedServices = serviceRequests.stream()
+                .map(sr -> salonServiceRepository.findById(sr.serviceId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Serviço não encontrado")))
+                .collect(Collectors.toList());
 
-        if (!service.getActive()) {
-            throw new BadRequestException("Este serviço não está disponível");
+        for (SalonService svc : resolvedServices) {
+            if (!svc.getActive()) {
+                throw new BadRequestException("Este serviço não está disponível: " + svc.getName());
+            }
         }
 
         if (staffCreatesForClient) {
@@ -146,14 +159,21 @@ public class AppointmentService {
                 throw new BadRequestException("Não é possível agendar no passado");
             }
 
-            if (request.customPrice() != null && request.customPrice().compareTo(BigDecimal.ZERO) < 0) {
-                throw new BadRequestException("O preço customizado não pode ser negativo");
-            }
-            if (request.customDurationMin() != null && request.customDurationMin() <= 0) {
-                throw new BadRequestException("A duração customizada deve ser maior que zero");
+            for (AppointmentServiceRequest sr : serviceRequests) {
+                if (sr.customPrice() != null && sr.customPrice().compareTo(BigDecimal.ZERO) < 0) {
+                    throw new BadRequestException("O preço customizado não pode ser negativo");
+                }
+                if (sr.customDurationMin() != null && sr.customDurationMin() <= 0) {
+                    throw new BadRequestException("A duração customizada deve ser maior que zero");
+                }
             }
 
-            assertNoScheduleConflict(employee.getId(), request.scheduledAt(), service, request.customDurationMin(), null);
+            int totalDuration = 0;
+            for (int i = 0; i < serviceRequests.size(); i++) {
+                totalDuration += blockingMinutes(serviceRequests.get(i).customDurationMin(), resolvedServices.get(i));
+            }
+
+            assertNoScheduleConflict(employee.getId(), request.scheduledAt(), totalDuration, null);
 
             if (request.preferredDate() != null && request.preferredDate().isBefore(LocalDate.now())) {
                 throw new BadRequestException("A data preferida deve ser hoje ou uma data futura");
@@ -162,16 +182,11 @@ public class AppointmentService {
             Appointment appointment = new Appointment();
             appointment.setClient(client);
             appointment.setEmployee(employee);
-            appointment.setSalonService(service);
             appointment.setScheduledAt(request.scheduledAt());
             appointment.setPreferredDate(request.preferredDate());
             appointment.setClientNotes(request.clientNotes());
             appointment.setStatus(AppointmentStatus.CONFIRMED);
-            // Serviço como template: sobrescreve preço/duração/observações só para este
-            // agendamento, sem alterar o cadastro do serviço (fluxo administrativo apenas).
-            appointment.setCustomPrice(request.customPrice());
-            appointment.setCustomDurationMin(request.customDurationMin());
-            appointment.setCustomServiceNotes(request.customServiceNotes());
+            appointment.setServices(buildServiceItems(appointment, serviceRequests, resolvedServices, true));
 
             Appointment saved = appointmentRepository.save(appointment);
             emailService.sendConfirmationNotificationToClient(saved);
@@ -194,14 +209,39 @@ public class AppointmentService {
         Appointment appointment = new Appointment();
         appointment.setClient(client);
         appointment.setEmployee(employee);
-        appointment.setSalonService(service);
         appointment.setPreferredDate(request.preferredDate());
         appointment.setClientNotes(notes);
         appointment.setStatus(AppointmentStatus.REQUESTED);
+        appointment.setServices(buildServiceItems(appointment, serviceRequests, resolvedServices, false));
 
         Appointment saved = appointmentRepository.save(appointment);
         emailService.sendRequestNotificationToStaff(saved);
         return AppointmentResponse.fromEntity(saved);
+    }
+
+    /**
+     * No fluxo do cliente (auto-agendamento) customPrice/customDurationMin/customServiceNotes do
+     * request são ignorados — essas sobrescritas só têm efeito quando a equipe cria o agendamento,
+     * evitando que o cliente manipule o próprio preço/duração cobrados.
+     */
+    private List<AppointmentServiceItem> buildServiceItems(Appointment appointment,
+                                                            List<AppointmentServiceRequest> serviceRequests,
+                                                            List<SalonService> resolvedServices,
+                                                            boolean allowCustomization) {
+        List<AppointmentServiceItem> items = new java.util.ArrayList<>();
+        for (int i = 0; i < serviceRequests.size(); i++) {
+            AppointmentServiceRequest sr = serviceRequests.get(i);
+            AppointmentServiceItem item = new AppointmentServiceItem();
+            item.setAppointment(appointment);
+            item.setSalonService(resolvedServices.get(i));
+            if (allowCustomization) {
+                item.setCustomPrice(sr.customPrice());
+                item.setCustomDurationMin(sr.customDurationMin());
+                item.setCustomServiceNotes(sr.customServiceNotes());
+            }
+            items.add(item);
+        }
+        return items;
     }
 
     @Transactional
@@ -221,8 +261,8 @@ public class AppointmentService {
             throw new BadRequestException("Não é possível confirmar um horário no passado");
         }
 
-        assertNoScheduleConflict(appointment.getEmployee().getId(), scheduledAt, appointment.getSalonService(),
-                appointment.getCustomDurationMin(), null);
+        assertNoScheduleConflict(appointment.getEmployee().getId(), scheduledAt,
+                totalBlockingMinutes(appointment.getServices()), null);
 
         appointment.setScheduledAt(scheduledAt);
         appointment.setStatus(AppointmentStatus.CONFIRMED);
@@ -312,7 +352,7 @@ public class AppointmentService {
             throw new BadRequestException("Não é possível gerar PIX para um agendamento cancelado.");
         }
 
-        BigDecimal amount = appointment.getEffectivePrice();
+        BigDecimal amount = appointment.getTotalEffectivePrice();
         if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new BadRequestException("Este serviço não possui um valor configurado para cobrança.");
         }
@@ -347,7 +387,7 @@ public class AppointmentService {
         }
 
         // Gera a cobrança na API do Mercado Pago com dados reais do cliente
-        String description = "Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName();
+        String description = "Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames();
         String payerEmail = appointment.getClient().getEmail();
         String payerName = appointment.getClient().getName();
 
@@ -393,7 +433,7 @@ public class AppointmentService {
         CashFlow cashFlow = new CashFlow();
         cashFlow.setType(CashFlowType.INCOME);
         cashFlow.setAmount(payment.getTransactionAmount());
-        cashFlow.setDescription("Pagamento PIX do agendamento #" + appointment.getId() + " - " + appointment.getSalonService().getName());
+        cashFlow.setDescription("Pagamento PIX do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
         cashFlow.setDate(java.time.LocalDate.now());
         cashFlow.setAppointment(appointment);
         cashFlowRepository.save(cashFlow);
@@ -485,8 +525,7 @@ public class AppointmentService {
             appointment.setStatus(status);
 
             if (status == AppointmentStatus.DONE) {
-                SalonService svc = appointment.getSalonService();
-                BigDecimal servicePrice = appointment.getEffectivePrice();
+                BigDecimal servicePrice = appointment.getTotalEffectivePrice();
                 boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
 
                 if (shouldAutoBill) {
@@ -497,7 +536,7 @@ public class AppointmentService {
                         CashFlow cashFlow = new CashFlow();
                         cashFlow.setType(CashFlowType.INCOME);
                         cashFlow.setAmount(servicePrice);
-                        cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + svc.getName());
+                        cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
                         cashFlow.setDate(java.time.LocalDate.now());
                         cashFlow.setAppointment(appointment);
                         cashFlowRepository.save(cashFlow);
@@ -554,8 +593,7 @@ public class AppointmentService {
             appointment.setPaymentStatus(paymentStatus);
 
             if (paymentStatus == PaymentStatus.PAID) {
-                SalonService svc = appointment.getSalonService();
-                BigDecimal servicePrice = appointment.getEffectivePrice();
+                BigDecimal servicePrice = appointment.getTotalEffectivePrice();
                 boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
 
                 if (shouldAutoBill) {
@@ -566,7 +604,7 @@ public class AppointmentService {
                         CashFlow cashFlow = new CashFlow();
                         cashFlow.setType(CashFlowType.INCOME);
                         cashFlow.setAmount(servicePrice);
-                        cashFlow.setDescription("Pagamento (Confirmado Admin) do agendamento #" + appointment.getId() + " - " + svc.getName());
+                        cashFlow.setDescription("Pagamento (Confirmado Admin) do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
                         cashFlow.setDate(java.time.LocalDate.now());
                         cashFlow.setAppointment(appointment);
                         cashFlowRepository.save(cashFlow);

@@ -20,8 +20,8 @@ public record AppointmentFinancialResponse(
                 appointment.getId(),
                 appointment.getScheduledAt(),
                 appointment.getPreferredDate(),
-                appointment.getSalonService().getName(),
-                appointment.getSalonService().getPrice(),
+                appointment.getServiceNames(),
+                appointment.getTotalEffectivePrice(),
                 appointment.getStatus().name(),
                 appointment.getPaymentStatus() != null ? appointment.getPaymentStatus().name() : null
         );
