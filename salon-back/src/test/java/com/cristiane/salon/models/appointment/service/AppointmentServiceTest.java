@@ -18,6 +18,7 @@ import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import com.cristiane.salon.models.service.entity.SalonService;
 import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.integrations.email.service.EmailService;
+import com.cristiane.salon.integrations.push.service.PushService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
@@ -74,6 +75,9 @@ class AppointmentServiceTest {
 
     @Mock
     private EmailService emailService;
+
+    @Mock
+    private PushService pushService;
 
     @Mock
     private MercadoPagoPaymentService mercadoPagoPaymentService;

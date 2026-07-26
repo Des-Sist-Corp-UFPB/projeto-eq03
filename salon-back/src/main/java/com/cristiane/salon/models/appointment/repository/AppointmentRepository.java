@@ -54,4 +54,14 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
             @Param("startOfDay") LocalDateTime startOfDay,
             @Param("endOfDay") LocalDateTime endOfDay
     );
+
+    // Lembrete D-1 (issue #111): CONFIRMED, ainda não lembrado, agendado dentro da janela do
+    // dia seguinte. startOfDay/endOfDay já vêm calculados no fuso America/Recife pelo chamador
+    // — não é sensato calcular fuso horário dentro da query.
+    @Query("SELECT a FROM Appointment a WHERE a.status = 'CONFIRMED' AND a.remindedAt IS NULL "
+            + "AND a.scheduledAt >= :startOfDay AND a.scheduledAt < :endOfDay")
+    List<Appointment> findConfirmedNotRemindedBetween(
+            @Param("startOfDay") LocalDateTime startOfDay,
+            @Param("endOfDay") LocalDateTime endOfDay
+    );
 }

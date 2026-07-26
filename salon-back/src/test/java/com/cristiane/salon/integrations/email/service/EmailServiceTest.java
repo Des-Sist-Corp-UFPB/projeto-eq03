@@ -354,6 +354,68 @@ class EmailServiceTest {
         );
     }
 
+    // --- sendAppointmentReminder ---
+
+    @Test
+    void sendAppointmentReminder_whenFeatureFlagDisabled_shouldReturnImmediately() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(false);
+
+        emailService.sendAppointmentReminder(appointment);
+
+        verifyNoInteractions(templateEngine, auditLogService);
+    }
+
+    @Test
+    void sendAppointmentReminder_whenClientEmailBlank_shouldReturnImmediately() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        client.setEmail("   ");
+
+        emailService.sendAppointmentReminder(appointment);
+
+        verifyNoInteractions(templateEngine);
+    }
+
+    @Test
+    void sendAppointmentReminder_whenSuccessful_shouldSendEmailAndAuditSuccess() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        when(templateEngine.process(eq("mail/appointment-reminder"), any(Context.class))).thenReturn("<html>Reminder HTML</html>");
+
+        setupGatewayMock(false);
+
+        emailService.sendAppointmentReminder(appointment);
+
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("Lembrete de agendamento (D-1) enviado para: client@example.com"),
+                eq("SUCCESS")
+        );
+    }
+
+    @Test
+    void sendAppointmentReminder_whenApiThrowsException_shouldAuditFailure() {
+        when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
+        when(templateEngine.process(eq("mail/appointment-reminder"), any(Context.class))).thenReturn("<html>Reminder HTML</html>");
+
+        setupGatewayMock(true);
+
+        emailService.sendAppointmentReminder(appointment);
+
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("Falha ao enviar lembrete de agendamento (D-1) para: client@example.com"),
+                eq("FAILURE"),
+                eq("API Connection Error")
+        );
+    }
+
     // --- sendPasswordResetEmail ---
 
     @Test

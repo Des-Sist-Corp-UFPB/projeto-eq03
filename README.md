@@ -14,10 +14,11 @@ O sistema cumpre todos os requisitos exigidos utilizando padrões modernos de de
   - **Backend:** Interceptação de requisições usando a anotação `@Auditable` e filtro HTTP. Captura IP real, User-Agent e mascara dados sensíveis (senhas, cartões) antes de salvar no banco.
   - **Frontend:** Console administrativo com filtros combinados e leitor de JSON com _syntax highlighting_.
 - **Integração com Serviços Externos (Resend API & Mercado Pago):**
-  - **E-mails Transacionais (Resend API):** Envio de confirmações e cancelamentos em segundo plano (`@Async`) usando templates Thymeleaf e o `RestClient` do Spring.
+  - **E-mails Transacionais (Resend API):** Envio de confirmações, cancelamentos e lembrete D-1 de agendamento em segundo plano (`@Async`) usando templates Thymeleaf e o `RestClient` do Spring.
   - **Pagamentos via PIX (Mercado Pago API):** Geração de QR Code e Pix Copia e Cola (Checkout Transparente) com coleta JIT (Just-In-Time) de CPF (validação por Módulo 11) e Webhooks protegidos por assinatura de segurança (`x-signature` via HMAC-SHA256) para conciliação automática.
 - **Suporte a PWA (Progressive Web App):**
   - O frontend foi construído como um PWA (Progressive Web App) utilizando `vite-plugin-pwa`. Isso permite a instalação local do aplicativo, cache inteligente de recursos estáticos com Workbox e funcionamento offline-first da interface, com estratégias *NetworkFirst* de cache para rotas públicas e feature flags.
+  - **Notificações Push (Web Push API):** com o PWA instalado, o usuário recebe notificação nativa do sistema operacional (mesmo com o app fechado) nos mesmos eventos que já disparam e-mail — ver seção [🔔 Notificações Push](#-notificações-push-web-push-api) para os detalhes completos.
 - **Testes de Qualidade e Cobertura Comprovável:**
   - **Backend (JaCoCo - Linhas: 92.78% | Instruções: 93.56% | Branches: 78.61%):** Testes unitários/integração com JUnit 5 e Mockito. Relatório de cobertura disponível em [cobertura/backend/index.html](./cobertura/backend/index.html).
   - **Frontend (Vitest - Linhas: 99.15% | Branches: 91.87%):** Relatório de cobertura disponível em [cobertura/frontend/index.html](./cobertura/frontend/index.html).
@@ -53,7 +54,7 @@ O sistema de auditoria registra ações críticas de gravação ou autenticaçã
 O sistema integra-se com serviços de e-mail e gateways de pagamento em produção.
 
 - **Serviços Externos Utilizados:**
-  1. **Resend API:** Envio de e-mails transacionais (solicitações, confirmações e cancelamentos de agendamento).
+  1. **Resend API:** Envio de e-mails transacionais (solicitações, confirmações, cancelamentos e lembrete D-1 de agendamento).
   2. **Mercado Pago API (PIX):** Checkout transparente para geração JIT de chaves PIX (cópia e cola) e QR Codes, além de recepção de Webhooks para atualização automatizada do status da reserva.
   3. **Provedor de IA (via proxy LiteLLM):** gera as recomendações financeiras/de retenção do painel admin — ver seção [🤖 Recomendações de IA e Servidor MCP](#-recomendações-de-ia-e-servidor-mcp) para os detalhes completos (é tratado à parte por ter documentação própria).
   4. **ViaCEP:** autopreenchimento de endereço (rua/bairro/cidade/UF) a partir do CEP na tela de Cadastro de Equipe — puramente conveniência de UX: se a chamada falhar, o formulário segue funcionando normalmente e a pessoa digita o endereço à mão.
@@ -112,6 +113,46 @@ O Circuit Breaker/Retry acima resolve blips curtos (Resend cai por 1-2 segundos)
   - [EmailOutboxController.java](./salon-back/src/main/java/com/cristiane/salon/integrations/email/outbox/controller/EmailOutboxController.java)
   - [V35\_\_create_email_outbox.sql](./salon-back/src/main/resources/db/migration/V35__create_email_outbox.sql)
   - [EmailOutbox.tsx](./salon-front/src/pages/admin/email-outbox/EmailOutbox.tsx) (tela de admin)
+
+### 📅 Lembrete de agendamento (D-1)
+
+Reduz no-show avisando o cliente na véspera. Um job diário (09h, horário de Recife) busca agendamentos `CONFIRMED` cujo horário cai no dia seguinte e ainda não foram lembrados, e dispara um e-mail por cliente — que passa pelo mesmo `EmailService`/fila de retry descritos acima, sem nenhum código novo de resiliência.
+
+- **Fuso horário explícito:** a aplicação roda com timezone padrão UTC (`SalonApplication.init()`), mas o negócio é em `America/Recife` (UTC-3). "Amanhã" é calculado explicitamente nesse fuso — calcular com `LocalDate.now()` puro erraria o dia perto da meia-noite.
+- **Não duplica se o job cair no meio:** cada agendamento tem uma coluna `reminded_at` (NULL = ainda não lembrado), marcada individualmente logo após disparar aquele e-mail específico — não em lote no fim do job. Se o processo reiniciar no meio da execução, os agendamentos já processados não são notificados de novo.
+- **Sem link de cancelamento por token:** o e-mail linka para "Meus Agendamentos" (autenticado), não um link público de um clique — criar um endpoint de cancelamento sem login seria uma superfície de abuso nova que o resto do sistema não tem hoje (cancelamento sempre passa pelo app autenticado).
+- Configurável via `APPOINTMENT_REMINDER_CRON` (padrão: `0 0 9 * * *`, horário de Recife).
+- **Classes e arquivos participantes:**
+  - [AppointmentReminderService.java](./salon-back/src/main/java/com/cristiane/salon/models/appointment/service/AppointmentReminderService.java) (job agendado)
+  - [appointment-reminder.html](./salon-back/src/main/resources/templates/mail/appointment-reminder.html)
+  - [V37\_\_add_appointment_reminded_at.sql](./salon-back/src/main/resources/db/migration/V37__add_appointment_reminded_at.sql)
+
+---
+
+## 🔔 Notificações Push (Web Push API)
+
+Com o PWA instalado, o usuário recebe notificações nativas do sistema operacional mesmo com o app fechado — a mesma UI de notificação do Windows/macOS/Android, não um toast dentro do navegador. Requer o PWA instalado e HTTPS em produção (pré-requisito já atendido, ver seção de PWA acima).
+
+- **O que gera notificação hoje** (os mesmos 4 eventos que já disparam e-mail, mais o lembrete D-1):
+  1. Agendamento confirmado → push para o **cliente**.
+  2. Agendamento cancelado/recusado → push para o **cliente**.
+  3. Novo pedido de agendamento → push para todos os usuários **ADMIN** ativos.
+  4. Pagamento PIX confirmado → push para o **cliente**.
+  5. Lembrete de agendamento D-1 → push para o **cliente**, junto com o e-mail.
+
+  Clicar na notificação abre o app direto na tela relevante (`/my-appointments` ou `/admin/appointments`).
+- **iOS:** só recebe push se o PWA estiver **instalado na tela inicial** (Safari numa aba comum não implementa a Push API) e o iOS for 16.4+ — limitação da Apple, documentada no próprio código (`usePushNotification.ts`).
+- **Chaves VAPID — cuidado crítico:** autenticam o servidor perante os serviços de push do navegador (FCM, Mozilla autopush, etc.). Geradas uma única vez com `npx web-push generate-vapid-keys` e **nunca regeneradas** depois: trocar a chave privada invalida instantaneamente TODAS as subscriptions já salvas no banco, e cada usuário precisaria autorizar notificações de novo. Configuração em `VAPID_PUBLIC_KEY`/`VAPID_PRIVATE_KEY`/`VAPID_SUBJECT` (backend) e `VITE_VAPID_PUBLIC_KEY` (frontend, mesma chave pública) — ver `.env.example` para instruções completas.
+- **Service worker escrito à mão (`injectManifest`):** registrar os listeners de `push`/`notificationclick` exigiu trocar a estratégia do `vite-plugin-pwa` de `generateSW` (automática) para `injectManifest` — o cache `NetworkFirst` de rotas públicas que existia antes foi reescrito manualmente em `src/sw.ts` (workbox-routing) para preservar o comportamento anterior.
+- **Falha isolada por assinatura, nunca bloqueia a resposta HTTP:** `PushService.sendToUser` é `@Async` e trata cada subscription (cada navegador/dispositivo autorizado) de forma independente — uma subscription expirada (HTTP 410 Gone) é removida do banco automaticamente, e falha em uma nunca impede o envio para as demais.
+- **Sem Circuit Breaker aqui, ao contrário das outras integrações externas** (ver seção de Resiliência): cada envio de push vai para um endpoint diferente por assinatura (o navegador de cada usuário gera sua própria URL via FCM/Mozilla/etc.) — não é "um provedor" que pode cair inteiro como o Mercado Pago ou o Resend, então o padrão de circuito não se aplica da mesma forma.
+- **Classes e arquivos participantes:**
+  - [PushService.java](./salon-back/src/main/java/com/cristiane/salon/integrations/push/service/PushService.java) (envio, limpeza de subscription expirada)
+  - [PushController.java](./salon-back/src/main/java/com/cristiane/salon/integrations/push/controller/PushController.java) (assinar/cancelar)
+  - [WebPushConfig.java](./salon-back/src/main/java/com/cristiane/salon/integrations/push/config/WebPushConfig.java) (bean único da biblioteca `web-push`, provider BouncyCastle)
+  - [V38\_\_create_push_subscription.sql](./salon-back/src/main/resources/db/migration/V38__create_push_subscription.sql)
+  - [usePushNotification.ts](./salon-front/src/hooks/usePushNotification.ts) (opt-in no frontend)
+  - [sw.ts](./salon-front/src/sw.ts) (service worker customizado)
 
 ---
 

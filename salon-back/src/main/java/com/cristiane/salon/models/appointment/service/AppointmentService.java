@@ -27,6 +27,7 @@ import com.cristiane.salon.models.employee.repository.EmployeeRepository;
 import com.cristiane.salon.models.service.entity.SalonService;
 import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.integrations.email.service.EmailService;
+import com.cristiane.salon.integrations.push.service.PushService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
@@ -60,8 +61,17 @@ public class AppointmentService {
     private final CashFlowRepository cashFlowRepository;
     private final FeatureFlagService featureFlagService;
     private final EmailService emailService;
+    private final PushService pushService;
     private final MercadoPagoPaymentService mercadoPagoPaymentService;
     private final AuditLogService auditLogService;
+
+    private void notifyAdminsOfNewRequest(Appointment appointment) {
+        for (User admin : userRepository.findByRole_NameAndActiveTrue("ADMIN")) {
+            pushService.sendToUser(admin.getId(), "Nova solicitação de agendamento 📅",
+                    appointment.getClient().getName() + " solicitou " + appointment.getServiceNames(),
+                    "/admin/appointments");
+        }
+    }
 
     private static int blockingMinutes(Integer overrideDurationMin, SalonService service) {
         if (overrideDurationMin != null && overrideDurationMin > 0) {
@@ -190,6 +200,8 @@ public class AppointmentService {
 
             Appointment saved = appointmentRepository.save(appointment);
             emailService.sendConfirmationNotificationToClient(saved);
+            pushService.sendToUser(client.getId(), "Agendamento confirmado! ✅",
+                    "Seu horário de " + saved.getServiceNames() + " foi confirmado.", "/my-appointments");
             return AppointmentResponse.fromEntity(saved);
         }
 
@@ -216,6 +228,7 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
         emailService.sendRequestNotificationToStaff(saved);
+        notifyAdminsOfNewRequest(saved);
         return AppointmentResponse.fromEntity(saved);
     }
 
@@ -269,6 +282,8 @@ public class AppointmentService {
 
         Appointment saved = appointmentRepository.save(appointment);
         emailService.sendConfirmationNotificationToClient(saved);
+        pushService.sendToUser(saved.getClient().getId(), "Agendamento confirmado! ✅",
+                "Seu horário de " + saved.getServiceNames() + " foi confirmado.", "/my-appointments");
         return AppointmentResponse.fromEntity(saved);
     }
 
@@ -289,6 +304,8 @@ public class AppointmentService {
         Appointment saved = appointmentRepository.save(appointment);
         // Notify client and staff that their request was declined
         emailService.sendCancellationNotification(saved);
+        pushService.sendToUser(saved.getClient().getId(), "Agendamento cancelado",
+                "Seu agendamento de " + saved.getServiceNames() + " foi cancelado.", "/my-appointments");
         return AppointmentResponse.fromEntity(saved);
     }
 
@@ -438,6 +455,9 @@ public class AppointmentService {
         cashFlow.setAppointment(appointment);
         cashFlowRepository.save(cashFlow);
         
+        pushService.sendToUser(appointment.getClient().getId(), "Pagamento recebido e confirmado! ✅",
+                "O pagamento do seu agendamento de " + appointment.getServiceNames() + " foi confirmado.", "/my-appointments");
+
         try {
             emailService.sendPaymentConfirmationNotificationToClient(appointment);
         } catch (Exception e) {
@@ -491,6 +511,8 @@ public class AppointmentService {
         appointment.setStatus(AppointmentStatus.CANCELLED);
         Appointment saved = appointmentRepository.save(appointment);
         emailService.sendCancellationNotification(saved);
+        pushService.sendToUser(saved.getClient().getId(), "Agendamento cancelado",
+                "Seu agendamento de " + saved.getServiceNames() + " foi cancelado.", "/my-appointments");
         return AppointmentResponse.fromEntity(saved);
     }
 
@@ -546,11 +568,15 @@ public class AppointmentService {
 
             Appointment saved = appointmentRepository.save(appointment);
 
-            // Trigger email notifications based on resulting status
+            // Trigger email/push notifications based on resulting status
             if (status == AppointmentStatus.CONFIRMED) {
                 emailService.sendConfirmationNotificationToClient(saved);
+                pushService.sendToUser(saved.getClient().getId(), "Agendamento confirmado! ✅",
+                        "Seu horário de " + saved.getServiceNames() + " foi confirmado.", "/my-appointments");
             } else if (status == AppointmentStatus.CANCELLED || status == AppointmentStatus.DECLINED) {
                 emailService.sendCancellationNotification(saved);
+                pushService.sendToUser(saved.getClient().getId(), "Agendamento cancelado",
+                        "Seu agendamento de " + saved.getServiceNames() + " foi cancelado.", "/my-appointments");
             }
 
             return AppointmentResponse.fromEntity(saved);

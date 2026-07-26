@@ -33,6 +33,17 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
+      // injectManifest (service worker escrito à mão em src/sw.ts) em vez de generateSW: é o
+      // único jeito de registrar os listeners de 'push'/'notificationclick' (issue #110) — a
+      // estratégia anterior gerava o SW automaticamente e não permitia customização de eventos.
+      // O runtimeCaching que existia aqui foi reescrito manualmente dentro de src/sw.ts
+      // (workbox-routing) para preservar o comportamento de cache anterior.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts',
+      injectManifest: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}']
+      },
       registerType: 'autoUpdate',
       includeAssets: ['pwa-192x192.png', 'pwa-512x512.png'],
       manifest: {
@@ -49,19 +60,6 @@ export default defineConfig({
           { src: 'pwa-192x192.png', sizes: '192x192', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png' },
           { src: 'pwa-512x512.png', sizes: '512x512', type: 'image/png', purpose: 'any maskable' }
-        ]
-      },
-      workbox: {
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
-        runtimeCaching: [
-          {
-            urlPattern: /\/v1\/(services|employees\/booking|feature-flags)/,
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'api-public-cache',
-              expiration: { maxEntries: 50, maxAgeSeconds: 86400 }
-            }
-          }
         ]
       },
       devOptions: { enabled: true, type: 'module' }

@@ -34,6 +34,7 @@ import { NotFound } from './pages/error/NotFound';
 import { Profile } from './pages/profile/Profile';
 import { featureFlagsService } from './services/featureFlags';
 import { useAuth } from './hooks/useAuth';
+import { usePushNotification } from './hooks/usePushNotification';
 import { getDefaultAdminPath } from './config/adminNav';
 
 // Redireciona "/admin" para a primeira seção que o cargo do usuário logado pode acessar
@@ -73,6 +74,8 @@ const MaintenancePage = () => {
 
 export const Router = () => {
   const [isPortalEnabled, setIsPortalEnabled] = useState<boolean | null>(null);
+  const { isAuthenticated } = useAuth();
+  usePushNotification(isAuthenticated);
 
   useEffect(() => {
     const checkFlags = async () => {

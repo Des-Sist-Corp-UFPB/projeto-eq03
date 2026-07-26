@@ -72,6 +72,11 @@ public class Appointment {
     @Column(name = "pix_qr_code", columnDefinition = "TEXT")
     private String pixQrCode;
 
+    /** NULL = ainda não recebeu o lembrete D-1. Marcado no disparo do e-mail, não na
+     * confirmação de entrega — a fila de retry do e-mail já cuida disso separadamente. */
+    @Column(name = "reminded_at")
+    private LocalDateTime remindedAt;
+
     public BigDecimal getTotalEffectivePrice() {
         return services.stream()
                 .map(AppointmentServiceItem::getEffectivePrice)
