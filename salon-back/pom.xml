@@ -160,6 +160,16 @@
             <version>3.2.1</version>
         </dependency>
 
+        <!-- Resilience4j: timeout/circuit breaker/retry para toda integração externa (Mercado
+             Pago, provedor de e-mail, provedor de IA) — infraestrutura genérica reaproveitada
+             por qualquer integração nova via configuração nomeada + anotação, sem reimplementar
+             tratamento de falha a cada vez. -->
+        <dependency>
+            <groupId>io.github.resilience4j</groupId>
+            <artifactId>resilience4j-spring-boot3</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
         <!-- Observabilidade (OpenTelemetry) -->
         <dependency>
             <groupId>io.opentelemetry</groupId>

@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 public class MockEmailService extends EmailService {
 
     public MockEmailService() {
-        super(null, null, null);
+        super(null, null, null, null);
     }
 
     @Override

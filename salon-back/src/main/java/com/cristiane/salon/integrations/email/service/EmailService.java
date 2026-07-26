@@ -7,14 +7,10 @@ import com.cristiane.salon.models.user.entity.User;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.MediaType;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestClient;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
-
-import java.util.Map;
 
 import org.springframework.context.annotation.Profile;
 
@@ -27,40 +23,16 @@ public class EmailService {
     private final FeatureFlagService featureFlagService;
     private final TemplateEngine templateEngine;
     private final AuditLogService auditLogService;
-
-    @Value("${mail.password}")
-    private String apiKey;
-
-    @Value("${mail.from:notificacoes@elksandro.com}")
-    private String fromEmail;
+    private final EmailGateway emailGateway;
 
     @Value("${mail.business:elksandrosandro19@gmail.com}")
     private String businessEmail;
-
-    @Value("${mail.api-url}")
-    private String apiUrl;
 
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
     private void sendViaHttpApi(String to, String subject, String htmlContent, String replyTo) {
-        RestClient restClient = RestClient.create(apiUrl);
-
-        Map<String, Object> payload = Map.of(
-                "from", "Cristiane Salon <" + fromEmail + ">",
-                "to", new String[]{to},
-                "subject", subject,
-                "html", htmlContent,
-                "reply_to", replyTo
-        );
-
-        restClient.post()
-                .uri("/emails")
-                .header("Authorization", "Bearer " + apiKey)
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(payload)
-                .retrieve()
-                .toBodilessEntity();
+        emailGateway.send(to, subject, htmlContent, replyTo);
     }
 
     @Async

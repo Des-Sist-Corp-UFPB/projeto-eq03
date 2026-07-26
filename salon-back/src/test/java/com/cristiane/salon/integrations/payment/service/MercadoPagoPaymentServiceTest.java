@@ -9,7 +9,6 @@ import com.mercadopago.resources.payment.Payment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -24,11 +23,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class MercadoPagoPaymentServiceTest {
 
-    @InjectMocks
+    // Não usamos @InjectMocks/@Mock para o MercadoPagoGateway aqui: ele é um componente sem
+    // dependências e sem estado, e mantê-lo real preserva o mockConstruction(PaymentClient)
+    // existente (o gateway também faz `new PaymentClient()` por baixo).
     private MercadoPagoPaymentService paymentService;
 
     @BeforeEach
     void setUp() {
+        paymentService = new MercadoPagoPaymentService(new MercadoPagoGateway());
         ReflectionTestUtils.setField(paymentService, "webhookSecret", "test_secret");
     }
 
