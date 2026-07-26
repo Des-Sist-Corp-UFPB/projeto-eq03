@@ -20,6 +20,7 @@ import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.integrations.email.service.EmailService;
 import com.cristiane.salon.integrations.push.service.PushService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import com.cristiane.salon.models.salonprofile.service.SalonProfileService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import com.cristiane.salon.models.audit.AuditLogService;
@@ -80,6 +81,9 @@ class AppointmentServiceTest {
     private PushService pushService;
 
     @Mock
+    private SalonProfileService salonProfileService;
+
+    @Mock
     private MercadoPagoPaymentService mercadoPagoPaymentService;
 
     @Mock
@@ -118,6 +122,10 @@ class AppointmentServiceTest {
         salonService.setPrice(BigDecimal.valueOf(100.00));
         salonService.setDurationMin(45);
         salonService.setActive(true);
+
+        // Padrão permissivo: testes que não são sobre horário de funcionamento não precisam
+        // se preocupar com isso. Os testes dedicados ao bloqueio sobrescrevem para false.
+        lenient().when(salonProfileService.isDayOpen(any())).thenReturn(true);
     }
 
     @AfterEach
@@ -369,6 +377,9 @@ class AppointmentServiceTest {
         assertThat(result.id()).isEqualTo(100L);
         assertThat(result.status()).isEqualTo(AppointmentStatus.CONFIRMED.name());
         verify(emailService).sendConfirmationNotificationToClient(saved);
+        // Horário de funcionamento (issue #116) só bloqueia a PREFERÊNCIA do cliente — a equipe
+        // continua livre para encaixar alguém fora do expediente, mesmo com preferredDate setado.
+        verify(salonProfileService, never()).isDayOpen(any());
     }
 
     // --- Serviço como template (customPrice/customDurationMin/customServiceNotes) ---
@@ -672,6 +683,50 @@ class AppointmentServiceTest {
     }
 
     @Test
+    void create_whenClientFlowAndPreferredDateFallsOnClosedDay_shouldThrowBadRequestException() {
+        // Arrange
+        mockAuthenticatedUser(clientUser);
+        when(featureFlagService.isEnabled("ENABLE_CUSTOMER_PORTAL")).thenReturn(true);
+        when(featureFlagService.isEnabled("CLIENT_BOOKING")).thenReturn(true);
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+        when(salonProfileService.isDayOpen(any())).thenReturn(false);
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, LocalDate.now().plusDays(3), null, null);
+
+        // Act & Assert
+        assertThatThrownBy(() -> appointmentService.create(request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessage("O salão não funciona nesse dia da semana. Escolha outra data de preferência.");
+    }
+
+    @Test
+    void create_whenClientFlowAndNoPreferredDate_shouldNotCheckBusinessHoursAtAll() {
+        // Arrange: sem data de preferência, não há o que validar contra o horário de funcionamento.
+        mockAuthenticatedUser(clientUser);
+        when(featureFlagService.isEnabled("ENABLE_CUSTOMER_PORTAL")).thenReturn(true);
+        when(featureFlagService.isEnabled("CLIENT_BOOKING")).thenReturn(true);
+        when(employeeRepository.findById(5L)).thenReturn(Optional.of(employee));
+        when(salonServiceRepository.findById(8L)).thenReturn(Optional.of(salonService));
+
+        Appointment saved = new Appointment();
+        saved.setId(101L);
+        saved.setClient(clientUser);
+        saved.setEmployee(employee);
+        withService(saved, salonService);
+        saved.setStatus(AppointmentStatus.REQUESTED);
+        when(appointmentRepository.save(any(Appointment.class))).thenReturn(saved);
+
+        AppointmentRequest request = new AppointmentRequest(5L, List.of(new AppointmentServiceRequest(8L, null, null, null)), null, null, null, null);
+
+        // Act
+        appointmentService.create(request);
+
+        // Assert
+        verify(salonProfileService, never()).isDayOpen(any());
+    }
+
+    @Test
     void create_whenClientFlowAndNotesTooLong_shouldThrowBadRequestException() {
         // Arrange
         mockAuthenticatedUser(clientUser);
@@ -797,6 +852,9 @@ class AppointmentServiceTest {
         // Assert
         assertThat(result.status()).isEqualTo(AppointmentStatus.CONFIRMED.name());
         verify(emailService).sendConfirmationNotificationToClient(apt);
+        // confirm() é ação da equipe — nunca deveria ficar preso ao horário de funcionamento
+        // (é justamente onde a Cristiane encaixa alguém fora do expediente, se quiser).
+        verify(salonProfileService, never()).isDayOpen(any());
     }
 
     // --- decline tests ---

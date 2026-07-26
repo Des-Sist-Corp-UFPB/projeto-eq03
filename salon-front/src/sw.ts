@@ -21,7 +21,7 @@ cleanupOutdatedCaches();
 // Mesma regra de cache que existia em vite.config.ts (workbox.runtimeCaching) antes da troca
 // pra injectManifest — reescrita à mão porque essa opção só existe na estratégia generateSW.
 registerRoute(
-  ({ url }) => /\/v1\/(services|employees\/booking|feature-flags)/.test(url.pathname),
+  ({ url }) => /\/v1\/(services|employees\/booking|feature-flags|salon\/profile)/.test(url.pathname),
   new NetworkFirst({
     cacheName: 'api-public-cache',
     plugins: [new ExpirationPlugin({ maxEntries: 50, maxAgeSeconds: 86400 })],

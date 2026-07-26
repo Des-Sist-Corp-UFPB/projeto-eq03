@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/v1/products").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/employees/booking").permitAll()
                 .requestMatchers(HttpMethod.GET, "/v1/feature-flags").permitAll()
+                .requestMatchers(HttpMethod.GET, "/v1/salon/profile").permitAll()
                 .requestMatchers(HttpMethod.POST, "/v1/webhooks/mercadopago").permitAll()
                 
                 // Swagger & API Docs
