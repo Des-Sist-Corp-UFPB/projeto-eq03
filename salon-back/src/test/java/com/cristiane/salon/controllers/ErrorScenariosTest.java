@@ -10,6 +10,7 @@ import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
 import com.cristiane.salon.models.product.service.ProductService;
 import com.cristiane.salon.models.report.service.ReportService;
 import com.cristiane.salon.models.service.service.SalonServiceManager;
+import com.cristiane.salon.integrations.email.outbox.service.EmailOutboxService;
 import com.cristiane.salon.models.staff.service.StaffPixService;
 import com.cristiane.salon.models.staff.service.StaffProfileService;
 import com.cristiane.salon.models.user.service.AuthService;
@@ -91,6 +92,9 @@ class ErrorScenariosTest extends BaseControllerTest {
 
     @MockitoBean
     private StaffPixService staffPixService;
+
+    @MockitoBean
+    private EmailOutboxService emailOutboxService;
 
     @Test
     void whenInvalidAppointment_thenReturns400() throws Exception {

@@ -31,7 +31,7 @@ class EmailServiceTest {
     private AuditLogService auditLogService;
 
     @Mock
-    private EmailGateway emailGateway;
+    private com.cristiane.salon.integrations.email.outbox.service.EmailOutboxService emailOutboxService;
 
     @InjectMocks
     private EmailService emailService;
@@ -56,7 +56,7 @@ class EmailServiceTest {
     private void setupGatewayMock(boolean shouldFail) {
         if (shouldFail) {
             doThrow(new RuntimeException("API Connection Error"))
-                    .when(emailGateway).send(any(), any(), any(), any());
+                    .when(emailOutboxService).sendNow(any(), any(), any(), any(), any(), any());
         }
         // Sucesso: método void, não precisa de stub (não faz nada por padrão).
     }

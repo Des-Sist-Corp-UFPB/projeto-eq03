@@ -1,5 +1,6 @@
 package com.cristiane.salon.integrations.email.service;
 
+import com.cristiane.salon.integrations.email.outbox.service.EmailOutboxService;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.audit.AuditLogService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
@@ -23,7 +24,7 @@ public class EmailService {
     private final FeatureFlagService featureFlagService;
     private final TemplateEngine templateEngine;
     private final AuditLogService auditLogService;
-    private final EmailGateway emailGateway;
+    private final EmailOutboxService emailOutboxService;
 
     @Value("${mail.business:elksandrosandro19@gmail.com}")
     private String businessEmail;
@@ -31,8 +32,13 @@ public class EmailService {
     @Value("${app.frontend-url}")
     private String frontendUrl;
 
-    private void sendViaHttpApi(String to, String subject, String htmlContent, String replyTo) {
-        emailGateway.send(to, subject, htmlContent, replyTo);
+    // Grava na fila de retry (EmailOutboxService) além de tentar enviar na hora — se falhar,
+    // a exceção propaga igual antes, e cada método continua registrando o FAILURE no log de
+    // auditoria como já fazia; a diferença é que agora também fica registrado para reenvio
+    // automático depois, em vez de ser perdido para sempre.
+    private void sendViaHttpApi(String to, String subject, String htmlContent, String replyTo,
+            String relatedEntityType, Long relatedEntityId) {
+        emailOutboxService.sendNow(to, subject, htmlContent, replyTo, relatedEntityType, relatedEntityId);
     }
 
     @Async
@@ -48,7 +54,8 @@ public class EmailService {
             context.setVariable("frontendUrl", frontendUrl);
             String htmlContent = templateEngine.process("mail/appointment-request", context);
 
-            sendViaHttpApi(businessEmail, "Novo Pedido de Agendamento Recebido", htmlContent, businessEmail);
+            sendViaHttpApi(businessEmail, "Novo Pedido de Agendamento Recebido", htmlContent, businessEmail,
+                    "Appointment", appointment.getId());
             log.info("E-mail de notificação de solicitação enviado com sucesso para a equipe.");
 
             auditLogService.logAction(
@@ -91,7 +98,8 @@ public class EmailService {
             context.setVariable("appointment", appointment);
             String htmlContent = templateEngine.process("mail/appointment-confirmation", context);
 
-            sendViaHttpApi(clientEmail, "Seu Agendamento foi Confirmado!", htmlContent, businessEmail);
+            sendViaHttpApi(clientEmail, "Seu Agendamento foi Confirmado!", htmlContent, businessEmail,
+                    "Appointment", appointment.getId());
             log.info("E-mail de confirmação enviado com sucesso para: {}", clientEmail);
 
             auditLogService.logAction(
@@ -134,7 +142,8 @@ public class EmailService {
             context.setVariable("appointment", appointment);
             String htmlContent = templateEngine.process("mail/payment-confirmation", context);
 
-            sendViaHttpApi(clientEmail, "Pagamento Recebido e Confirmado!", htmlContent, businessEmail);
+            sendViaHttpApi(clientEmail, "Pagamento Recebido e Confirmado!", htmlContent, businessEmail,
+                    "Appointment", appointment.getId());
             log.info("E-mail de confirmação de pagamento enviado com sucesso para: {}", clientEmail);
 
             auditLogService.logAction(
@@ -175,7 +184,8 @@ public class EmailService {
                 context.setVariable("isStaff", false);
                 String htmlContent = templateEngine.process("mail/appointment-cancellation", context);
 
-                sendViaHttpApi(clientEmail, "Agendamento Cancelado", htmlContent, businessEmail);
+                sendViaHttpApi(clientEmail, "Agendamento Cancelado", htmlContent, businessEmail,
+                        "Appointment", appointment.getId());
                 log.info("E-mail de cancelamento enviado com sucesso para o cliente: {}", clientEmail);
 
                 auditLogService.logAction(
@@ -207,7 +217,8 @@ public class EmailService {
             context.setVariable("isStaff", true);
             String htmlContent = templateEngine.process("mail/appointment-cancellation", context);
 
-            sendViaHttpApi(businessEmail, "Agendamento Cancelado", htmlContent, businessEmail);
+            sendViaHttpApi(businessEmail, "Agendamento Cancelado", htmlContent, businessEmail,
+                    "Appointment", appointment.getId());
             log.info("E-mail de cancelamento enviado com sucesso para a equipe.");
 
             auditLogService.logAction(
@@ -246,7 +257,8 @@ public class EmailService {
             context.setVariable("resetLink", resetLink);
             String htmlContent = templateEngine.process("mail/password-reset", context);
 
-            sendViaHttpApi(user.getEmail(), "Redefinição de Senha", htmlContent, businessEmail);
+            sendViaHttpApi(user.getEmail(), "Redefinição de Senha", htmlContent, businessEmail,
+                    "User", user.getId());
             log.info("E-mail de redefinição de senha enviado com sucesso para: {}", user.getEmail());
 
             auditLogService.logAction(
