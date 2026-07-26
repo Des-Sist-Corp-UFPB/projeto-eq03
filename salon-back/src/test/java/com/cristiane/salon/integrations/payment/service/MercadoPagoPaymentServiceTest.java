@@ -9,7 +9,6 @@ import com.mercadopago.resources.payment.Payment;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.MockedConstruction;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -24,11 +23,14 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class MercadoPagoPaymentServiceTest {
 
-    @InjectMocks
+    // Não usamos @InjectMocks/@Mock para o MercadoPagoGateway aqui: ele é um componente sem
+    // dependências e sem estado, e mantê-lo real preserva o mockConstruction(PaymentClient)
+    // existente (o gateway também faz `new PaymentClient()` por baixo).
     private MercadoPagoPaymentService paymentService;
 
     @BeforeEach
     void setUp() {
+        paymentService = new MercadoPagoPaymentService(new MercadoPagoGateway());
         ReflectionTestUtils.setField(paymentService, "webhookSecret", "test_secret");
     }
 
@@ -99,7 +101,7 @@ class MercadoPagoPaymentServiceTest {
         Payment mockPayment = mock(Payment.class);
 
         try (MockedConstruction<PaymentClient> mockedClient = mockConstruction(PaymentClient.class,
-                (mock, context) -> when(mock.create(any())).thenReturn(mockPayment))) {
+                (mock, context) -> when(mock.create(any(), any())).thenReturn(mockPayment))) {
 
             Payment result = paymentService.createPixPayment(
                     BigDecimal.TEN, "Description", "payer@email.com",
@@ -120,7 +122,7 @@ class MercadoPagoPaymentServiceTest {
         when(exception.getApiResponse()).thenReturn(response);
 
         try (MockedConstruction<PaymentClient> mockedClient = mockConstruction(PaymentClient.class,
-                (mock, context) -> doThrow(exception).when(mock).create(any()))) {
+                (mock, context) -> doThrow(exception).when(mock).create(any(), any()))) {
 
             assertThatThrownBy(() -> paymentService.createPixPayment(
                     BigDecimal.TEN, "Description", "payer@email.com",
@@ -133,7 +135,7 @@ class MercadoPagoPaymentServiceTest {
     @Test
     void createPixPayment_whenGenericExceptionThrown_shouldThrowBadRequestException() throws Exception {
         try (MockedConstruction<PaymentClient> mockedClient = mockConstruction(PaymentClient.class,
-                (mock, context) -> doThrow(new RuntimeException("API Connection timeout")).when(mock).create(any()))) {
+                (mock, context) -> doThrow(new RuntimeException("API Connection timeout")).when(mock).create(any(), any()))) {
 
             assertThatThrownBy(() -> paymentService.createPixPayment(
                     BigDecimal.TEN, "Description", "payer@email.com",

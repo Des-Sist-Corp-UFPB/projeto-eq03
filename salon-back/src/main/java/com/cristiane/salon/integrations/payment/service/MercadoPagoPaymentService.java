@@ -12,7 +12,6 @@ import org.springframework.stereotype.Service;
 
 import com.cristiane.salon.exception.BadRequestException;
 import com.mercadopago.client.common.IdentificationRequest;
-import com.mercadopago.client.payment.PaymentClient;
 import com.mercadopago.client.payment.PaymentCreateRequest;
 import com.mercadopago.client.payment.PaymentPayerRequest;
 import com.mercadopago.resources.payment.Payment;
@@ -26,14 +25,18 @@ import lombok.extern.slf4j.Slf4j;
 @Service
 public class MercadoPagoPaymentService {
 
+    private final MercadoPagoGateway gateway;
+
+    public MercadoPagoPaymentService(MercadoPagoGateway gateway) {
+        this.gateway = gateway;
+    }
+
     @Value("${mercadopago.webhook-secret:test_secret}")
     private String webhookSecret;
 
     public Payment createPixPayment(BigDecimal amount, String description, String payerEmail, String payerName,
             String payerCpf, Long appointmentId) {
         try {
-            PaymentClient client = new PaymentClient();
-
             // Divide o nome completo em primeiro e último nome para a API do Mercado Pago
             String[] nameParts = (payerName != null ? payerName.trim() : "Cliente").split("\\s+", 2);
             String firstName = nameParts[0];
@@ -56,7 +59,12 @@ public class MercadoPagoPaymentService {
                             .build())
                     .build();
 
-            Payment payment = client.create(request);
+            // Uma chave nova por chamada: tentativas automáticas do Resilience4j (retry) desta
+            // MESMA chamada reusam a mesma chave (evitando duplicar a cobrança), mas uma
+            // chamada manual nova (ex.: usuário clicando "gerar PIX" de novo depois que o
+            // anterior expirou) gera uma chave diferente, permitindo um PIX novo de verdade.
+            String idempotencyKey = "appointment-" + appointmentId + "-" + java.util.UUID.randomUUID();
+            Payment payment = gateway.createPayment(request, idempotencyKey);
 
             log.info("PIX gerado no Mercado Pago com sucesso para o Agendamento ID: {}", appointmentId);
             return payment;
@@ -76,9 +84,8 @@ public class MercadoPagoPaymentService {
 
     public Payment getPayment(Long paymentId) {
         try {
-            PaymentClient client = new PaymentClient();
             // Vai na API do Mercado Pago oficial consultar o status real desse ID
-            return client.get(paymentId);
+            return gateway.getPayment(paymentId);
         } catch (Exception e) {
             log.error("Erro ao buscar pagamento no Mercado Pago: ", e);
             return null; // Se der erro (ex: ID falso de hacker), retorna nulo

@@ -28,3 +28,15 @@ ai:
 app:
   pii-encryption-key: Nzw/+MV8Zya7ouYkSiK98gMrF7iSQjPyQcIkx/hdEV8=
   pii-hash-pepper: rs/akrNxHDd9/qv389QsjCHUgW+AZf1fKBsgA41dDr4=
+
+# Espera de retry/circuito mínima em teste — o comportamento (nº de tentativas, quando o
+# circuito abre) é o mesmo, só sem o tempo de espera real de produção.
+resilience4j:
+  retry:
+    configs:
+      default:
+        wait-duration: 10ms
+  circuitbreaker:
+    configs:
+      default:
+        wait-duration-in-open-state: 1s

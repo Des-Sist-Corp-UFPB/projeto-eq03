@@ -1,5 +1,8 @@
 package com.cristiane.salon.models.ai.client;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
+import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -14,12 +17,19 @@ import java.util.Map;
  * apontar pra qualquer backend que fale esse formato (OpenAI, Azure OpenAI, Groq, OpenRouter,
  * Ollama, vLLM, ou um proxy como o LiteLLM na frente de outra coisa qualquer, incluindo
  * provedores que nativamente não falam esse formato). Nenhuma regra de negócio aqui; quem
- * decide o que perguntar é o {@link com.cristiane.salon.models.ai.service.RecommendationService}.
+ * decide o que perguntar é o {@link com.cristiane.salon.models.ai.service.RecommendationService},
+ * que também é quem converte qualquer falha (rede, circuito aberto, resposta malformada) em
+ * {@code BusinessException} — este componente só transporta.
  */
 @Component
+@RequiredArgsConstructor
 public class OpenAiCompatibleChatClient {
 
+    private final RestClient.Builder restClientBuilder;
+
     @SuppressWarnings("unchecked")
+    @CircuitBreaker(name = "ai-provider")
+    @Retry(name = "ai-provider")
     public ChatCompletionResult complete(
             String baseUrl,
             String apiKey,
@@ -29,7 +39,7 @@ public class OpenAiCompatibleChatClient {
             String systemPrompt,
             String userPrompt
     ) {
-        RestClient restClient = RestClient.create(baseUrl);
+        RestClient restClient = restClientBuilder.clone().baseUrl(baseUrl).build();
 
         Map<String, Object> payload = Map.of(
                 "model", model,

@@ -19,6 +19,21 @@ app:
   # Base do frontend usada para montar links clicáveis em e-mails (ex.: redefinição de
   # senha). Sem isso, o link renderizado num e-mail de produção apontaria pra localhost.
   frontend-url: ${FRONTEND_URL:http://localhost:5173}
+  # Timeout compartilhado por qualquer chamada HTTP a sistema externo (ver HttpClientConfig).
+  # Uma integração nova não precisa configurar o próprio timeout, só usar o RestClient.Builder
+  # injetado.
+  http-client:
+    connect-timeout-ms: ${HTTP_CLIENT_CONNECT_TIMEOUT_MS:3000}
+    read-timeout-ms: ${HTTP_CLIENT_READ_TIMEOUT_MS:5000}
+  # Fila de retry de e-mail (ver EmailOutboxService) — retenção curta de propósito: o registro
+  # permanente de todo envio já existe em tb_audit_log, esta tabela é só operacional (o que
+  # ainda falta reenviar + histórico recente pra tela de admin), então não faz sentido manter
+  # e-mail/corpo de mensagem além do necessário (minimização de dado pessoal, LGPD).
+  email-outbox:
+    retry-check-interval-ms: ${EMAIL_OUTBOX_RETRY_CHECK_INTERVAL_MS:300000}
+    cleanup-cron: ${EMAIL_OUTBOX_CLEANUP_CRON:0 0 3 * * *}
+    sent-retention-days: ${EMAIL_OUTBOX_SENT_RETENTION_DAYS:7}
+    dead-letter-retention-days: ${EMAIL_OUTBOX_DEAD_LETTER_RETENTION_DAYS:90}
 
 logging:
   level:
@@ -29,3 +44,54 @@ logging:
 mercadopago:
   access-token: ${MERCADO_PAGO_ACCESS_TOKEN}
   webhook-secret: ${MERCADO_PAGO_WEBHOOK_SECRET}
+
+# Resilience4j: infraestrutura genérica de resiliência a falha de integração externa.
+# "default" é o template — qualquer integração nova só cria uma instance nova referenciando
+# base-config: default (herdando timeout/threshold padrão) e, se precisar de comportamento
+# diferente (ex.: ignorar um tipo de exceção que é erro de negócio e não falha transitória),
+# sobrescreve só o que for diferente. Não é necessário reimplementar circuito/retry a cada
+# integração nova.
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        sliding-window-type: COUNT_BASED
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+        automatic-transition-from-open-to-half-open-enabled: true
+    instances:
+      mercadopago:
+        base-config: default
+        # MPApiException = o Mercado Pago respondeu recusando o pagamento (ex.: CPF inválido).
+        # Isso é erro de negócio do cliente, não indisponibilidade do gateway — não deve contar
+        # como falha para fins de abrir o circuito.
+        ignore-exceptions:
+          - com.mercadopago.exceptions.MPApiException
+      ai-provider:
+        base-config: default
+        # Resposta do modelo fora do formato esperado é problema de conteúdo, não de rede.
+        ignore-exceptions:
+          - java.lang.IllegalStateException
+      email-provider:
+        base-config: default
+  retry:
+    configs:
+      default:
+        max-attempts: 3
+        wait-duration: 500ms
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: 2
+    instances:
+      mercadopago:
+        base-config: default
+        ignore-exceptions:
+          - com.mercadopago.exceptions.MPApiException
+      ai-provider:
+        base-config: default
+        ignore-exceptions:
+          - java.lang.IllegalStateException
+      email-provider:
+        base-config: default

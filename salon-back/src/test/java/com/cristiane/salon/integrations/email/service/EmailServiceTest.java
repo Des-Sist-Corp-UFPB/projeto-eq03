@@ -9,18 +9,13 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClient;
 import org.thymeleaf.TemplateEngine;
 import org.thymeleaf.context.Context;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +30,9 @@ class EmailServiceTest {
     @Mock
     private AuditLogService auditLogService;
 
+    @Mock
+    private com.cristiane.salon.integrations.email.outbox.service.EmailOutboxService emailOutboxService;
+
     @InjectMocks
     private EmailService emailService;
 
@@ -43,10 +41,7 @@ class EmailServiceTest {
 
     @BeforeEach
     void setUp() {
-        ReflectionTestUtils.setField(emailService, "apiKey", "test-api-key");
-        ReflectionTestUtils.setField(emailService, "fromEmail", "notificacoes@elksandro.com");
         ReflectionTestUtils.setField(emailService, "businessEmail", "elksandrosandro19@gmail.com");
-        ReflectionTestUtils.setField(emailService, "apiUrl", "http://test-email-api.com");
         ReflectionTestUtils.setField(emailService, "frontendUrl", "http://localhost:5173");
 
         client = new User();
@@ -58,27 +53,12 @@ class EmailServiceTest {
         appointment.setClient(client);
     }
 
-    private void setupRestClientMock(MockedStatic<RestClient> mockedRestClient, boolean shouldFail) {
-        RestClient restClient = mock(RestClient.class);
-        mockedRestClient.when(() -> RestClient.create(anyString())).thenReturn(restClient);
-
-        RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
-        lenient().when(restClient.post()).thenReturn(requestBodyUriSpec);
-
-        RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
-        lenient().when(requestBodyUriSpec.uri(anyString())).thenReturn(requestBodySpec);
-        lenient().when(requestBodySpec.header(anyString(), anyString())).thenReturn(requestBodySpec);
-        lenient().when(requestBodySpec.contentType(any(MediaType.class))).thenReturn(requestBodySpec);
-        lenient().when(requestBodySpec.body(any(Object.class))).thenReturn(requestBodySpec);
-
-        RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-        lenient().when(requestBodySpec.retrieve()).thenReturn(responseSpec);
-
+    private void setupGatewayMock(boolean shouldFail) {
         if (shouldFail) {
-            lenient().when(responseSpec.toBodilessEntity()).thenThrow(new RuntimeException("API Connection Error"));
-        } else {
-            lenient().when(responseSpec.toBodilessEntity()).thenReturn(ResponseEntity.ok().build());
+            doThrow(new RuntimeException("API Connection Error"))
+                    .when(emailOutboxService).sendNow(any(), any(), any(), any(), any(), any());
         }
+        // Sucesso: método void, não precisa de stub (não faz nada por padrão).
     }
 
     @Test
@@ -99,23 +79,21 @@ class EmailServiceTest {
         when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
         when(templateEngine.process(eq("mail/appointment-request"), any(Context.class))).thenReturn("<html>Request HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, false);
+        setupGatewayMock(false);
 
-            // Act
-            emailService.sendRequestNotificationToStaff(appointment);
+        // Act
+        emailService.sendRequestNotificationToStaff(appointment);
 
-            // Assert
-            verify(auditLogService).logAction(
-                    isNull(),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("Appointment"),
-                    eq(1L),
-                    eq("E-mail de solicitação de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
-                    eq("SUCCESS")
-            );
-        }
+        // Assert
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("E-mail de solicitação de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
+                eq("SUCCESS")
+        );
     }
 
     @Test
@@ -125,16 +103,14 @@ class EmailServiceTest {
         org.mockito.ArgumentCaptor<Context> contextCaptor = org.mockito.ArgumentCaptor.forClass(Context.class);
         when(templateEngine.process(eq("mail/appointment-request"), contextCaptor.capture())).thenReturn("<html>Request HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, false);
+        setupGatewayMock(false);
 
-            // Act
-            emailService.sendRequestNotificationToStaff(appointment);
+        // Act
+        emailService.sendRequestNotificationToStaff(appointment);
 
-            // Assert: sem isso, o link "Visualizar no Painel" do e-mail apontaria pra
-            // localhost mesmo em produção (bug real corrigido nesta mudança).
-            assertThat(contextCaptor.getValue().getVariable("frontendUrl")).isEqualTo("http://localhost:5173");
-        }
+        // Assert: sem isso, o link "Visualizar no Painel" do e-mail apontaria pra
+        // localhost mesmo em produção (bug real corrigido nesta mudança).
+        assertThat(contextCaptor.getValue().getVariable("frontendUrl")).isEqualTo("http://localhost:5173");
     }
 
     @Test
@@ -166,24 +142,22 @@ class EmailServiceTest {
         when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
         when(templateEngine.process(eq("mail/appointment-request"), any(Context.class))).thenReturn("<html>Request HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, true);
+        setupGatewayMock(true);
 
-            // Act
-            emailService.sendRequestNotificationToStaff(appointment);
+        // Act
+        emailService.sendRequestNotificationToStaff(appointment);
 
-            // Assert
-            verify(auditLogService).logAction(
-                    isNull(),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("Appointment"),
-                    eq(1L),
-                    eq("Falha ao enviar e-mail de solicitação de agendamento para a equipe (elksandrosandro19@gmail.com)"),
-                    eq("FAILURE"),
-                    eq("API Connection Error")
-            );
-        }
+        // Assert
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("Falha ao enviar e-mail de solicitação de agendamento para a equipe (elksandrosandro19@gmail.com)"),
+                eq("FAILURE"),
+                eq("API Connection Error")
+        );
     }
 
     // --- sendConfirmationNotificationToClient ---
@@ -232,23 +206,21 @@ class EmailServiceTest {
         when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
         when(templateEngine.process(eq("mail/appointment-confirmation"), any(Context.class))).thenReturn("<html>Confirmation HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, false);
+        setupGatewayMock(false);
 
-            // Act
-            emailService.sendConfirmationNotificationToClient(appointment);
+        // Act
+        emailService.sendConfirmationNotificationToClient(appointment);
 
-            // Assert
-            verify(auditLogService).logAction(
-                    isNull(),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("Appointment"),
-                    eq(1L),
-                    eq("E-mail de confirmação de agendamento enviado para: client@example.com"),
-                    eq("SUCCESS")
-            );
-        }
+        // Assert
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("E-mail de confirmação de agendamento enviado para: client@example.com"),
+                eq("SUCCESS")
+        );
     }
 
     @Test
@@ -295,28 +267,26 @@ class EmailServiceTest {
         client.setEmail(null);
         when(templateEngine.process(eq("mail/appointment-cancellation"), any(Context.class))).thenReturn("<html>Cancellation HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, false);
+        setupGatewayMock(false);
 
-            // Act
-            emailService.sendCancellationNotification(appointment);
+        // Act
+        emailService.sendCancellationNotification(appointment);
 
-            // Assert
-            // Notified staff (success)
-            verify(auditLogService).logAction(
-                    isNull(),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("Appointment"),
-                    eq(1L),
-                    eq("E-mail de cancelamento de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
-                    eq("SUCCESS")
-            );
-            // No client log
-            verify(auditLogService, never()).logAction(
-                    any(), any(), any(), any(), any(), contains("cliente"), any(), any()
-            );
-        }
+        // Assert
+        // Notified staff (success)
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("E-mail de cancelamento de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
+                eq("SUCCESS")
+        );
+        // No client log
+        verify(auditLogService, never()).logAction(
+                any(), any(), any(), any(), any(), contains("cliente"), any(), any()
+        );
     }
 
     @Test
@@ -325,32 +295,30 @@ class EmailServiceTest {
         when(featureFlagService.isEnabled("EMAIL_NOTIFICATIONS")).thenReturn(true);
         when(templateEngine.process(eq("mail/appointment-cancellation"), any(Context.class))).thenReturn("<html>Cancellation HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, false);
+        setupGatewayMock(false);
 
-            // Act
-            emailService.sendCancellationNotification(appointment);
+        // Act
+        emailService.sendCancellationNotification(appointment);
 
-            // Assert
-            verify(auditLogService).logAction(
-                    isNull(),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("Appointment"),
-                    eq(1L),
-                    eq("E-mail de cancelamento de agendamento enviado para o cliente: client@example.com"),
-                    eq("SUCCESS")
-            );
-            verify(auditLogService).logAction(
-                    isNull(),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("Appointment"),
-                    eq(1L),
-                    eq("E-mail de cancelamento de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
-                    eq("SUCCESS")
-            );
-        }
+        // Assert
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("E-mail de cancelamento de agendamento enviado para o cliente: client@example.com"),
+                eq("SUCCESS")
+        );
+        verify(auditLogService).logAction(
+                isNull(),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("Appointment"),
+                eq(1L),
+                eq("E-mail de cancelamento de agendamento enviado para a equipe (elksandrosandro19@gmail.com)"),
+                eq("SUCCESS")
+        );
     }
 
     @Test
@@ -403,24 +371,22 @@ class EmailServiceTest {
         org.mockito.ArgumentCaptor<Context> contextCaptor = org.mockito.ArgumentCaptor.forClass(Context.class);
         when(templateEngine.process(eq("mail/password-reset"), contextCaptor.capture())).thenReturn("<html>Reset HTML</html>");
 
-        try (MockedStatic<RestClient> mockedRestClient = mockStatic(RestClient.class)) {
-            setupRestClientMock(mockedRestClient, false);
+        setupGatewayMock(false);
 
-            emailService.sendPasswordResetEmail(client, "raw-token");
+        emailService.sendPasswordResetEmail(client, "raw-token");
 
-            assertThat(contextCaptor.getValue().getVariable("resetLink"))
-                    .isEqualTo("http://localhost:5173/reset-password?token=raw-token");
+        assertThat(contextCaptor.getValue().getVariable("resetLink"))
+                .isEqualTo("http://localhost:5173/reset-password?token=raw-token");
 
-            verify(auditLogService).logAction(
-                    eq(10L),
-                    eq("SYSTEM"),
-                    eq("EMAIL_SENT"),
-                    eq("User"),
-                    eq(10L),
-                    eq("E-mail de redefinição de senha enviado para: client@example.com"),
-                    eq("SUCCESS")
-            );
-        }
+        verify(auditLogService).logAction(
+                eq(10L),
+                eq("SYSTEM"),
+                eq("EMAIL_SENT"),
+                eq("User"),
+                eq(10L),
+                eq("E-mail de redefinição de senha enviado para: client@example.com"),
+                eq("SUCCESS")
+        );
     }
 
     @Test

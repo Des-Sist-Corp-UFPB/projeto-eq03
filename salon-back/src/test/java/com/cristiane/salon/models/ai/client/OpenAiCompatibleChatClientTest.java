@@ -4,6 +4,7 @@ import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.web.client.RestClient;
 
 import java.math.BigDecimal;
 import java.net.InetSocketAddress;
@@ -22,7 +23,7 @@ class OpenAiCompatibleChatClientTest {
     private String responseToSend;
     private int statusToSend = 200;
 
-    private final OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient();
+    private final OpenAiCompatibleChatClient client = new OpenAiCompatibleChatClient(RestClient.builder());
 
     @BeforeEach
     void setUp() throws Exception {

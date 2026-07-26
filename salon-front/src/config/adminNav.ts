@@ -10,6 +10,7 @@ import {
   DollarSign,
   FileBarChart,
   Lightbulb,
+  Mail,
 } from 'lucide-react';
 
 export interface AdminNavItem {
@@ -35,6 +36,7 @@ export const ADMIN_NAV_ITEMS: AdminNavItem[] = [
   { to: '/admin/appointments', label: 'Agendamentos', icon: Calendar, allowedRoles: ['ADMIN', 'GERENTE_DE_ATENDIMENTO', 'FUNCIONARIA'] },
   { to: '/admin/cashflow', label: 'Fluxo de Caixa', icon: DollarSign, allowedRoles: ['ADMIN', 'GERENTE_DE_ATENDIMENTO'] },
   { to: '/admin/recommendations', label: 'Recomendações de IA', icon: Lightbulb, allowedRoles: ['ADMIN', 'GERENTE_DE_ATENDIMENTO'] },
+  { to: '/admin/email-outbox', label: 'Central de E-mails', icon: Mail, allowedRoles: ['ADMIN', 'GERENTE_DE_ATENDIMENTO'] },
 ];
 
 /** SYSADMIN tem bypass total no ProtectedRoute/AdminLayout, então enxerga tudo. */
