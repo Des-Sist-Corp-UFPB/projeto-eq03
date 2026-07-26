@@ -17,6 +17,7 @@ import { ResetPassword } from './pages/auth/ResetPassword';
 import { AdminServices } from './pages/admin/services/AdminServices';
 import { Products } from './pages/admin/products/Products';
 import { Users } from './pages/admin/users/Users';
+import { StaffRegistration } from './pages/admin/staff/StaffRegistration';
 import { Clients } from './pages/admin/clients/Clients';
 import { Employees } from './pages/admin/employees/Employees';
 import { PublicServices } from './pages/services/PublicServices';
@@ -168,6 +169,14 @@ export const Router = () => {
           element={
             <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
               <Employees />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/staff"
+          element={
+            <ProtectedRoute allowedRoles={['ADMIN', 'GERENTE_DE_ATENDIMENTO']}>
+              <StaffRegistration />
             </ProtectedRoute>
           }
         />
