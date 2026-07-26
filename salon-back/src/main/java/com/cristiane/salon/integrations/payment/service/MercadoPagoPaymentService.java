@@ -59,7 +59,12 @@ public class MercadoPagoPaymentService {
                             .build())
                     .build();
 
-            Payment payment = gateway.createPayment(request);
+            // Uma chave nova por chamada: tentativas automáticas do Resilience4j (retry) desta
+            // MESMA chamada reusam a mesma chave (evitando duplicar a cobrança), mas uma
+            // chamada manual nova (ex.: usuário clicando "gerar PIX" de novo depois que o
+            // anterior expirou) gera uma chave diferente, permitindo um PIX novo de verdade.
+            String idempotencyKey = "appointment-" + appointmentId + "-" + java.util.UUID.randomUUID();
+            Payment payment = gateway.createPayment(request, idempotencyKey);
 
             log.info("PIX gerado no Mercado Pago com sucesso para o Agendamento ID: {}", appointmentId);
             return payment;

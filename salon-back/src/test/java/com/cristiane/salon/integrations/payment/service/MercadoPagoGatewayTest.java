@@ -21,11 +21,28 @@ class MercadoPagoGatewayTest {
     void createPayment_delegatesToPaymentClient() throws Exception {
         Payment mockPayment = mock(Payment.class);
         try (MockedConstruction<PaymentClient> mocked = mockConstruction(PaymentClient.class,
-                (mock, context) -> when(mock.create(any())).thenReturn(mockPayment))) {
+                (mock, context) -> when(mock.create(any(), any())).thenReturn(mockPayment))) {
 
-            Payment result = gateway.createPayment(PaymentCreateRequest.builder().build());
+            Payment result = gateway.createPayment(PaymentCreateRequest.builder().build(), "idem-key-1");
 
             assertThat(result).isSameAs(mockPayment);
+        }
+    }
+
+    @Test
+    void createPayment_sendsIdempotencyKeyAsCustomHeader() throws Exception {
+        Payment mockPayment = mock(Payment.class);
+        try (MockedConstruction<PaymentClient> mocked = mockConstruction(PaymentClient.class,
+                (mock, context) -> when(mock.create(any(), any())).thenReturn(mockPayment))) {
+
+            gateway.createPayment(PaymentCreateRequest.builder().build(), "idem-key-42");
+
+            PaymentClient client = mocked.constructed().get(0);
+            org.mockito.ArgumentCaptor<com.mercadopago.core.MPRequestOptions> optionsCaptor =
+                    org.mockito.ArgumentCaptor.forClass(com.mercadopago.core.MPRequestOptions.class);
+            verify(client).create(any(), optionsCaptor.capture());
+            assertThat(optionsCaptor.getValue().getCustomHeaders())
+                    .containsEntry("X-Idempotency-Key", "idem-key-42");
         }
     }
 
@@ -35,9 +52,9 @@ class MercadoPagoGatewayTest {
         // Resilience4j conseguir diferenciar falha transitória de recusa de negócio —
         // MercadoPagoPaymentService é quem faz esse mapeamento, não o gateway.
         try (MockedConstruction<PaymentClient> mocked = mockConstruction(PaymentClient.class,
-                (mock, context) -> doThrow(new RuntimeException("Timeout")).when(mock).create(any()))) {
+                (mock, context) -> doThrow(new RuntimeException("Timeout")).when(mock).create(any(), any()))) {
 
-            assertThatThrownBy(() -> gateway.createPayment(PaymentCreateRequest.builder().build()))
+            assertThatThrownBy(() -> gateway.createPayment(PaymentCreateRequest.builder().build(), "idem-key-1"))
                     .isInstanceOf(RuntimeException.class)
                     .hasMessage("Timeout");
         }
