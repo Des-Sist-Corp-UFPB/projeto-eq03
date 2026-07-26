@@ -5,6 +5,7 @@ import { salonServicesApi } from '../../services/services/services';
 import { employeesApi } from '../../admin/employees/services/employees';
 import { appointmentsApi } from '../services/appointments';
 import { featureFlagsService } from '../../../services/featureFlags';
+import { salonProfileService } from '../../../services/salonProfile';
 
 const mockNavigate = vi.fn();
 
@@ -40,6 +41,34 @@ vi.mock('../../../services/featureFlags', () => ({
     getPublicFlags: vi.fn(),
   },
 }));
+
+vi.mock('../../../services/salonProfile', () => ({
+  salonProfileService: {
+    getPublic: vi.fn(),
+  },
+  DAY_LABELS: {
+    MONDAY: 'Segunda-feira',
+    TUESDAY: 'Terça-feira',
+    WEDNESDAY: 'Quarta-feira',
+    THURSDAY: 'Quinta-feira',
+    FRIDAY: 'Sexta-feira',
+    SATURDAY: 'Sábado',
+    SUNDAY: 'Domingo',
+  },
+}));
+
+/** Próxima data (string YYYY-MM-DD) futura que cai no dia da semana pedido (0=domingo). */
+function nextDateForWeekday(targetDay: number): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  while (d.getDay() !== targetDay) {
+    d.setDate(d.getDate() + 1);
+  }
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
 
 const mockServices = [
   {
@@ -78,6 +107,26 @@ describe('PublicAppointment Wizard Integration', () => {
       { name: 'CLIENT_BOOKING', enabled: true, description: 'Client booking feature' },
     ]);
     vi.mocked(appointmentsApi.create).mockResolvedValue({} as any);
+    vi.mocked(salonProfileService.getPublic).mockResolvedValue({
+      id: 1,
+      name: 'Espaço Cristiane Moura',
+      description: null,
+      address: null,
+      phone: null,
+      instagram: null,
+      whatsapp: null,
+      logoUrl: null,
+      updatedAt: null,
+      businessHours: [
+        { dayOfWeek: 'MONDAY', open: true, openTime: '08:00:00', closeTime: '18:00:00' },
+        { dayOfWeek: 'TUESDAY', open: true, openTime: '08:00:00', closeTime: '18:00:00' },
+        { dayOfWeek: 'WEDNESDAY', open: true, openTime: '08:00:00', closeTime: '18:00:00' },
+        { dayOfWeek: 'THURSDAY', open: true, openTime: '08:00:00', closeTime: '18:00:00' },
+        { dayOfWeek: 'FRIDAY', open: true, openTime: '08:00:00', closeTime: '18:00:00' },
+        { dayOfWeek: 'SATURDAY', open: true, openTime: '08:00:00', closeTime: '18:00:00' },
+        { dayOfWeek: 'SUNDAY', open: false, openTime: null, closeTime: null },
+      ],
+    });
 
     // Reset scroll mock
     window.scrollTo = vi.fn();
@@ -257,6 +306,74 @@ describe('PublicAppointment Wizard Integration', () => {
     expect(
       screen.getByText('A data de preferência deve ser hoje ou uma data futura.')
     ).toBeInTheDocument();
+  });
+
+  it('should block navigation with error message if preferred date falls on a closed day', async () => {
+    await act(async () => {
+      customRender(<PublicAppointment />, {
+        isAuthenticated: true,
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
+      });
+    });
+
+    // STEP 1
+    fireEvent.click(screen.getByText('Corte'));
+    fireEvent.click(screen.getByText('Próximo'));
+
+    // STEP 2
+    fireEvent.click(screen.getByText('Mariana'));
+    fireEvent.click(screen.getByText('Próximo'));
+
+    // STEP 3: domingo (fechado, conforme mock de salonProfileService)
+    const dateInput = screen.getByLabelText(/Dia de preferência/i);
+    fireEvent.change(dateInput, { target: { value: nextDateForWeekday(0) } });
+
+    fireEvent.click(screen.getByText('Próximo'));
+
+    expect(
+      screen.getByText('O salão está fechado em Domingo. Escolha outra data de preferência.')
+    ).toBeInTheDocument();
+  });
+
+  it('should allow navigation when preferred date falls on an open day', async () => {
+    await act(async () => {
+      customRender(<PublicAppointment />, {
+        isAuthenticated: true,
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
+      });
+    });
+
+    // STEP 1
+    fireEvent.click(screen.getByText('Corte'));
+    fireEvent.click(screen.getByText('Próximo'));
+
+    // STEP 2
+    fireEvent.click(screen.getByText('Mariana'));
+    fireEvent.click(screen.getByText('Próximo'));
+
+    // STEP 3: segunda-feira (aberto)
+    const dateInput = screen.getByLabelText(/Dia de preferência/i);
+    fireEvent.change(dateInput, { target: { value: nextDateForWeekday(1) } });
+
+    fireEvent.click(screen.getByText('Próximo'));
+
+    expect(screen.getByText('Revisar pedido')).toBeInTheDocument();
+  });
+
+  it('should show which days are closed as helper text under the date field', async () => {
+    await act(async () => {
+      customRender(<PublicAppointment />, {
+        isAuthenticated: true,
+        user: { email: 'client@salao.com', role: 'CLIENTE', userId: 5, permissions: [] },
+      });
+    });
+
+    fireEvent.click(screen.getByText('Corte'));
+    fireEvent.click(screen.getByText('Próximo'));
+    fireEvent.click(screen.getByText('Mariana'));
+    fireEvent.click(screen.getByText('Próximo'));
+
+    expect(screen.getByText(/Fechado: Domingo/)).toBeInTheDocument();
   });
 
   it('should render disabled booking page if feature flag is false', async () => {

@@ -29,6 +29,7 @@ import com.cristiane.salon.models.service.repository.SalonServiceRepository;
 import com.cristiane.salon.integrations.email.service.EmailService;
 import com.cristiane.salon.integrations.push.service.PushService;
 import com.cristiane.salon.models.featureflag.service.FeatureFlagService;
+import com.cristiane.salon.models.salonprofile.service.SalonProfileService;
 import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import com.cristiane.salon.models.audit.AuditLogService;
@@ -62,6 +63,7 @@ public class AppointmentService {
     private final FeatureFlagService featureFlagService;
     private final EmailService emailService;
     private final PushService pushService;
+    private final SalonProfileService salonProfileService;
     private final MercadoPagoPaymentService mercadoPagoPaymentService;
     private final AuditLogService auditLogService;
 
@@ -211,6 +213,12 @@ public class AppointmentService {
 
         if (request.preferredDate() != null && request.preferredDate().isBefore(LocalDate.now())) {
             throw new BadRequestException("A data preferida deve ser hoje ou uma data futura");
+        }
+
+        // Só bloqueia a PREFERÊNCIA do cliente (issue #116) — nunca a equipe: staffCreatesForClient
+        // (acima) e confirm() continuam livres para encaixar alguém fora do expediente normal.
+        if (request.preferredDate() != null && !salonProfileService.isDayOpen(request.preferredDate().getDayOfWeek())) {
+            throw new BadRequestException("O salão não funciona nesse dia da semana. Escolha outra data de preferência.");
         }
 
         String notes = request.clientNotes();

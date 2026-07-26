@@ -20,6 +20,17 @@ import { appointmentsApi } from './services/appointments';
 import { useAuth } from '../../hooks/useAuth';
 import { getApiErrorMessage } from '../../utils/apiError';
 import { featureFlagsService } from '../../services/featureFlags';
+import { salonProfileService, DAY_LABELS } from '../../services/salonProfile';
+import type { DayOfWeek } from '../../services/salonProfile';
+
+const JS_DAY_TO_DAY_OF_WEEK: DayOfWeek[] = [
+  'SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY',
+];
+
+function dateStringToDayOfWeek(dateStr: string): DayOfWeek {
+  // Meio-dia evita o clássico bug de fuso horário ao converter "YYYY-MM-DD" pra Date.
+  return JS_DAY_TO_DAY_OF_WEEK[new Date(`${dateStr}T12:00:00`).getDay()];
+}
 
 function priceTagLabel(price: number | null | undefined): string | null {
   if (price == null || Number.isNaN(price)) return null;
@@ -48,6 +59,7 @@ export const PublicAppointment = () => {
   const [isInitialLoading, setIsInitialLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState('');
   const [isBookingEnabled, setIsBookingEnabled] = useState(true);
+  const [closedDays, setClosedDays] = useState<Set<DayOfWeek>>(new Set());
 
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
@@ -77,15 +89,20 @@ export const PublicAppointment = () => {
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
-        const [servicesData, employeesData, flagsData] = await Promise.all([
+        const [servicesData, employeesData, flagsData, salonProfile] = await Promise.all([
           salonServicesApi.findAll({ active: true }, 0, 1000),
           employeesApi.findAllForBooking(),
           featureFlagsService.getPublicFlags().catch(() => [] as any[]),
+          // Best-effort: se essa chamada falhar, o wizard segue sem bloquear dia nenhum (fail-open).
+          salonProfileService.getPublic().catch(() => null),
         ]);
         setServices(servicesData.content);
         setEmployees(employeesData);
         const bookingFlag = flagsData.find((f) => f.name === 'CLIENT_BOOKING');
         if (bookingFlag && !bookingFlag.enabled) setIsBookingEnabled(false);
+        if (salonProfile) {
+          setClosedDays(new Set(salonProfile.businessHours.filter((bh) => !bh.open).map((bh) => bh.dayOfWeek)));
+        }
       } catch (error) {
         const msg = getApiErrorMessage(
           error,
@@ -111,6 +128,12 @@ export const PublicAppointment = () => {
     if (step === 3) {
       if (preferredDate && preferredDate < localTodayIso()) {
         setErrorMsg('A data de preferência deve ser hoje ou uma data futura.');
+        return;
+      }
+      if (preferredDate && closedDays.has(dateStringToDayOfWeek(preferredDate))) {
+        setErrorMsg(
+          `O salão está fechado em ${DAY_LABELS[dateStringToDayOfWeek(preferredDate)]}. Escolha outra data de preferência.`
+        );
         return;
       }
       setErrorMsg('');
@@ -397,6 +420,11 @@ export const PublicAppointment = () => {
                 onChange={(e) => setPreferredDate(e.target.value)}
                 className="w-full text-sm px-4 py-2.5 bg-gray-50 border border-gray-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-[#be8a83]/20 focus:border-[#be8a83] outline-none transition-all"
               />
+              {closedDays.size > 0 && (
+                <p className="text-xs text-[#3b3036]/50">
+                  Fechado: {Array.from(closedDays).map((day) => DAY_LABELS[day]).join(', ')}
+                </p>
+              )}
             </div>
             <div className="space-y-1.5">
               <label
