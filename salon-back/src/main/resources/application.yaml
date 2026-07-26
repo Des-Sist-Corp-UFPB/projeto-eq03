@@ -25,6 +25,15 @@ app:
   http-client:
     connect-timeout-ms: ${HTTP_CLIENT_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${HTTP_CLIENT_READ_TIMEOUT_MS:5000}
+  # Fila de retry de e-mail (ver EmailOutboxService) — retenção curta de propósito: o registro
+  # permanente de todo envio já existe em tb_audit_log, esta tabela é só operacional (o que
+  # ainda falta reenviar + histórico recente pra tela de admin), então não faz sentido manter
+  # e-mail/corpo de mensagem além do necessário (minimização de dado pessoal, LGPD).
+  email-outbox:
+    retry-check-interval-ms: ${EMAIL_OUTBOX_RETRY_CHECK_INTERVAL_MS:300000}
+    cleanup-cron: ${EMAIL_OUTBOX_CLEANUP_CRON:0 0 3 * * *}
+    sent-retention-days: ${EMAIL_OUTBOX_SENT_RETENTION_DAYS:7}
+    dead-letter-retention-days: ${EMAIL_OUTBOX_DEAD_LETTER_RETENTION_DAYS:90}
 
 logging:
   level:

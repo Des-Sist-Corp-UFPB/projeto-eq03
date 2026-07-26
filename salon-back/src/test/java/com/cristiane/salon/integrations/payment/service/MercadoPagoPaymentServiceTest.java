@@ -101,7 +101,7 @@ class MercadoPagoPaymentServiceTest {
         Payment mockPayment = mock(Payment.class);
 
         try (MockedConstruction<PaymentClient> mockedClient = mockConstruction(PaymentClient.class,
-                (mock, context) -> when(mock.create(any())).thenReturn(mockPayment))) {
+                (mock, context) -> when(mock.create(any(), any())).thenReturn(mockPayment))) {
 
             Payment result = paymentService.createPixPayment(
                     BigDecimal.TEN, "Description", "payer@email.com",
@@ -122,7 +122,7 @@ class MercadoPagoPaymentServiceTest {
         when(exception.getApiResponse()).thenReturn(response);
 
         try (MockedConstruction<PaymentClient> mockedClient = mockConstruction(PaymentClient.class,
-                (mock, context) -> doThrow(exception).when(mock).create(any()))) {
+                (mock, context) -> doThrow(exception).when(mock).create(any(), any()))) {
 
             assertThatThrownBy(() -> paymentService.createPixPayment(
                     BigDecimal.TEN, "Description", "payer@email.com",
@@ -135,7 +135,7 @@ class MercadoPagoPaymentServiceTest {
     @Test
     void createPixPayment_whenGenericExceptionThrown_shouldThrowBadRequestException() throws Exception {
         try (MockedConstruction<PaymentClient> mockedClient = mockConstruction(PaymentClient.class,
-                (mock, context) -> doThrow(new RuntimeException("API Connection timeout")).when(mock).create(any()))) {
+                (mock, context) -> doThrow(new RuntimeException("API Connection timeout")).when(mock).create(any(), any()))) {
 
             assertThatThrownBy(() -> paymentService.createPixPayment(
                     BigDecimal.TEN, "Description", "payer@email.com",
