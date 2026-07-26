@@ -46,8 +46,12 @@ public class BeanConfig {
     @Bean
     public ObjectMapper objectMapper() {
         ObjectMapper mapper = new ObjectMapper();
+        // Sem isso, qualquer tipo com LocalDate/LocalTime (ex.: StaffProfileRequest.birthDate)
+        // faz este mapper falhar ao serializar — o que hoje é usado, entre outras coisas,
+        // pelo AuditAspect para registrar os argumentos de métodos @Auditable(captureArgs=true).
+        mapper.registerModule(new com.fasterxml.jackson.datatype.jsr310.JavaTimeModule());
         com.fasterxml.jackson.databind.module.SimpleModule module = new com.fasterxml.jackson.databind.module.SimpleModule();
-        
+
         module.addSerializer(LocalDateTime.class, new com.fasterxml.jackson.databind.JsonSerializer<LocalDateTime>() {
             private static final ZoneId UTC = ZoneId.of("UTC");
             private static final ZoneId RECIFE = ZoneId.of("America/Recife");

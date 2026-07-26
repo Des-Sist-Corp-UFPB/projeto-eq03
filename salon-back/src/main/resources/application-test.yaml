@@ -24,3 +24,7 @@ mercadopago:
 
 ai:
   config-encryption-key: dGVzdC1haS1lbmNyeXB0aW9uLWtleS0zMi1ieXRlcyE=
+
+app:
+  pii-encryption-key: Nzw/+MV8Zya7ouYkSiK98gMrF7iSQjPyQcIkx/hdEV8=
+  pii-hash-pepper: rs/akrNxHDd9/qv389QsjCHUgW+AZf1fKBsgA41dDr4=

@@ -33,6 +33,13 @@ ai:
   # Chave AES-256 (base64) que cifra a API key de IA armazenada em tb_ai_config — nunca em texto puro no banco.
   config-encryption-key: ZGV2LWFpLWVuY3J5cHRpb24ta2V5LTMyLWJ5dGVzISE=
 
+app:
+  # Chave AES-256 (base64) que cifra dados pessoais sensíveis (CPF, chave PIX) em tb_staff_profile.
+  # Separada da chave de IA de propósito: comprometer uma não compromete a outra.
+  pii-encryption-key: I75V7+Y3dKf5oKexVJKiyDvrAFgWldgN+wc8ARi/NfI=
+  # Pepper do HMAC-SHA256 do hash determinístico do CPF (checagem de duplicidade sem decifrar).
+  pii-hash-pepper: sezDL9n7czVKGBhKfv2cSfX8H/QIcS78rExJfv0FN1s=
+
 springdoc:
   swagger-ui:
     path: /swagger-ui.html
