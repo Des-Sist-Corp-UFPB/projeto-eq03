@@ -32,6 +32,10 @@ public class PushService {
     public void sendToUser(Long userId, String title, String body, String url) {
         List<PushSubscription> subscriptions = repository.findByUserId(userId);
         if (subscriptions.isEmpty()) {
+            // Cenário normal (usuário que nunca autorizou notificações), mas precisa aparecer no
+            // log: sem esta linha, "push não chegou por falta de subscription" e "push não chegou
+            // por bug no envio" ficam indistinguíveis — os dois casos não deixam rastro nenhum.
+            log.info("Nenhuma subscription de push registrada para o usuário {} — notificação '{}' não enviada", userId, title);
             return;
         }
 

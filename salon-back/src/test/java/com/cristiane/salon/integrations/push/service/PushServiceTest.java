@@ -1,10 +1,14 @@
 package com.cristiane.salon.integrations.push.service;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import com.cristiane.salon.integrations.push.entity.PushSubscription;
 import com.cristiane.salon.integrations.push.repository.PushSubscriptionRepository;
 import com.cristiane.salon.models.user.entity.User;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import nl.martijndwars.webpush.Notification;
+import org.slf4j.LoggerFactory;
 import org.apache.http.HttpResponse;
 import org.apache.http.StatusLine;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
@@ -75,6 +79,29 @@ class PushServiceTest {
         pushService.sendToUser(1L, "Título", "Corpo", "/url");
 
         verifyNoInteractions(webPushService);
+    }
+
+    @Test
+    void sendToUser_whenNoSubscriptions_logsWhyNothingWasSent() {
+        // O log é o conserto aqui, não um detalhe estético: sem ele, "o usuário nunca autorizou
+        // push" e "o envio quebrou" deixam exatamente o mesmo rastro em produção (nenhum), e a
+        // única pista que sobra é o e-mail ter chegado e a notificação não.
+        Logger logger = (Logger) LoggerFactory.getLogger(PushService.class);
+        ListAppender<ILoggingEvent> appender = new ListAppender<>();
+        appender.start();
+        logger.addAppender(appender);
+        when(repository.findByUserId(42L)).thenReturn(List.of());
+
+        try {
+            pushService.sendToUser(42L, "Agendamento confirmado", "Corpo", "/url");
+        } finally {
+            logger.detachAppender(appender);
+        }
+
+        assertThat(appender.list)
+                .anySatisfy(event -> assertThat(event.getFormattedMessage())
+                        .contains("Nenhuma subscription de push")
+                        .contains("42"));
     }
 
     @Test

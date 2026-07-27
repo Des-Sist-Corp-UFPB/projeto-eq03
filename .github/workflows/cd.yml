@@ -45,6 +45,13 @@ jobs:
           file: ./Dockerfile
           push: true
           tags: ${{ env.IMAGE }}
+          # A chave pública VAPID tem que ser injetada no BUILD, não no runtime: o Vite embute
+          # as variáveis VITE_* no bundle durante o `npm run build`, dentro do Dockerfile.
+          # Usa `vars` (variável de repositório), não `secrets`, porque a chave pública não é
+          # segredo — vai pro navegador de todo cliente de qualquer jeito, e como `vars` ela
+          # fica visível/conferível na UI do GitHub em vez de mascarada nos logs.
+          build-args: |
+            VITE_VAPID_PUBLIC_KEY=${{ vars.VITE_VAPID_PUBLIC_KEY }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
         env:

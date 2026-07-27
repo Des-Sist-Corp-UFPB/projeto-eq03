@@ -26,7 +26,16 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
 export function usePushNotification(isAuthenticated: boolean) {
   useEffect(() => {
     if (!isAuthenticated) return;
-    if (!VAPID_PUBLIC_KEY) return;
+    if (!VAPID_PUBLIC_KEY) {
+      // Sair calado aqui já custou um bug em produção: a chave não era passada como build-arg
+      // no Dockerfile, então o bundle saía com ela undefined, o pedido de permissão nunca
+      // aparecia, e o único sintoma visível era "o e-mail chegou mas a notificação não".
+      console.warn(
+        'VITE_VAPID_PUBLIC_KEY ausente no bundle — notificações push desativadas. ' +
+          'Em produção ela precisa ser passada como build-arg no Dockerfile (ver cd.yml).'
+      );
+      return;
+    }
     if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
 
     let cancelled = false;
