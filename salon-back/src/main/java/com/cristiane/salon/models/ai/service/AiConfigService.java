@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.Instant;
 
 @Slf4j
 @Service
@@ -71,7 +72,7 @@ public class AiConfigService {
         }
 
         config.setUpdatedBy(currentUserEmail());
-        config.setUpdatedAt(LocalDateTime.now());
+        config.setUpdatedAt(Instant.now());
 
         AiConfig saved = repository.save(config);
         String decrypted = saved.getApiKeyEncrypted() != null ? encryptionUtil.decrypt(saved.getApiKeyEncrypted()) : null;

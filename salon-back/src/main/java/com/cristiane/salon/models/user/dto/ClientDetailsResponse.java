@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.user.dto;
 
 import com.cristiane.salon.models.appointment.dto.AppointmentResponse;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -12,7 +13,7 @@ public record ClientDetailsResponse(
     String cpf,
     String role,
     Boolean active,
-    LocalDateTime createdAt,
+    Instant createdAt,
     Long totalAppointments,
     LocalDateTime lastAppointmentDate,
     List<AppointmentResponse> appointments

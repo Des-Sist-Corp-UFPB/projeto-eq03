@@ -7,7 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 @Repository
@@ -45,8 +45,8 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
             @Param("userId") Long userId,
             @Param("entityType") String entityType,
             @Param("action") String action,
-            @Param("startDate") LocalDateTime startDate,
-            @Param("endDate") LocalDateTime endDate,
+            @Param("startDate") Instant startDate,
+            @Param("endDate") Instant endDate,
             Pageable pageable);
 
     
@@ -56,9 +56,9 @@ public interface AuditLogRepository extends JpaRepository<AuditLog, Long> {
     
     Page<AuditLog> findByEntityType(String entityType, Pageable pageable);
     
-    Page<AuditLog> findByCreatedAtBetween(LocalDateTime from, LocalDateTime to, Pageable pageable);
+    Page<AuditLog> findByCreatedAtBetween(Instant from, Instant to, Pageable pageable);
     
-    List<AuditLog> findByUserIdAndCreatedAtBetween(Long userId, LocalDateTime from, LocalDateTime to);
+    List<AuditLog> findByUserIdAndCreatedAtBetween(Long userId, Instant from, Instant to);
     
     List<AuditLog> findByEntityTypeAndEntityId(String entityType, Long entityId);
 }

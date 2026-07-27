@@ -40,6 +40,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import com.cristiane.salon.config.SalonClock;
+import java.time.ZoneId;
+import org.mockito.Spy;
 
 @ExtendWith(MockitoExtension.class)
 class UserServiceTest {
@@ -58,6 +63,11 @@ class UserServiceTest {
 
     @Mock
     private AppointmentRepository appointmentRepository;
+
+    // SalonClock real, não mock: os testes dependem do "hoje"/"agora" de verdade no fuso
+    // do salão, e um mock devolveria null silenciosamente.
+    @Spy
+    private SalonClock salonClock = new SalonClock(ZoneId.of("America/Recife"));
 
     @InjectMocks
     private UserService userService;
@@ -96,7 +106,7 @@ class UserServiceTest {
         activeUser.setPhone("81999999999");
         activeUser.setActive(true);
         activeUser.setRole(clientRole);
-        activeUser.setCreatedAt(LocalDateTime.now());
+        activeUser.setCreatedAt(Instant.now());
 
         inactiveUser = new User();
         inactiveUser.setId(11L);
@@ -106,7 +116,7 @@ class UserServiceTest {
         inactiveUser.setPhone("81888888888");
         inactiveUser.setActive(false);
         inactiveUser.setRole(clientRole);
-        inactiveUser.setCreatedAt(LocalDateTime.now());
+        inactiveUser.setCreatedAt(Instant.now());
     }
 
     private void attachService(Appointment appointment, String serviceName) {
@@ -233,7 +243,7 @@ class UserServiceTest {
         savedUser.setPhone(request.phone());
         savedUser.setRole(clientRole);
         savedUser.setActive(true);
-        savedUser.setCreatedAt(LocalDateTime.now());
+        savedUser.setCreatedAt(Instant.now());
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
@@ -266,7 +276,7 @@ class UserServiceTest {
         savedUser.setPhone(request.phone());
         savedUser.setRole(clientRole);
         savedUser.setActive(true);
-        savedUser.setCreatedAt(LocalDateTime.now());
+        savedUser.setCreatedAt(Instant.now());
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
@@ -296,7 +306,7 @@ class UserServiceTest {
         savedUser.setPhone(request.phone());
         savedUser.setRole(staffRole);
         savedUser.setActive(true);
-        savedUser.setCreatedAt(LocalDateTime.now());
+        savedUser.setCreatedAt(Instant.now());
 
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
 
@@ -680,7 +690,7 @@ class UserServiceTest {
         app1.getEmployee().setUser(activeUser);
         attachService(app1, "Service A");
         app1.setScheduledAt(null);
-        app1.setCreatedAt(LocalDateTime.of(2026, 6, 24, 10, 0));
+        app1.setCreatedAt(LocalDateTime.of(2026, 6, 24, 10, 0).toInstant(ZoneOffset.UTC));
         app1.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
 
         Appointment app2 = new Appointment();
@@ -690,7 +700,7 @@ class UserServiceTest {
         app2.getEmployee().setUser(activeUser);
         attachService(app2, "Service B");
         app2.setScheduledAt(null);
-        app2.setCreatedAt(LocalDateTime.of(2026, 6, 25, 14, 0)); // Later createdAt
+        app2.setCreatedAt(LocalDateTime.of(2026, 6, 25, 14, 0).toInstant(ZoneOffset.UTC)); // Later createdAt
         app2.setStatus(com.cristiane.salon.models.appointment.enums.AppointmentStatus.PENDING);
 
         Appointment app3 = new Appointment();

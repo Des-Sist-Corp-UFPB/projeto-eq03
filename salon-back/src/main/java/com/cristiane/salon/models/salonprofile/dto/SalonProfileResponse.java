@@ -2,7 +2,7 @@ package com.cristiane.salon.models.salonprofile.dto;
 
 import com.cristiane.salon.models.salonprofile.entity.SalonProfile;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.List;
 
 /** Público — servido sem autenticação em {@code GET /v1/salon/profile}. Nenhum campo aqui é
@@ -16,7 +16,7 @@ public record SalonProfileResponse(
         String instagram,
         String whatsapp,
         String logoUrl,
-        LocalDateTime updatedAt,
+        Instant updatedAt,
         List<BusinessHourDto> businessHours
 ) {
     public static SalonProfileResponse fromEntity(SalonProfile profile, List<BusinessHourDto> businessHours) {

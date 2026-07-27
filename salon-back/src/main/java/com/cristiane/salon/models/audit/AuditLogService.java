@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.audit;
 
+import com.cristiane.salon.config.SalonClock;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -16,6 +17,7 @@ import java.time.LocalTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -24,6 +26,7 @@ public class AuditLogService {
     private static final Logger logger = LoggerFactory.getLogger(AuditLogService.class);
     
     private final AuditLogRepository auditLogRepository;
+    private final SalonClock salonClock;
     
     public AuditLog logAction(
             Long userId,
@@ -62,7 +65,7 @@ public class AuditLogService {
                     .userAgent(userAgent)
                     .status(status)
                     .errorMessage(errorMessage)
-                    .createdAt(LocalDateTime.now())
+                    .createdAt(Instant.now())
                     .build();
             
             AuditLog savedAudit = auditLogRepository.save(auditLog);
@@ -104,17 +107,15 @@ public class AuditLogService {
         String searchAction = (action == null || action.trim().isEmpty()) ? null : action.trim();
         String searchEntity = (entityType == null || entityType.trim().isEmpty()) ? null : entityType.trim();
 
-        LocalDateTime queryStart = null;
-        if (startDate != null) {
-            ZonedDateTime recifeStart = startDate.atTime(LocalTime.of(0, 0, 0)).atZone(ZoneId.of("America/Recife"));
-            queryStart = recifeStart.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
-        }
+        // O filtro da tela é em dias do calendário do salão ("de 01/07 até 05/07"), mas
+        // createdAt é instante — basta converter a borda do dia usando o fuso do salão.
+        // A versão anterior fazia Recife -> ZoneId.systemDefault() na mão porque o campo era
+        // LocalDateTime e carregava o fuso da JVM junto; com Instant isso sai de cena.
+        Instant queryStart = startDate == null ? null
+                : startDate.atStartOfDay(salonClock.zone()).toInstant();
 
-        LocalDateTime queryEnd = null;
-        if (endDate != null) {
-            ZonedDateTime recifeEnd = endDate.atTime(LocalTime.of(23, 59, 59)).atZone(ZoneId.of("America/Recife"));
-            queryEnd = recifeEnd.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
-        }
+        Instant queryEnd = endDate == null ? null
+                : endDate.atTime(LocalTime.MAX).atZone(salonClock.zone()).toInstant();
 
         return auditLogRepository.findWithFiltersCombined(
                 userId,
@@ -138,8 +139,12 @@ public class AuditLogService {
         return auditLogRepository.findByEntityType(entityType, pageable);
     }
     
+    /** {@code from}/{@code to} chegam como hora local do salão (é o que a tela envia). */
     public Page<AuditLog> getAuditLogsByDateRange(LocalDateTime from, LocalDateTime to, Pageable pageable) {
-        return auditLogRepository.findByCreatedAtBetween(from, to, pageable);
+        return auditLogRepository.findByCreatedAtBetween(
+                from.atZone(salonClock.zone()).toInstant(),
+                to.atZone(salonClock.zone()).toInstant(),
+                pageable);
     }
     
     public List<AuditLog> getEntityHistory(String entityType, Long entityId) {

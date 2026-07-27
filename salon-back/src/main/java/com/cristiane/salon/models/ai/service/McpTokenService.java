@@ -21,6 +21,8 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.List;
 import java.util.Optional;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Gera, lista, revoga e valida tokens de acesso ao servidor MCP. Múltiplos tokens nomeados
@@ -44,8 +46,8 @@ public class McpTokenService {
                 .name(request.name())
                 .tokenHash(hash(rawToken))
                 .createdBy(currentUserEmail())
-                .createdAt(LocalDateTime.now())
-                .expiresAt(request.expiresInDays() != null ? LocalDateTime.now().plusDays(request.expiresInDays()) : null)
+                .createdAt(Instant.now())
+                .expiresAt(request.expiresInDays() != null ? Instant.now().plus(request.expiresInDays(), ChronoUnit.DAYS) : null)
                 .revoked(false)
                 .build();
 
@@ -79,7 +81,7 @@ public class McpTokenService {
             return Optional.empty();
         }
         McpAccessToken token = found.get();
-        token.setLastUsedAt(LocalDateTime.now());
+        token.setLastUsedAt(Instant.now());
         repository.save(token);
         return Optional.of(token);
     }

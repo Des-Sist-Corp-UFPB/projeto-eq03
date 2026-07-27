@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
+import java.time.Instant;
 
 @ExtendWith(MockitoExtension.class)
 class EmailOutboxServiceTest {
@@ -113,7 +114,7 @@ class EmailOutboxServiceTest {
     void cleanup_deletesSentOlderThanRetentionAndDeadLetterOlderThanRetention() {
         service.cleanup();
 
-        verify(repository).deleteByStatusAndUpdatedAtBefore(eq(EmailOutboxStatus.SENT), any(LocalDateTime.class));
-        verify(repository).deleteByStatusAndUpdatedAtBefore(eq(EmailOutboxStatus.DEAD_LETTER), any(LocalDateTime.class));
+        verify(repository).deleteByStatusAndUpdatedAtBefore(eq(EmailOutboxStatus.SENT), any(Instant.class));
+        verify(repository).deleteByStatusAndUpdatedAtBefore(eq(EmailOutboxStatus.DEAD_LETTER), any(Instant.class));
     }
 }

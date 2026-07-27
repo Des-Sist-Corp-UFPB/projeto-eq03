@@ -3,7 +3,7 @@ package com.cristiane.salon.models.ai.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Cache do último resultado gerado por {@link RecommendationType}. */
 @Getter
@@ -28,5 +28,5 @@ public class AiRecommendation {
     private String payload;
 
     @Column(name = "generated_at", nullable = false)
-    private LocalDateTime generatedAt;
+    private Instant generatedAt;
 }

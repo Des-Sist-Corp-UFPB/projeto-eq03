@@ -2,16 +2,16 @@ package com.cristiane.salon.models.ai.dto;
 
 import com.cristiane.salon.models.ai.entity.McpAccessToken;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Nunca carrega o hash nem o valor do token — só metadados de gestão. */
 public record McpTokenResponse(
         Long id,
         String name,
         String createdBy,
-        LocalDateTime createdAt,
-        LocalDateTime expiresAt,
-        LocalDateTime lastUsedAt,
+        Instant createdAt,
+        Instant expiresAt,
+        Instant lastUsedAt,
         boolean revoked
 ) {
     public static McpTokenResponse fromEntity(McpAccessToken token) {

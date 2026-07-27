@@ -3,7 +3,7 @@ package com.cristiane.salon.models.ai.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Token de acesso ao servidor MCP. Só o hash é persistido — o valor em texto puro é devolvido
@@ -32,13 +32,13 @@ public class McpAccessToken {
     private String createdBy;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "expires_at")
-    private LocalDateTime expiresAt;
+    private Instant expiresAt;
 
     @Column(name = "last_used_at")
-    private LocalDateTime lastUsedAt;
+    private Instant lastUsedAt;
 
     @Column(nullable = false)
     private Boolean revoked;
@@ -47,6 +47,6 @@ public class McpAccessToken {
         if (Boolean.TRUE.equals(revoked)) {
             return false;
         }
-        return expiresAt == null || expiresAt.isAfter(LocalDateTime.now());
+        return expiresAt == null || expiresAt.isAfter(Instant.now());
     }
 }

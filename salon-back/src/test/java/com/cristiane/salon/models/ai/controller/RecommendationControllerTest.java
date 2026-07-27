@@ -23,6 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 @WebMvcTest(RecommendationController.class)
 class RecommendationControllerTest extends BaseControllerTest {
@@ -39,7 +40,7 @@ class RecommendationControllerTest extends BaseControllerTest {
         RecommendationResult result = new RecommendationResult(
                 RecommendationType.FINANCEIRO,
                 List.of(new RecommendationItem("T", "D", "A", RecommendationPriority.ALTA)),
-                LocalDateTime.now(),
+                Instant.now(),
                 true
         );
         when(recommendationService.getLatestCached(RecommendationType.FINANCEIRO)).thenReturn(result);
@@ -56,7 +57,7 @@ class RecommendationControllerTest extends BaseControllerTest {
         RecommendationResult result = new RecommendationResult(
                 RecommendationType.RETENCAO,
                 List.of(new RecommendationItem("T2", "D2", "A2", RecommendationPriority.BAIXA)),
-                LocalDateTime.now(),
+                Instant.now(),
                 false
         );
         when(recommendationService.generate(eq(RecommendationType.RETENCAO), eq("USER"), any())).thenReturn(result);

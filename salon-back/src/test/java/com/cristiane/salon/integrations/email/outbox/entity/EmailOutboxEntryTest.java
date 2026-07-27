@@ -6,6 +6,8 @@ import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 class EmailOutboxEntryTest {
 
@@ -24,7 +26,7 @@ class EmailOutboxEntryTest {
     @Test
     void markSent_setsStatusAndSentAtAndClearsNextRetry() {
         EmailOutboxEntry entry = EmailOutboxEntry.create("a@b.com", "s", "h", null, null, null);
-        entry.setNextRetryAt(LocalDateTime.now().plusMinutes(5));
+        entry.setNextRetryAt(Instant.now().plus(5, ChronoUnit.MINUTES));
 
         entry.markSent();
 
@@ -43,8 +45,8 @@ class EmailOutboxEntryTest {
         assertThat(entry.getAttempts()).isEqualTo(1);
         assertThat(entry.getLastError()).isEqualTo("timeout");
         assertThat(entry.getNextRetryAt())
-                .isAfter(LocalDateTime.now().plusMinutes(4))
-                .isBefore(LocalDateTime.now().plusMinutes(6));
+                .isAfter(Instant.now().plus(4, ChronoUnit.MINUTES))
+                .isBefore(Instant.now().plus(6, ChronoUnit.MINUTES));
     }
 
     @Test

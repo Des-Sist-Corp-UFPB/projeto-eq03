@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.appointment.service;
 
+import com.cristiane.salon.config.SalonClock;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.exception.UnauthorizedException;
@@ -66,6 +67,7 @@ public class AppointmentService {
     private final SalonProfileService salonProfileService;
     private final MercadoPagoPaymentService mercadoPagoPaymentService;
     private final AuditLogService auditLogService;
+    private final SalonClock salonClock;
 
     private void notifyAdminsOfNewRequest(Appointment appointment) {
         for (User admin : userRepository.findByRole_NameAndActiveTrue("ADMIN")) {
@@ -100,6 +102,58 @@ public class AppointmentService {
     private boolean isStaff(User user) {
         String role = user.getRoleName();
         return "ADMIN".equals(role) || "GERENTE_DE_ATENDIMENTO".equals(role);
+    }
+
+    /**
+     * A funcionária é a profissional atribuída a este atendimento?
+     *
+     * <p>Compara pelo usuário e não pelo id de Employee porque é o usuário que está autenticado;
+     * o vínculo Employee -> User é 1:1.
+     */
+    private boolean isAssignedProfessional(User user, Appointment appointment) {
+        return appointment.getEmployee() != null
+                && appointment.getEmployee().getUser() != null
+                && appointment.getEmployee().getUser().getId().equals(user.getId());
+    }
+
+    /**
+     * Quem pode mexer neste agendamento (definir horário, mudar status, recusar).
+     *
+     * <p>ADMIN e GERENTE_DE_ATENDIMENTO agem sobre qualquer agendamento — a recepção cuida da
+     * agenda do salão inteiro. A FUNCIONARIA age só onde ela mesma é a profissional atribuída.
+     *
+     * <p>Isso conserta os dois lados de um mesmo buraco: a funcionária não conseguia definir o
+     * horário nem dos próprios atendimentos (confirm exigia isStaff), e ao mesmo tempo conseguia
+     * alterar o status do atendimento de qualquer colega, porque a permissão de
+     * {@code PATCH /status} foi concedida ao cargo (migration V24) sem nenhuma checagem de dono.
+     */
+    private void assertCanManage(Appointment appointment, String acao) {
+        User current = getAuthenticatedUser();
+        if (isStaff(current) || isAssignedProfessional(current, appointment)) {
+            return;
+        }
+        throw new UnauthorizedException(
+                "Você só pode " + acao + " agendamentos em que você é a profissional responsável");
+    }
+
+    /**
+     * Restringe a listagem à agenda da própria funcionária. ADMIN e GERENTE continuam vendo o
+     * salão inteiro; para a FUNCIONARIA, qualquer employeeId que venha da requisição é ignorado,
+     * senão bastaria trocar o parâmetro na URL para ver a agenda das colegas.
+     */
+    private AppointmentFilter restrictToOwnAgendaIfProfessional(AppointmentFilter filter) {
+        User current = getAuthenticatedUser();
+        if (isStaff(current) || !"FUNCIONARIA".equals(current.getRoleName())) {
+            return filter;
+        }
+        Long ownEmployeeId = employeeRepository.findByUserId(current.getId())
+                .map(e -> e.getId())
+                .orElseThrow(() -> new UnauthorizedException(
+                        "Seu usuário não está vinculado a um cadastro de profissional"));
+
+        return new AppointmentFilter(
+                filter.status(), filter.paymentStatus(), ownEmployeeId, filter.clientId(),
+                filter.clientName(), filter.startDate(), filter.endDate());
     }
 
     private void assertNoScheduleConflict(Long employeeId, LocalDateTime scheduledAt, int durationMinutes,
@@ -167,7 +221,7 @@ public class AppointmentService {
             if (request.scheduledAt() == null) {
                 throw new BadRequestException("Informe data e hora do agendamento");
             }
-            if (request.scheduledAt().isBefore(LocalDateTime.now())) {
+            if (request.scheduledAt().isBefore(salonClock.now())) {
                 throw new BadRequestException("Não é possível agendar no passado");
             }
 
@@ -187,7 +241,7 @@ public class AppointmentService {
 
             assertNoScheduleConflict(employee.getId(), request.scheduledAt(), totalDuration, null);
 
-            if (request.preferredDate() != null && request.preferredDate().isBefore(LocalDate.now())) {
+            if (request.preferredDate() != null && request.preferredDate().isBefore(salonClock.today())) {
                 throw new BadRequestException("A data preferida deve ser hoje ou uma data futura");
             }
 
@@ -211,7 +265,7 @@ public class AppointmentService {
             throw new BadRequestException("O horário será definido pelo salão após aceitar seu pedido");
         }
 
-        if (request.preferredDate() != null && request.preferredDate().isBefore(LocalDate.now())) {
+        if (request.preferredDate() != null && request.preferredDate().isBefore(salonClock.today())) {
             throw new BadRequestException("A data preferida deve ser hoje ou uma data futura");
         }
 
@@ -267,18 +321,15 @@ public class AppointmentService {
 
     @Transactional
     public AppointmentResponse confirm(Long id, LocalDateTime scheduledAt) {
-        if (!isStaff(getAuthenticatedUser())) {
-            throw new UnauthorizedException("Apenas a equipe pode confirmar horários");
-        }
-
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+        assertCanManage(appointment, "definir o horário de");
 
         if (appointment.getStatus() != AppointmentStatus.REQUESTED) {
             throw new BadRequestException("Apenas solicitações pendentes de confirmação podem ser aprovadas");
         }
 
-        if (scheduledAt.isBefore(LocalDateTime.now())) {
+        if (scheduledAt.isBefore(salonClock.now())) {
             throw new BadRequestException("Não é possível confirmar um horário no passado");
         }
 
@@ -297,12 +348,9 @@ public class AppointmentService {
 
     @Transactional
     public AppointmentResponse decline(Long id) {
-        if (!isStaff(getAuthenticatedUser())) {
-            throw new UnauthorizedException("Apenas a equipe pode recusar solicitações");
-        }
-
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+        assertCanManage(appointment, "recusar");
 
         if (appointment.getStatus() != AppointmentStatus.REQUESTED) {
             throw new BadRequestException("Apenas solicitações em análise podem ser recusadas");
@@ -327,7 +375,8 @@ public class AppointmentService {
 
     @Transactional(readOnly = true)
     public Page<AppointmentResponse> findAll(AppointmentFilter filter, Pageable pageable) {
-        return appointmentRepository.findAll(AppointmentSpecifications.filter(filter), pageable)
+        AppointmentFilter scoped = restrictToOwnAgendaIfProfessional(filter);
+        return appointmentRepository.findAll(AppointmentSpecifications.filter(scoped), pageable)
                 .map(AppointmentResponse::fromEntity);
     }
 
@@ -459,7 +508,7 @@ public class AppointmentService {
         cashFlow.setType(CashFlowType.INCOME);
         cashFlow.setAmount(payment.getTransactionAmount());
         cashFlow.setDescription("Pagamento PIX do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
-        cashFlow.setDate(java.time.LocalDate.now());
+        cashFlow.setDate(salonClock.today());
         cashFlow.setAppointment(appointment);
         cashFlowRepository.save(cashFlow);
         
@@ -528,6 +577,7 @@ public class AppointmentService {
     public AppointmentResponse updateStatus(Long id, String statusStr) {
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+        assertCanManage(appointment, "alterar o status de");
 
         // Guard clause: estado terminal — agendamento cancelado não permite mais alterações de status
         if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
@@ -567,7 +617,7 @@ public class AppointmentService {
                         cashFlow.setType(CashFlowType.INCOME);
                         cashFlow.setAmount(servicePrice);
                         cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
-                        cashFlow.setDate(java.time.LocalDate.now());
+                        cashFlow.setDate(salonClock.today());
                         cashFlow.setAppointment(appointment);
                         cashFlowRepository.save(cashFlow);
                     }
@@ -595,12 +645,9 @@ public class AppointmentService {
 
     @Transactional
     public AppointmentResponse updatePaymentStatus(Long id, String paymentStatusStr) {
-        if (!isStaff(getAuthenticatedUser())) {
-            throw new UnauthorizedException("Apenas a equipe pode atualizar o status de pagamento");
-        }
-
         Appointment appointment = appointmentRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Agendamento não encontrado"));
+        assertCanManage(appointment, "alterar o pagamento de");
 
         // Guard clause: agendamento cancelado não permite mais alterações de pagamento
         if (appointment.getStatus() == AppointmentStatus.CANCELLED) {
@@ -639,7 +686,7 @@ public class AppointmentService {
                         cashFlow.setType(CashFlowType.INCOME);
                         cashFlow.setAmount(servicePrice);
                         cashFlow.setDescription("Pagamento (Confirmado Admin) do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
-                        cashFlow.setDate(java.time.LocalDate.now());
+                        cashFlow.setDate(salonClock.today());
                         cashFlow.setAppointment(appointment);
                         cashFlowRepository.save(cashFlow);
                     }

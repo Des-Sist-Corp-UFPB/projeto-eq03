@@ -40,6 +40,9 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.*;
+import java.time.Instant;
+import com.cristiane.salon.config.SalonClock;
+import java.time.ZoneId;
 
 @ExtendWith(MockitoExtension.class)
 class RecommendationServiceTest {
@@ -59,7 +62,8 @@ class RecommendationServiceTest {
         lenient().when(featureFlagService.isEnabled("ENABLE_AI_RECOMMENDATIONS")).thenReturn(true);
         service = new RecommendationService(
                 aiConfigService, chatClient, reportService, appointmentService,
-                recommendationRepository, callLogRepository, featureFlagService, new ObjectMapper()
+                recommendationRepository, callLogRepository, featureFlagService, new ObjectMapper(),
+                new SalonClock(ZoneId.of("America/Recife"))
         );
     }
 
@@ -228,7 +232,7 @@ class RecommendationServiceTest {
                 .id(1L)
                 .type(RecommendationType.FINANCEIRO)
                 .payload("[{\"title\":\"X\",\"description\":\"Y\",\"suggestedAction\":\"Z\",\"priority\":\"BAIXA\"}]")
-                .generatedAt(LocalDateTime.now())
+                .generatedAt(Instant.now())
                 .build();
         when(recommendationRepository.findFirstByTypeOrderByGeneratedAtDesc(RecommendationType.FINANCEIRO))
                 .thenReturn(Optional.of(cached));
