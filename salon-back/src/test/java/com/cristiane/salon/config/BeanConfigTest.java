@@ -18,7 +18,7 @@ class BeanConfigTest {
      */
     @Test
     void objectMapper_shouldSerializeLocalDateWithoutThrowing() {
-        ObjectMapper mapper = new BeanConfig(null).objectMapper();
+        ObjectMapper mapper = new BeanConfig(null).objectMapper(new TimeConfig().salonJackson2TimeModule());
 
         assertThatCode(() -> mapper.writeValueAsString(LocalDate.of(1990, 1, 1)))
                 .doesNotThrowAnyException();
@@ -26,7 +26,7 @@ class BeanConfigTest {
 
     @Test
     void objectMapper_shouldRoundTripLocalDate() throws Exception {
-        ObjectMapper mapper = new BeanConfig(null).objectMapper();
+        ObjectMapper mapper = new BeanConfig(null).objectMapper(new TimeConfig().salonJackson2TimeModule());
         LocalDate original = LocalDate.of(1990, 1, 1);
 
         String json = mapper.writeValueAsString(original);

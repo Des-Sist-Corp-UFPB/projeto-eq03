@@ -17,7 +17,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 /**
@@ -97,7 +98,7 @@ public class EmailOutboxService {
     @Scheduled(fixedDelayString = "${app.email-outbox.retry-check-interval-ms:300000}")
     public void retryDuePending() {
         List<EmailOutboxEntry> due = repository.findByStatusAndNextRetryAtBefore(
-                EmailOutboxStatus.FAILED, LocalDateTime.now());
+                EmailOutboxStatus.FAILED, Instant.now());
 
         for (EmailOutboxEntry entry : due) {
             attempt(entry);
@@ -117,9 +118,9 @@ public class EmailOutboxService {
     @Scheduled(cron = "${app.email-outbox.cleanup-cron:0 0 3 * * *}")
     public void cleanup() {
         int sentDeleted = repository.deleteByStatusAndUpdatedAtBefore(
-                EmailOutboxStatus.SENT, LocalDateTime.now().minusDays(sentRetentionDays));
+                EmailOutboxStatus.SENT, Instant.now().minus(sentRetentionDays, ChronoUnit.DAYS));
         int deadLetterDeleted = repository.deleteByStatusAndUpdatedAtBefore(
-                EmailOutboxStatus.DEAD_LETTER, LocalDateTime.now().minusDays(deadLetterRetentionDays));
+                EmailOutboxStatus.DEAD_LETTER, Instant.now().minus(deadLetterRetentionDays, ChronoUnit.DAYS));
 
         if (sentDeleted > 0 || deadLetterDeleted > 0) {
             log.info("Limpeza da fila de e-mail: {} enviado(s) e {} dead-letter removido(s)",

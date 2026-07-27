@@ -9,7 +9,8 @@ import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Fila de retry para e-mails que falharam ao enviar, com um histórico curto (ver política de
@@ -53,7 +54,7 @@ public class EmailOutboxEntry {
     private int attempts;
 
     @Column(name = "next_retry_at")
-    private LocalDateTime nextRetryAt;
+    private Instant nextRetryAt;
 
     @Column(name = "last_error", length = 500)
     private String lastError;
@@ -66,14 +67,14 @@ public class EmailOutboxEntry {
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Column(name = "sent_at")
-    private LocalDateTime sentAt;
+    private Instant sentAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public static EmailOutboxEntry create(String recipientEmail, String subject, String htmlContent,
             String replyTo, String relatedEntityType, Long relatedEntityId) {
@@ -91,7 +92,7 @@ public class EmailOutboxEntry {
 
     public void markSent() {
         this.status = EmailOutboxStatus.SENT;
-        this.sentAt = LocalDateTime.now();
+        this.sentAt = Instant.now();
         this.nextRetryAt = null;
     }
 
@@ -109,7 +110,7 @@ public class EmailOutboxEntry {
             this.nextRetryAt = null;
         } else {
             this.status = EmailOutboxStatus.FAILED;
-            this.nextRetryAt = LocalDateTime.now().plusMinutes(BACKOFF_MINUTES[this.attempts - 1]);
+            this.nextRetryAt = Instant.now().plus(BACKOFF_MINUTES[this.attempts - 1], ChronoUnit.MINUTES);
         }
     }
 

@@ -32,6 +32,11 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import com.cristiane.salon.config.SalonClock;
+import java.time.ZoneId;
+import org.mockito.Spy;
 
 @ExtendWith(MockitoExtension.class)
 class ReportServiceTest {
@@ -44,6 +49,11 @@ class ReportServiceTest {
 
     @Mock
     private EmployeeRepository employeeRepository;
+
+    // SalonClock real, não mock: os testes dependem do "hoje"/"agora" de verdade no fuso
+    // do salão, e um mock devolveria null silenciosamente.
+    @Spy
+    private SalonClock salonClock = new SalonClock(ZoneId.of("America/Recife"));
 
     @InjectMocks
     private ReportService reportService;
@@ -80,7 +90,7 @@ class ReportServiceTest {
         when(employeeRepository.findAll()).thenReturn(List.of());
 
         // When
-        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now());
+        FinancialReportResponse report = reportService.generateFinancialReport(salonClock.today(), salonClock.today());
 
         // Then
         assertEquals(new BigDecimal("150.00"), report.totalIncome());
@@ -137,18 +147,18 @@ class ReportServiceTest {
         aptBob.setStatus(AppointmentStatus.DONE);
         aptBob.setEmployee(emp2);
         withService(aptBob, service);
-        aptBob.setScheduledAt(LocalDateTime.now());
+        aptBob.setScheduledAt(salonClock.now());
 
         Appointment aptAlice = new Appointment();
         aptAlice.setStatus(AppointmentStatus.DONE);
         aptAlice.setEmployee(emp1);
         withService(aptAlice, service);
-        aptAlice.setScheduledAt(LocalDateTime.now());
+        aptAlice.setScheduledAt(salonClock.now());
 
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice));
 
         // When
-        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now());
+        FinancialReportResponse report = reportService.generateFinancialReport(salonClock.today(), salonClock.today());
 
         // Then
         // total income = 1000
@@ -195,12 +205,12 @@ class ReportServiceTest {
         apt.setStatus(AppointmentStatus.DONE);
         apt.setEmployee(emp);
         withService(apt, service);
-        apt.setScheduledAt(LocalDateTime.now());
+        apt.setScheduledAt(salonClock.now());
 
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(apt));
 
         // When
-        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now());
+        FinancialReportResponse report = reportService.generateFinancialReport(salonClock.today(), salonClock.today());
 
         // Then
         assertEquals(new BigDecimal("1000.00"), report.totalIncome());
@@ -228,20 +238,20 @@ class ReportServiceTest {
 
         Appointment apt1 = new Appointment();
         apt1.setStatus(AppointmentStatus.DONE);
-        apt1.setScheduledAt(LocalDateTime.now().withHour(10));
+        apt1.setScheduledAt(salonClock.now().withHour(10));
         apt1.setEmployee(employee);
         withService(apt1, salonService);
 
         Appointment apt2 = new Appointment();
         apt2.setStatus(AppointmentStatus.PENDING);
-        apt2.setScheduledAt(LocalDateTime.now().withHour(14));
+        apt2.setScheduledAt(salonClock.now().withHour(14));
         apt2.setEmployee(employee);
         withService(apt2, salonService);
 
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
 
         // When
-        AppointmentReportResponse report = reportService.generateAppointmentReport(LocalDate.now(), LocalDate.now());
+        AppointmentReportResponse report = reportService.generateAppointmentReport(salonClock.today(), salonClock.today());
 
         // Then
         assertEquals(2, report.totalAppointments());
@@ -300,25 +310,25 @@ class ReportServiceTest {
         aptBob.setStatus(AppointmentStatus.DONE);
         aptBob.setEmployee(emp2);
         withService(aptBob, service);
-        aptBob.setScheduledAt(LocalDateTime.now());
+        aptBob.setScheduledAt(salonClock.now());
 
         Appointment aptAlice = new Appointment();
         aptAlice.setStatus(AppointmentStatus.DONE);
         aptAlice.setEmployee(emp1);
         withService(aptAlice, service);
-        aptAlice.setScheduledAt(LocalDateTime.now());
+        aptAlice.setScheduledAt(salonClock.now());
 
         Appointment aptDave = new Appointment();
         aptDave.setStatus(AppointmentStatus.DONE);
         aptDave.setEmployee(emp4);
         withService(aptDave, service);
-        aptDave.setScheduledAt(LocalDateTime.now());
+        aptDave.setScheduledAt(salonClock.now());
 
         // Total done appointments value = 200 (Bob) + 200 (Alice) + 200 (Dave) = 600
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice, aptDave));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(aptBob, aptAlice, aptDave));
 
         // When
-        PayrollReportResponse response = reportService.generatePayrollReport(LocalDate.now(), LocalDate.now());
+        PayrollReportResponse response = reportService.generatePayrollReport(salonClock.today(), salonClock.today());
 
         // Then
         assertEquals(4, response.items().size());
@@ -355,8 +365,8 @@ class ReportServiceTest {
         FinancialReportResponse report = reportService.generateFinancialReport(null, null);
 
         // Then
-        LocalDate expectedFrom = LocalDate.now().withDayOfMonth(1);
-        LocalDate expectedTo = LocalDate.now().plusDays(30);
+        LocalDate expectedFrom = salonClock.today().withDayOfMonth(1);
+        LocalDate expectedTo = salonClock.today().plusDays(30);
         String expectedPeriod = expectedFrom + " a " + expectedTo;
         assertEquals(expectedPeriod, report.period());
     }
@@ -374,8 +384,8 @@ class ReportServiceTest {
         service.setName("Corte");
         service.setPrice(BigDecimal.TEN);
 
-        LocalDate from = LocalDate.now();
-        LocalDate to = LocalDate.now().plusDays(5);
+        LocalDate from = salonClock.today();
+        LocalDate to = salonClock.today().plusDays(5);
 
         // Appointment 1: using preferredDate
         Appointment apt1 = new Appointment();
@@ -383,7 +393,7 @@ class ReportServiceTest {
         apt1.setEmployee(emp);
         withService(apt1, service);
         apt1.setScheduledAt(null);
-        apt1.setPreferredDate(LocalDate.now().plusDays(2));
+        apt1.setPreferredDate(salonClock.today().plusDays(2));
 
         // Appointment 2: using createdAt
         Appointment apt2 = new Appointment();
@@ -392,13 +402,13 @@ class ReportServiceTest {
         withService(apt2, service);
         apt2.setScheduledAt(null);
         apt2.setPreferredDate(null);
-        apt2.setCreatedAt(LocalDateTime.now().plusDays(3));
+        apt2.setCreatedAt(Instant.now().plus(3, ChronoUnit.DAYS));
 
         // Appointment 3: sem nenhuma data — não seria retornado pela query real
         // (findAllInPeriod), então nem é incluído no mock do repositório abaixo.
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(apt1, apt2));
         when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
 
@@ -431,15 +441,15 @@ class ReportServiceTest {
         apt.setStatus(AppointmentStatus.DONE);
         apt.setEmployee(emp);
         withService(apt, service);
-        apt.setScheduledAt(LocalDateTime.now());
+        apt.setScheduledAt(salonClock.now());
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(apt));
         when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
 
         // When
-        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now().plusDays(1));
+        FinancialReportResponse report = reportService.generateFinancialReport(salonClock.today(), salonClock.today().plusDays(1));
 
         // Then
         // Global done value = 150.00
@@ -472,15 +482,15 @@ class ReportServiceTest {
         apt.setStatus(AppointmentStatus.DONE);
         apt.setEmployee(emp);
         withService(apt, service);
-        apt.setScheduledAt(LocalDateTime.now());
+        apt.setScheduledAt(salonClock.now());
 
         when(employeeRepository.findAll()).thenReturn(List.of(emp));
-        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any())).thenReturn(List.of(apt));
+        when(appointmentRepository.findAllInPeriod(any(), any(), any(), any(), any(), any())).thenReturn(List.of(apt));
         when(cashFlowRepository.findByDateBetween(any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of());
 
         // When
-        FinancialReportResponse report = reportService.generateFinancialReport(LocalDate.now(), LocalDate.now().plusDays(1));
+        FinancialReportResponse report = reportService.generateFinancialReport(salonClock.today(), salonClock.today().plusDays(1));
 
         // Then
         assertEquals(0, report.totalSalaryPaid().compareTo(BigDecimal.ZERO));
@@ -501,7 +511,7 @@ class ReportServiceTest {
         appointment.setEmployee(employee);
         withService(appointment, service);
         appointment.setStatus(AppointmentStatus.DONE);
-        appointment.setScheduledAt(LocalDateTime.now());
+        appointment.setScheduledAt(salonClock.now());
 
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
         org.springframework.data.domain.Page<Appointment> page =

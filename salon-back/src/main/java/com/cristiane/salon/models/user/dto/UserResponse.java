@@ -2,7 +2,7 @@ package com.cristiane.salon.models.user.dto;
 
 import com.cristiane.salon.models.user.entity.User;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 public record UserResponse(
         Long id,
@@ -12,7 +12,7 @@ public record UserResponse(
         String cpf,
         String role,
         Boolean active,
-        LocalDateTime createdAt
+        Instant createdAt
 ) {
     public static UserResponse fromEntity(User user) {
         return new UserResponse(

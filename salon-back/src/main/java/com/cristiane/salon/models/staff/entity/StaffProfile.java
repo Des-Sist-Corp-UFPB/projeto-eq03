@@ -14,7 +14,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Cadastro completo de um membro da equipe (FUNCIONARIA ou GERENTE_DE_ATENDIMENTO).
@@ -128,11 +128,11 @@ public class StaffProfile {
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @UpdateTimestamp
     @Column(name = "updated_at")
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 
     public boolean hasPixKey() {
         return pixKeyType != null && pixKey != null && !pixKey.isBlank();

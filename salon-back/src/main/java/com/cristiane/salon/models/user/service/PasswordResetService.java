@@ -19,6 +19,8 @@ import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Optional;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 /**
  * Fluxo "esqueci minha senha": gera um token de uso único enviado por e-mail e, na segunda
@@ -57,8 +59,8 @@ public class PasswordResetService {
         PasswordResetToken token = PasswordResetToken.builder()
                 .user(user)
                 .tokenHash(hash(rawToken))
-                .createdAt(LocalDateTime.now())
-                .expiresAt(LocalDateTime.now().plusMinutes(TOKEN_TTL_MINUTES))
+                .createdAt(Instant.now())
+                .expiresAt(Instant.now().plus(TOKEN_TTL_MINUTES, ChronoUnit.MINUTES))
                 .build();
         tokenRepository.save(token);
 
@@ -85,7 +87,7 @@ public class PasswordResetService {
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);
 
-        token.setUsedAt(LocalDateTime.now());
+        token.setUsedAt(Instant.now());
         tokenRepository.save(token);
 
         auditLogService.logAction(

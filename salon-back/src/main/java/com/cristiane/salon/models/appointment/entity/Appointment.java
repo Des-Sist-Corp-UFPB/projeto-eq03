@@ -14,6 +14,7 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -42,7 +43,14 @@ public class Appointment {
     @OneToMany(mappedBy = "appointment", cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     private List<AppointmentServiceItem> services = new ArrayList<>();
 
-    /** Definido pela equipe ao confirmar o pedido do cliente */
+    /**
+     * Definido pela equipe ao confirmar o pedido do cliente.
+     *
+     * <p>É {@link LocalDateTime} de propósito, e não {@link Instant}: isto é hora de relógio de
+     * parede no endereço do salão. "14h" significa 14h em Recife mesmo que a cliente esteja
+     * viajando e mesmo que o servidor rode em outro continente. Guardar como instante faria o
+     * horário se deslocar sozinho se a regra de fuso do país mudasse (ver TimeConfig).
+     */
     @Column(name = "scheduled_at")
     private LocalDateTime scheduledAt;
 
@@ -54,7 +62,7 @@ public class Appointment {
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
@@ -75,7 +83,7 @@ public class Appointment {
     /** NULL = ainda não recebeu o lembrete D-1. Marcado no disparo do e-mail, não na
      * confirmação de entrega — a fila de retry do e-mail já cuida disso separadamente. */
     @Column(name = "reminded_at")
-    private LocalDateTime remindedAt;
+    private Instant remindedAt;
 
     public BigDecimal getTotalEffectivePrice() {
         return services.stream()

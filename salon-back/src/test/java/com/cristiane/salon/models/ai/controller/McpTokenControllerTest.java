@@ -22,6 +22,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 @WebMvcTest(McpTokenController.class)
 class McpTokenControllerTest extends BaseControllerTest {
@@ -35,7 +36,7 @@ class McpTokenControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(roles = { "SYSADMIN" })
     void list_returnsTokens() throws Exception {
-        McpTokenResponse token = new McpTokenResponse(1L, "T", "sysadmin@salao.com", LocalDateTime.now(), null, null, false);
+        McpTokenResponse token = new McpTokenResponse(1L, "T", "sysadmin@salao.com", Instant.now(), null, null, false);
         when(mcpTokenService.list()).thenReturn(List.of(token));
 
         mvc.perform(get("/v1/sysadmin/ai-config/tokens"))
@@ -46,7 +47,7 @@ class McpTokenControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(roles = { "SYSADMIN" })
     void generate_returns201WithRawValue() throws Exception {
-        McpTokenResponse token = new McpTokenResponse(1L, "Claude Desktop", "sysadmin@salao.com", LocalDateTime.now(), null, null, false);
+        McpTokenResponse token = new McpTokenResponse(1L, "Claude Desktop", "sysadmin@salao.com", Instant.now(), null, null, false);
         when(mcpTokenService.generate(any())).thenReturn(new McpTokenGeneratedResponse(token, "mcp_rawvalue123"));
 
         String body = "{\"name\":\"Claude Desktop\"}";

@@ -101,6 +101,32 @@ describe('AppointmentDetailModal', () => {
     expect(screen.getByText('90 min')).toBeInTheDocument();
   });
 
+  it('mostra a data e hora do agendamento sem deslocar o fuso', () => {
+    // O modal não exibia data nenhuma — justamente o dado que se quer conferir ao abrir os
+    // detalhes. E é regressão do bug de fuso: 10h agendado tem que aparecer como 10h.
+    render(<AppointmentDetailModal appointment={baseAppointment} onClose={vi.fn()} />);
+
+    expect(screen.getByText('Data e hora')).toBeInTheDocument();
+    expect(screen.getByText(/^01\/08\/2026,? 10:00$/)).toBeInTheDocument();
+    expect(screen.queryByText(/07:00/)).not.toBeInTheDocument();
+  });
+
+  it('mostra "A combinar" e a preferência do cliente enquanto o horário não foi definido', () => {
+    const semHorario: AppointmentResponse = {
+      ...baseAppointment,
+      scheduledAt: null,
+      preferredDate: '2026-08-03',
+      status: 'REQUESTED',
+    } as AppointmentResponse;
+
+    render(<AppointmentDetailModal appointment={semHorario} onClose={vi.fn()} />);
+
+    expect(screen.getByText('A combinar')).toBeInTheDocument();
+    expect(screen.getByText('Preferência do cliente')).toBeInTheDocument();
+    // Data pura não pode perder um dia na conversão (seria 02/08 se lida como UTC).
+    expect(screen.getByText('03/08/2026')).toBeInTheDocument();
+  });
+
   it('calls onClose when the close button is clicked', () => {
     const handleClose = vi.fn();
     render(<AppointmentDetailModal appointment={baseAppointment} onClose={handleClose} />);

@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,15 +45,21 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
     // Replica no banco a mesma cadeia de fallback que os relatórios usavam em memória
     // (scheduledAt > preferredDate > createdAt): evita carregar a tabela inteira via
     // findAll() só para filtrar por período depois em Java (gargalo achado no OpenTelemetry).
+    // O período chega em três tipos de propósito, e não por descuido: scheduledAt é hora de
+    // parede do salão (LocalDateTime), preferredDate é data pura (LocalDate) e createdAt é
+    // instante de máquina (Instant). Um parâmetro só não consegue ser comparado com os três —
+    // quem chama converte o mesmo intervalo para as três representações usando o fuso do salão.
     @Query("SELECT a FROM Appointment a WHERE "
             + "(a.scheduledAt IS NOT NULL AND a.scheduledAt BETWEEN :startOfDay AND :endOfDay) "
             + "OR (a.scheduledAt IS NULL AND a.preferredDate IS NOT NULL AND a.preferredDate BETWEEN :from AND :to) "
-            + "OR (a.scheduledAt IS NULL AND a.preferredDate IS NULL AND a.createdAt IS NOT NULL AND a.createdAt BETWEEN :startOfDay AND :endOfDay)")
+            + "OR (a.scheduledAt IS NULL AND a.preferredDate IS NULL AND a.createdAt IS NOT NULL AND a.createdAt BETWEEN :startInstant AND :endInstant)")
     List<Appointment> findAllInPeriod(
             @Param("from") LocalDate from,
             @Param("to") LocalDate to,
             @Param("startOfDay") LocalDateTime startOfDay,
-            @Param("endOfDay") LocalDateTime endOfDay
+            @Param("endOfDay") LocalDateTime endOfDay,
+            @Param("startInstant") Instant startInstant,
+            @Param("endInstant") Instant endInstant
     );
 
     // Lembrete D-1 (issue #111): CONFIRMED, ainda não lembrado, agendado dentro da janela do

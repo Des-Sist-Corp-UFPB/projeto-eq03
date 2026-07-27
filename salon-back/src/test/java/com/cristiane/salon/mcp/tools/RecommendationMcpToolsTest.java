@@ -20,6 +20,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import java.time.Instant;
 
 @ExtendWith(MockitoExtension.class)
 class RecommendationMcpToolsTest {
@@ -41,7 +42,7 @@ class RecommendationMcpToolsTest {
     @Test
     void recomendacoesFinanceiras_delegatesToRecommendationServiceWithMcpTokenCaller() {
         authenticateAsMcpToken("7");
-        RecommendationResult expected = new RecommendationResult(RecommendationType.FINANCEIRO, List.of(), LocalDateTime.now(), false);
+        RecommendationResult expected = new RecommendationResult(RecommendationType.FINANCEIRO, List.of(), Instant.now(), false);
         when(recommendationService.generate(RecommendationType.FINANCEIRO, "MCP_TOKEN", "7")).thenReturn(expected);
 
         RecommendationMcpTools tools = new RecommendationMcpTools(recommendationService);
@@ -54,7 +55,7 @@ class RecommendationMcpToolsTest {
     @Test
     void recomendacoesRetencaoClientes_delegatesToRecommendationServiceWithMcpTokenCaller() {
         authenticateAsMcpToken("9");
-        RecommendationResult expected = new RecommendationResult(RecommendationType.RETENCAO, List.of(), LocalDateTime.now(), true);
+        RecommendationResult expected = new RecommendationResult(RecommendationType.RETENCAO, List.of(), Instant.now(), true);
         when(recommendationService.generate(RecommendationType.RETENCAO, "MCP_TOKEN", "9")).thenReturn(expected);
 
         RecommendationMcpTools tools = new RecommendationMcpTools(recommendationService);
@@ -68,7 +69,7 @@ class RecommendationMcpToolsTest {
 
     @Test
     void recomendacoesFinanceiras_withNoAuthentication_usesUnknownCallerId() {
-        RecommendationResult expected = new RecommendationResult(RecommendationType.FINANCEIRO, List.of(), LocalDateTime.now(), false);
+        RecommendationResult expected = new RecommendationResult(RecommendationType.FINANCEIRO, List.of(), Instant.now(), false);
         when(recommendationService.generate(RecommendationType.FINANCEIRO, "MCP_TOKEN", "unknown")).thenReturn(expected);
 
         RecommendationMcpTools tools = new RecommendationMcpTools(recommendationService);

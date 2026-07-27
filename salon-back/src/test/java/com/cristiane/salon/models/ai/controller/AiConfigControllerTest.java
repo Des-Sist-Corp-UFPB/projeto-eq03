@@ -22,6 +22,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 @WebMvcTest(AiConfigController.class)
 class AiConfigControllerTest extends BaseControllerTest {
@@ -37,7 +38,7 @@ class AiConfigControllerTest extends BaseControllerTest {
     void get_returnsConfigWithoutPlainApiKey() throws Exception {
         AiConfigResponse response = new AiConfigResponse(
                 "https://llm.rodrigor.com", "gpt-4o-mini", "sk-•••••WesymE", true,
-                new BigDecimal("0.30"), 500, true, 200, "sysadmin@salao.com", LocalDateTime.now()
+                new BigDecimal("0.30"), 500, true, 200, "sysadmin@salao.com", Instant.now()
         );
         when(aiConfigService.get()).thenReturn(response);
 
@@ -53,7 +54,7 @@ class AiConfigControllerTest extends BaseControllerTest {
     void update_returnsUpdatedConfig() throws Exception {
         AiConfigResponse response = new AiConfigResponse(
                 "https://llm.rodrigor.com", "gpt-4o", null, false,
-                new BigDecimal("0.5"), 800, true, 300, "sysadmin@salao.com", LocalDateTime.now()
+                new BigDecimal("0.5"), 800, true, 300, "sysadmin@salao.com", Instant.now()
         );
         when(aiConfigService.update(any())).thenReturn(response);
 

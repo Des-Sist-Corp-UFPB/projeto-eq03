@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 /**
  * Nota: a autorização real de {@code @verifyUserPermissions.userOwnResourceOrHasPermission(...)}
@@ -54,7 +55,7 @@ class StaffControllerTest extends BaseControllerTest {
                 "81999999999", null, null,
                 "50000-000", "Rua A", "10", null, "Boa Vista", "Recife", BrazilianState.PE,
                 null, null, false,
-                LocalDate.now(), null, LocalDateTime.now(), null
+                LocalDate.now(), null, Instant.now(), null
         );
     }
 

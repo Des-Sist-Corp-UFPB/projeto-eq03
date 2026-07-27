@@ -20,6 +20,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @ExtendWith(MockitoExtension.class)
 class McpTokenServiceTest {
@@ -51,7 +53,7 @@ class McpTokenServiceTest {
         verify(repository).save(captor.capture());
         assertThat(captor.getValue().getTokenHash()).isNotEqualTo(response.rawValue());
         assertThat(captor.getValue().getTokenHash()).doesNotContain(response.rawValue());
-        assertThat(captor.getValue().getExpiresAt()).isAfter(LocalDateTime.now().plusDays(89));
+        assertThat(captor.getValue().getExpiresAt()).isAfter(Instant.now().plus(89, ChronoUnit.DAYS));
     }
 
     @Test
@@ -111,7 +113,7 @@ class McpTokenServiceTest {
         McpTokenGeneratedResponse generated = generateWithCapture();
         McpAccessToken stored = McpAccessToken.builder()
                 .id(1L).tokenHash(hashOf(generated.rawValue())).revoked(false)
-                .expiresAt(LocalDateTime.now().minusDays(1)).build();
+                .expiresAt(Instant.now().minus(1, ChronoUnit.DAYS)).build();
         when(repository.findByTokenHash(hashOf(generated.rawValue()))).thenReturn(Optional.of(stored));
 
         assertThat(service.validateAndTouch(generated.rawValue())).isEmpty();

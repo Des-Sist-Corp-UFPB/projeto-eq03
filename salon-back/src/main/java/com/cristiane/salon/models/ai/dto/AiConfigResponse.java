@@ -4,7 +4,7 @@ import com.cristiane.salon.models.ai.entity.AiConfig;
 import com.cristiane.salon.security.crypto.AiEncryptionUtil;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /** Nunca carrega a API key em texto puro — só uma versão mascarada, ou {@code null} se ainda não configurada. */
 public record AiConfigResponse(
@@ -17,7 +17,7 @@ public record AiConfigResponse(
         boolean enabled,
         Integer dailyCallBudget,
         String updatedBy,
-        LocalDateTime updatedAt
+        Instant updatedAt
 ) {
     public static AiConfigResponse fromEntity(AiConfig config, String decryptedKeyForMasking) {
         return new AiConfigResponse(

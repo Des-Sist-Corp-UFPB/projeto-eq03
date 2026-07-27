@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.cashflow.service;
 
+import com.cristiane.salon.config.SalonClock;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.appointment.entity.Appointment;
@@ -35,11 +36,12 @@ public class CashFlowService {
     private final ProductRepository productRepository;
     private final AuditLogService auditLogService;
     private final ObjectMapper objectMapper;
+    private final SalonClock salonClock;
 
     @Transactional(readOnly = true)
     public List<CashFlowResponse> findByPeriod(LocalDate from, LocalDate to) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now().plusDays(30);
+        if (from == null) from = salonClock.today().withDayOfMonth(1);
+        if (to == null) to = salonClock.today().plusDays(30);
 
         return cashFlowRepository.findByDateBetween(from, to).stream()
                 .map(CashFlowResponse::fromEntity)
@@ -48,8 +50,8 @@ public class CashFlowService {
 
     @Transactional(readOnly = true)
     public Page<CashFlowResponse> findByPeriod(LocalDate from, LocalDate to, Pageable pageable) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now().plusDays(30);
+        if (from == null) from = salonClock.today().withDayOfMonth(1);
+        if (to == null) to = salonClock.today().plusDays(30);
 
         return cashFlowRepository.findByDateBetween(from, to, pageable).map(CashFlowResponse::fromEntity);
     }

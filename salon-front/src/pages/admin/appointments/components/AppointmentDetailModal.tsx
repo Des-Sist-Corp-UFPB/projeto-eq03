@@ -1,5 +1,6 @@
 import { X } from 'lucide-react';
 import type { AppointmentResponse } from '../../../appointments/services/appointments';
+import { formatApiDate, formatApiDateTime } from '../../../../utils/datetime';
 
 const labelCls = 'label-premium';
 
@@ -44,6 +45,31 @@ export const AppointmentDetailModal = ({ appointment, onClose }: AppointmentDeta
               <span className={labelCls}>Profissional</span>
               <p className="text-[#3b3036]">{appointment.employeeName}</p>
             </div>
+          </div>
+
+          {/* Antes o modal de detalhes não mostrava data nenhuma — justamente o dado que a
+              pessoa quer conferir ao abrir os detalhes. Enquanto o horário não foi definido
+              pela equipe, o que existe é só a data de preferência do cliente. */}
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            {appointment.scheduledAt ? (
+              <div>
+                <span className={labelCls}>Data e hora</span>
+                <p className="text-[#3b3036] font-semibold">
+                  {formatApiDateTime(appointment.scheduledAt)}
+                </p>
+              </div>
+            ) : (
+              <div>
+                <span className={labelCls}>Data e hora</span>
+                <p className="text-[#7a7074] italic">A combinar</p>
+              </div>
+            )}
+            {appointment.preferredDate && (
+              <div>
+                <span className={labelCls}>Preferência do cliente</span>
+                <p className="text-[#3b3036]">{formatApiDate(appointment.preferredDate)}</p>
+              </div>
+            )}
           </div>
 
           <div className="space-y-3">

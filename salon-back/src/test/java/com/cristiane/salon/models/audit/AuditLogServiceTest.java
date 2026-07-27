@@ -27,12 +27,20 @@ import java.util.List;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import com.cristiane.salon.config.SalonClock;
+import java.time.Instant;
+import org.mockito.Spy;
 
 @ExtendWith(MockitoExtension.class)
 class AuditLogServiceTest {
 
     @Mock
     private AuditLogRepository auditLogRepository;
+
+    private static final ZoneId SALON_ZONE = ZoneId.of("America/Recife");
+
+    @Spy
+    private SalonClock salonClock = new SalonClock(SALON_ZONE);
 
     @InjectMocks
     private AuditLogService auditLogService;
@@ -210,11 +218,11 @@ class AuditLogServiceTest {
         LocalDate startDate = LocalDate.of(2026, 6, 1);
         LocalDate endDate = LocalDate.of(2026, 6, 15);
 
-        ZonedDateTime zStart = startDate.atTime(LocalTime.of(0, 0, 0)).atZone(ZoneId.of("America/Recife"));
-        LocalDateTime expectedStart = zStart.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
-
-        ZonedDateTime zEnd = endDate.atTime(LocalTime.of(23, 59, 59)).atZone(ZoneId.of("America/Recife"));
-        LocalDateTime expectedEnd = zEnd.withZoneSameInstant(ZoneId.systemDefault()).toLocalDateTime();
+        // createdAt virou Instant: a borda do dia do calendário do salão vira um ponto na
+        // linha do tempo. Sem a dança Recife -> ZoneId.systemDefault() que existia aqui antes,
+        // que só era necessária porque o campo carregava junto o fuso da JVM.
+        Instant expectedStart = startDate.atStartOfDay(SALON_ZONE).toInstant();
+        Instant expectedEnd = endDate.atTime(LocalTime.MAX).atZone(SALON_ZONE).toInstant();
 
         when(auditLogRepository.findWithFiltersCombined(
                 eq(10L), eq("User"), eq("UPDATE"), eq(expectedStart), eq(expectedEnd), eq(pageable)
@@ -296,15 +304,19 @@ class AuditLogServiceTest {
     void getAuditLogsByDateRange_shouldQueryRepository() {
         // Arrange
         Pageable pageable = PageRequest.of(0, 10);
+        // A API do serviço continua recebendo hora local (é o que a tela envia), mas o
+        // repositório agora fala em instante — a conversão pelo fuso do salão é o que se testa.
         LocalDateTime from = LocalDateTime.now().minusDays(5);
         LocalDateTime to = LocalDateTime.now();
-        when(auditLogRepository.findByCreatedAtBetween(from, to, pageable)).thenReturn(Page.empty());
+        Instant expectedFrom = from.atZone(SALON_ZONE).toInstant();
+        Instant expectedTo = to.atZone(SALON_ZONE).toInstant();
+        when(auditLogRepository.findByCreatedAtBetween(expectedFrom, expectedTo, pageable)).thenReturn(Page.empty());
 
         // Act
         Page<AuditLog> result = auditLogService.getAuditLogsByDateRange(from, to, pageable);
 
         // Assert
-        verify(auditLogRepository).findByCreatedAtBetween(from, to, pageable);
+        verify(auditLogRepository).findByCreatedAtBetween(expectedFrom, expectedTo, pageable);
     }
 
     @Test

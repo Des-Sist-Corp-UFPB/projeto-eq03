@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.user.service;
 
+import com.cristiane.salon.config.SalonClock;
 import com.cristiane.salon.exception.BadRequestException;
 import com.cristiane.salon.exception.ConflictException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
@@ -44,6 +45,7 @@ public class UserService {
     private final PasswordEncoder passwordEncoder;
     private final EmployeeRepository employeeRepository;
     private final AppointmentRepository appointmentRepository;
+    private final SalonClock salonClock;
 
     @Transactional(readOnly = true)
     public List<UserResponse> findAll(Boolean includeInactive) {
@@ -262,8 +264,11 @@ public class UserService {
         List<Appointment> appointments = appointmentRepository.findByClientId(id);
         List<AppointmentResponse> appointmentResponses = appointments.stream()
                 .sorted((a1, a2) -> {
-                    LocalDateTime d1 = a1.getScheduledAt() != null ? a1.getScheduledAt() : a1.getCreatedAt();
-                    LocalDateTime d2 = a2.getScheduledAt() != null ? a2.getScheduledAt() : a2.getCreatedAt();
+                    // createdAt é instante de máquina e scheduledAt é hora de parede do salão:
+                    // converter o primeiro antes de comparar, senão a ordenação erra por 3h nos
+                    // agendamentos que ainda não têm horário definido.
+                    LocalDateTime d1 = a1.getScheduledAt() != null ? a1.getScheduledAt() : salonClock.toLocalDateTime(a1.getCreatedAt());
+                    LocalDateTime d2 = a2.getScheduledAt() != null ? a2.getScheduledAt() : salonClock.toLocalDateTime(a2.getCreatedAt());
                     if (d1 == null && d2 == null) return 0;
                     if (d1 == null) return 1;
                     if (d2 == null) return -1;

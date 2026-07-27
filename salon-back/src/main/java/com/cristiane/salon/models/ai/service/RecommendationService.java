@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.ai.service;
 
+import com.cristiane.salon.config.SalonClock;
 import com.cristiane.salon.exception.BusinessException;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.ai.client.OpenAiCompatibleChatClient;
@@ -32,6 +33,7 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.time.Instant;
 
 @Slf4j
 @Service
@@ -49,6 +51,7 @@ public class RecommendationService {
     private final AiCallLogRepository callLogRepository;
     private final FeatureFlagService featureFlagService;
     private final ObjectMapper objectMapper;
+    private final SalonClock salonClock;
 
     // Sem @Transactional: o registro do log de chamada (logCall) precisa persistir mesmo quando
     // o método lança exceção (falha do provedor de IA) — uma transação única faria o rollback
@@ -65,7 +68,7 @@ public class RecommendationService {
             throw new BusinessException("Nenhuma API key configurada na Central de IA.");
         }
 
-        long callsToday = callLogRepository.countSuccessfulSince(LocalDate.now().atStartOfDay());
+        long callsToday = callLogRepository.countSuccessfulSince(salonClock.today().atStartOfDay(salonClock.zone()).toInstant());
         if (callsToday >= config.getDailyCallBudget()) {
             throw new BusinessException("Orçamento diário de chamadas de IA atingido. Tente novamente amanhã ou aumente o limite na Central de IA.");
         }
@@ -90,7 +93,7 @@ public class RecommendationService {
             List<RecommendationItem> items = parseAndValidate(completion.content());
             int latencyMs = (int) (System.currentTimeMillis() - startedAt);
 
-            LocalDateTime generatedAt = LocalDateTime.now();
+            Instant generatedAt = Instant.now();
             persistCache(type, items, generatedAt);
             logCall(callerType, callerId, type, completion.totalTokens(), latencyMs, true, null);
 
@@ -136,8 +139,8 @@ public class RecommendationService {
     }
 
     private String buildFinanceiroPrompt() {
-        LocalDate from = LocalDate.now().minusDays(30);
-        LocalDate to = LocalDate.now();
+        LocalDate from = salonClock.today().minusDays(30);
+        LocalDate to = salonClock.today();
         FinancialReportResponse financialReport = reportService.generateFinancialReport(from, to);
         AppointmentReportResponse appointmentReport = reportService.generateAppointmentReport(from, to);
         return RecommendationPromptBuilder.financeiroUserPrompt(
@@ -147,7 +150,7 @@ public class RecommendationService {
 
     private String buildRetencaoPrompt() {
         List<AppointmentResponse> appointments = appointmentService.findAllInternal();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = salonClock.now();
 
         Map<String, LocalDateTime> lastVisitByClient = appointments.stream()
                 .filter(a -> a.scheduledAt() != null && ("DONE".equals(a.status()) || "CONFIRMED".equals(a.status())))
@@ -199,7 +202,7 @@ public class RecommendationService {
         return items;
     }
 
-    private void persistCache(RecommendationType type, List<RecommendationItem> items, LocalDateTime generatedAt) {
+    private void persistCache(RecommendationType type, List<RecommendationItem> items, Instant generatedAt) {
         AiRecommendation recommendation = AiRecommendation.builder()
                 .type(type)
                 .payload(toJson(items))
@@ -218,7 +221,7 @@ public class RecommendationService {
                 .latencyMs(latencyMs)
                 .success(success)
                 .errorMessage(errorMessage)
-                .createdAt(LocalDateTime.now())
+                .createdAt(Instant.now())
                 .build();
         callLogRepository.save(logEntry);
     }

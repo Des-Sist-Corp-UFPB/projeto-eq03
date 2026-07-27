@@ -24,6 +24,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 @WebMvcTest(UserController.class)
 class UserControllerTest extends BaseControllerTest {
@@ -61,7 +62,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void findAllReturnsUsers() throws Exception {
-        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", null, "ROLE_ADMIN", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", null, "ROLE_ADMIN", true, Instant.now());
         org.springframework.data.domain.Page<UserResponse> page = new org.springframework.data.domain.PageImpl<>(List.of(response));
         when(userService.findAllUsers(any(), any())).thenReturn(page);
 
@@ -74,7 +75,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void findByIdReturnsUser() throws Exception {
-        UserResponse response = new UserResponse(2L, "Bob", "bob@example.com", "88888888", null, "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(2L, "Bob", "bob@example.com", "88888888", null, "CLIENTE", true, Instant.now());
         when(userService.findById(eq(2L))).thenReturn(response);
 
         mvc.perform(get("/v1/users/details/id/2")
@@ -86,7 +87,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void updateReturnsUpdatedUser() throws Exception {
-        UserResponse response = new UserResponse(2L, "Updated Bob", "bob@example.com", "88888888", null, "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(2L, "Updated Bob", "bob@example.com", "88888888", null, "CLIENTE", true, Instant.now());
         when(userService.update(eq(2L), any())).thenReturn(response);
 
         String body = "{\"name\":\"Updated Bob\",\"email\":\"bob@example.com\"}";
@@ -111,7 +112,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void restoreReturnsRestoredUser() throws Exception {
-        UserResponse response = new UserResponse(4L, "Restored", "restored@example.com", "77777777", null, "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(4L, "Restored", "restored@example.com", "77777777", null, "CLIENTE", true, Instant.now());
         when(userService.restore(eq(4L))).thenReturn(response);
 
         mvc.perform(patch("/v1/users/4/restore")
@@ -123,7 +124,7 @@ class UserControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser
     void updateMyCpfReturnsOk_whenValidCpf() throws Exception {
-        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", "12345678901", "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(1L, "Alice", "alice@example.com", "99999999", "12345678901", "CLIENTE", true, Instant.now());
         when(userService.updateMyCpf("12345678901")).thenReturn(response);
 
         String body = "{\"cpf\":\"12345678901\"}";

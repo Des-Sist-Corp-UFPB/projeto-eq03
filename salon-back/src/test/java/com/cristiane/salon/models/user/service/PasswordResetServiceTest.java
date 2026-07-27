@@ -28,6 +28,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 @ExtendWith(MockitoExtension.class)
 class PasswordResetServiceTest {
@@ -88,7 +90,7 @@ class PasswordResetServiceTest {
         PasswordResetToken savedToken = tokenCaptor.getValue();
         assertThat(savedToken.getUser()).isEqualTo(user);
         assertThat(savedToken.getTokenHash()).isNotBlank();
-        assertThat(savedToken.getExpiresAt()).isAfter(LocalDateTime.now());
+        assertThat(savedToken.getExpiresAt()).isAfter(Instant.now());
         assertThat(savedToken.isValid()).isTrue();
 
         verify(emailService).sendPasswordResetEmail(eq(user), anyString());
@@ -116,8 +118,8 @@ class PasswordResetServiceTest {
         PasswordResetToken expired = PasswordResetToken.builder()
                 .user(user)
                 .tokenHash("hash")
-                .createdAt(LocalDateTime.now().minusHours(2))
-                .expiresAt(LocalDateTime.now().minusMinutes(1))
+                .createdAt(Instant.now().minus(2, ChronoUnit.HOURS))
+                .expiresAt(Instant.now().minus(1, ChronoUnit.MINUTES))
                 .build();
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(expired));
 
@@ -133,9 +135,9 @@ class PasswordResetServiceTest {
         PasswordResetToken used = PasswordResetToken.builder()
                 .user(user)
                 .tokenHash("hash")
-                .createdAt(LocalDateTime.now().minusMinutes(10))
-                .expiresAt(LocalDateTime.now().plusMinutes(20))
-                .usedAt(LocalDateTime.now().minusMinutes(5))
+                .createdAt(Instant.now().minus(10, ChronoUnit.MINUTES))
+                .expiresAt(Instant.now().plus(20, ChronoUnit.MINUTES))
+                .usedAt(Instant.now().minus(5, ChronoUnit.MINUTES))
                 .build();
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(used));
 
@@ -150,8 +152,8 @@ class PasswordResetServiceTest {
         PasswordResetToken valid = PasswordResetToken.builder()
                 .user(user)
                 .tokenHash("hash")
-                .createdAt(LocalDateTime.now().minusMinutes(5))
-                .expiresAt(LocalDateTime.now().plusMinutes(25))
+                .createdAt(Instant.now().minus(5, ChronoUnit.MINUTES))
+                .expiresAt(Instant.now().plus(25, ChronoUnit.MINUTES))
                 .build();
         when(tokenRepository.findByTokenHash(anyString())).thenReturn(Optional.of(valid));
         when(passwordEncoder.encode("NewPass123")).thenReturn("new-hashed-password");

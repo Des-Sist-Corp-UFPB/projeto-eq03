@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -32,7 +32,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ErrorResponse> handleResourceNotFoundException(ResourceNotFoundException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.NOT_FOUND.value(),
                 "Não Encontrado",
                 ex.getMessage(),
@@ -46,7 +46,7 @@ public class GlobalExceptionHandler {
         log.warn("MethodArgumentTypeMismatchException: {} on URI: {}", ex.getMessage(), request.getRequestURI());
         String expectedType = ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "tipo esperado";
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Requisição Inválida",
                 "Valor '" + ex.getValue() + "' inválido para o parâmetro '" + ex.getName() + "' (" + expectedType + ")",
@@ -59,7 +59,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBadRequestException(BadRequestException ex, HttpServletRequest request) {
         log.warn("BadRequestException: {} on URI: {}", ex.getMessage(), request.getRequestURI());
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Requisição Inválida",
                 ex.getMessage(),
@@ -71,7 +71,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(UnauthorizedException.class)
     public ResponseEntity<ErrorResponse> handleUnauthorizedException(UnauthorizedException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.UNAUTHORIZED.value(),
                 "Não Autorizado",
                 ex.getMessage(),
@@ -83,7 +83,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthenticationException.class)
     public ResponseEntity<ErrorResponse> handleAuthenticationException(AuthenticationException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.UNAUTHORIZED.value(),
                 "Não Autorizado",
                 "Email ou senha incorretos",
@@ -99,7 +99,7 @@ public class GlobalExceptionHandler {
             message = "Você não possui permissão para acessar este recurso.";
         }
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.FORBIDDEN.value(),
                 "Acesso Negado",
                 message,
@@ -120,7 +120,7 @@ public class GlobalExceptionHandler {
         String message = errors.values().stream().collect(Collectors.joining(", "));
 
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Erro de Validação",
                 message,
@@ -142,7 +142,7 @@ public class GlobalExceptionHandler {
         String message = errors.values().stream().collect(Collectors.joining(", "));
 
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Erro de Validação",
                 message,
@@ -155,7 +155,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ErrorResponse> handleConflictException(ConflictException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.CONFLICT.value(),
                 "Conflito",
                 ex.getMessage(),
@@ -168,7 +168,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleUnreadable(HttpMessageNotReadableException ex, HttpServletRequest request) {
         log.debug("Bad request body: {}", ex.getMessage());
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Requisição Inválida",
                 "Corpo da requisição inválido. Verifique datas e números no formulário.",
@@ -181,7 +181,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleMissingParams(MissingServletRequestParameterException ex, HttpServletRequest request) {
         String msg = String.format("Parâmetro obrigatório '%s' ausente", ex.getParameterName());
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Parâmetro Obrigatório",
                 msg,
@@ -200,7 +200,7 @@ public class GlobalExceptionHandler {
         // CPF duplicado → 409 Conflict com mensagem amigável
         if (cause.contains("tb_user_cpf_key") || (cause.contains("cpf") && cause.contains("unique"))) {
             ErrorResponse error = new ErrorResponse(
-                    LocalDateTime.now(),
+                    Instant.now(),
                     HttpStatus.CONFLICT.value(),
                     "CPF Duplicado",
                     "Este CPF já está cadastrado em outra conta.",
@@ -214,7 +214,7 @@ public class GlobalExceptionHandler {
             hint = "O banco ainda parece exigir data/hora no agendamento. Confirme se as migrações Flyway (ex.: V5) foram aplicadas no ambiente.";
         }
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Dados Incompatíveis",
                 hint,
@@ -227,7 +227,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
     public ResponseEntity<ErrorResponse> handleMethodNotSupported(HttpRequestMethodNotSupportedException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.METHOD_NOT_ALLOWED.value(),
                 "Método Não Suportado",
                 ex.getMessage(),
@@ -239,7 +239,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(NoHandlerFoundException.class)
     public ResponseEntity<ErrorResponse> handleNotFound(NoHandlerFoundException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.NOT_FOUND.value(),
                 "Não Encontrado",
                 "Recurso não encontrado",
@@ -251,7 +251,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(org.springframework.web.servlet.resource.NoResourceFoundException.class)
     public ResponseEntity<ErrorResponse> handleNoResourceFound(org.springframework.web.servlet.resource.NoResourceFoundException ex, HttpServletRequest request) {
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.NOT_FOUND.value(),
                 "Não Encontrado",
                 "Recurso não encontrado",
@@ -264,7 +264,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
         log.error("Erro não tratado", ex);
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.INTERNAL_SERVER_ERROR.value(),
                 "Erro Interno do Servidor",
                 "Ocorreu um erro inesperado no servidor.",
@@ -277,7 +277,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgument(IllegalArgumentException ex, HttpServletRequest request) {
         log.error("Argumento inválido em {}: {}", request.getRequestURI(), ex.getMessage(), ex);
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Argumento Inválido",
                 ex.getMessage(),
@@ -290,7 +290,7 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleBusinessException(BusinessException ex, HttpServletRequest request) {
         log.warn("BusinessException: {} on URI: {}", ex.getMessage(), request.getRequestURI());
         ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
+                Instant.now(),
                 HttpStatus.BAD_REQUEST.value(),
                 "Regra de Negócio Violada",
                 ex.getMessage(),
