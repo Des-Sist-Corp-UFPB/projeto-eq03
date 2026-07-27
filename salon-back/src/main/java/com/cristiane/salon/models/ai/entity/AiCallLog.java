@@ -3,7 +3,7 @@ package com.cristiane.salon.models.ai.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Registro de toda chamada ao provedor de IA — usado para orçamento diário/rate limit
@@ -46,5 +46,5 @@ public class AiCallLog {
     private String errorMessage;
 
     @Column(name = "created_at", nullable = false)
-    private LocalDateTime createdAt;
+    private Instant createdAt;
 }

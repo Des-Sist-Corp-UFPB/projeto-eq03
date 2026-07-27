@@ -39,6 +39,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
+import com.cristiane.salon.config.SalonClock;
+import java.time.ZoneId;
 
 @ExtendWith(MockitoExtension.class)
 class CashFlowServiceTest {
@@ -57,6 +59,11 @@ class CashFlowServiceTest {
 
     @Spy
     private ObjectMapper objectMapper = new ObjectMapper();
+
+    // SalonClock real, não mock: os testes dependem do "hoje"/"agora" de verdade no fuso
+    // do salão, e um mock devolveria null silenciosamente.
+    @Spy
+    private SalonClock salonClock = new SalonClock(ZoneId.of("America/Recife"));
 
     @InjectMocks
     private CashFlowService cashFlowService;
@@ -110,8 +117,8 @@ class CashFlowServiceTest {
     @Test
     void findByPeriod_whenFromIsNull_shouldDefaultToFirstDayOfMonth() {
         // Arrange
-        LocalDate expectedFrom = LocalDate.now().withDayOfMonth(1);
-        LocalDate to = LocalDate.now().plusDays(10);
+        LocalDate expectedFrom = salonClock.today().withDayOfMonth(1);
+        LocalDate to = salonClock.today().plusDays(10);
         when(cashFlowRepository.findByDateBetween(eq(expectedFrom), eq(to))).thenReturn(List.of());
 
         // Act
@@ -124,8 +131,8 @@ class CashFlowServiceTest {
     @Test
     void findByPeriod_whenToIsNull_shouldDefaultTo30DaysFuture() {
         // Arrange
-        LocalDate from = LocalDate.now().minusDays(5);
-        LocalDate expectedTo = LocalDate.now().plusDays(30);
+        LocalDate from = salonClock.today().minusDays(5);
+        LocalDate expectedTo = salonClock.today().plusDays(30);
         when(cashFlowRepository.findByDateBetween(eq(from), eq(expectedTo))).thenReturn(List.of());
 
         // Act
@@ -164,8 +171,8 @@ class CashFlowServiceTest {
     void findByPeriodPaginated_whenDatesNull_shouldDefaultDates() {
         // Arrange
         org.springframework.data.domain.Pageable pageable = org.springframework.data.domain.PageRequest.of(0, 20);
-        LocalDate expectedFrom = LocalDate.now().withDayOfMonth(1);
-        LocalDate expectedTo = LocalDate.now().plusDays(30);
+        LocalDate expectedFrom = salonClock.today().withDayOfMonth(1);
+        LocalDate expectedTo = salonClock.today().plusDays(30);
         when(cashFlowRepository.findByDateBetween(eq(expectedFrom), eq(expectedTo), eq(pageable)))
                 .thenReturn(org.springframework.data.domain.Page.empty());
 
@@ -182,7 +189,7 @@ class CashFlowServiceTest {
     void create_whenSaleAndTypeIsNotIncome_shouldThrowBadRequestException() {
         // Arrange
         CashFlowItemRequest item = new CashFlowItemRequest(1L, 2);
-        CashFlowRequest request = new CashFlowRequest("EXPENSE", BigDecimal.ZERO, "desc", LocalDate.now(), null, List.of(item));
+        CashFlowRequest request = new CashFlowRequest("EXPENSE", BigDecimal.ZERO, "desc", salonClock.today(), null, List.of(item));
 
         // Act & Assert
         assertThatThrownBy(() -> cashFlowService.create(request))
@@ -194,7 +201,7 @@ class CashFlowServiceTest {
     void create_whenSaleAndProductNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
         CashFlowItemRequest item = new CashFlowItemRequest(99L, 2);
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", LocalDate.now(), null, List.of(item));
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", salonClock.today(), null, List.of(item));
         when(productRepository.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -207,7 +214,7 @@ class CashFlowServiceTest {
     void create_whenSaleAndProductInactive_shouldThrowBadRequestException() {
         // Arrange
         CashFlowItemRequest item = new CashFlowItemRequest(2L, 2);
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", LocalDate.now(), null, List.of(item));
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", salonClock.today(), null, List.of(item));
         when(productRepository.findById(2L)).thenReturn(Optional.of(inactiveProduct));
 
         // Act & Assert
@@ -220,7 +227,7 @@ class CashFlowServiceTest {
     void create_whenSaleAndStockInsufficient_shouldThrowBadRequestException() {
         // Arrange
         CashFlowItemRequest item = new CashFlowItemRequest(1L, 15); // Stock is 10
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", LocalDate.now(), null, List.of(item));
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", salonClock.today(), null, List.of(item));
         when(productRepository.findById(1L)).thenReturn(Optional.of(activeProduct));
 
         // Act & Assert
@@ -234,7 +241,7 @@ class CashFlowServiceTest {
         // Arrange
         activeProduct.setStock(null);
         CashFlowItemRequest item = new CashFlowItemRequest(1L, 1);
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", LocalDate.now(), null, List.of(item));
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "desc", salonClock.today(), null, List.of(item));
         when(productRepository.findById(1L)).thenReturn(Optional.of(activeProduct));
 
         // Act & Assert
@@ -247,7 +254,7 @@ class CashFlowServiceTest {
     void create_whenSaleSuccessAndDefaultDescription_shouldSaveDecreaseStockAndAudit() {
         // Arrange
         CashFlowItemRequest item1 = new CashFlowItemRequest(1L, 2); // 2 * 50 = 100
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "Venda de Produtos", LocalDate.now(), null, List.of(item1));
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "Venda de Produtos", salonClock.today(), null, List.of(item1));
         when(productRepository.findById(1L)).thenReturn(Optional.of(activeProduct));
 
         CashFlow saved = new CashFlow();
@@ -255,7 +262,7 @@ class CashFlowServiceTest {
         saved.setType(CashFlowType.INCOME);
         saved.setAmount(BigDecimal.valueOf(100.00));
         saved.setDescription("Venda de Produtos: 2x Shampoo");
-        saved.setDate(LocalDate.now());
+        saved.setDate(salonClock.today());
 
         when(cashFlowRepository.save(any(CashFlow.class))).thenReturn(saved);
 
@@ -297,7 +304,7 @@ class CashFlowServiceTest {
     void create_whenSaleSuccessAndCustomDescription_shouldConcatenateItemsDescription() {
         // Arrange
         CashFlowItemRequest item1 = new CashFlowItemRequest(1L, 1);
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "Venda especial", LocalDate.now(), null, List.of(item1));
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.ZERO, "Venda especial", salonClock.today(), null, List.of(item1));
         when(productRepository.findById(1L)).thenReturn(Optional.of(activeProduct));
 
         CashFlow saved = new CashFlow();
@@ -305,7 +312,7 @@ class CashFlowServiceTest {
         saved.setType(CashFlowType.INCOME);
         saved.setAmount(BigDecimal.valueOf(50.00));
         saved.setDescription("Venda especial (1x Shampoo)");
-        saved.setDate(LocalDate.now());
+        saved.setDate(salonClock.today());
 
         when(cashFlowRepository.save(any(CashFlow.class))).thenReturn(saved);
 
@@ -321,7 +328,7 @@ class CashFlowServiceTest {
     @Test
     void create_whenNoItemsAndInvalidType_shouldThrowBadRequestException() {
         // Arrange
-        CashFlowRequest request = new CashFlowRequest("INVALID", BigDecimal.TEN, "desc", LocalDate.now(), null, null);
+        CashFlowRequest request = new CashFlowRequest("INVALID", BigDecimal.TEN, "desc", salonClock.today(), null, null);
 
         // Act & Assert
         assertThatThrownBy(() -> cashFlowService.create(request))
@@ -332,7 +339,7 @@ class CashFlowServiceTest {
     @Test
     void create_whenNoItemsAndAppointmentNotFound_shouldThrowResourceNotFoundException() {
         // Arrange
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.TEN, "desc", LocalDate.now(), 99L, null);
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.TEN, "desc", salonClock.today(), 99L, null);
         when(appointmentRepository.findById(99L)).thenReturn(Optional.empty());
 
         // Act & Assert
@@ -346,7 +353,7 @@ class CashFlowServiceTest {
         // Arrange
         Appointment app = new Appointment();
         app.setId(5L);
-        CashFlowRequest request = new CashFlowRequest("EXPENSE", BigDecimal.TEN, "desc", LocalDate.now(), 5L, null);
+        CashFlowRequest request = new CashFlowRequest("EXPENSE", BigDecimal.TEN, "desc", salonClock.today(), 5L, null);
         when(appointmentRepository.findById(5L)).thenReturn(Optional.of(app));
 
         CashFlow saved = new CashFlow();
@@ -354,7 +361,7 @@ class CashFlowServiceTest {
         saved.setType(CashFlowType.EXPENSE);
         saved.setAmount(BigDecimal.TEN);
         saved.setDescription("desc");
-        saved.setDate(LocalDate.now());
+        saved.setDate(salonClock.today());
         saved.setAppointment(app);
         when(cashFlowRepository.save(any(CashFlow.class))).thenReturn(saved);
 
@@ -382,13 +389,13 @@ class CashFlowServiceTest {
     @Test
     void create_whenAuditLogThrowsException_shouldSilentFail() {
         // Arrange
-        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.TEN, "desc", LocalDate.now(), null, null);
+        CashFlowRequest request = new CashFlowRequest("INCOME", BigDecimal.TEN, "desc", salonClock.today(), null, null);
         CashFlow saved = new CashFlow();
         saved.setId(60L);
         saved.setType(CashFlowType.INCOME);
         saved.setAmount(BigDecimal.TEN);
         saved.setDescription("desc");
-        saved.setDate(LocalDate.now());
+        saved.setDate(salonClock.today());
         when(cashFlowRepository.save(any(CashFlow.class))).thenReturn(saved);
 
         // force audit mock to throw exception

@@ -4,7 +4,7 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Configuração única (singleton, id fixo em 1) do provedor de IA usado pelo motor de recomendações
@@ -49,5 +49,5 @@ public class AiConfig {
     private String updatedBy;
 
     @Column(name = "updated_at", nullable = false)
-    private LocalDateTime updatedAt;
+    private Instant updatedAt;
 }

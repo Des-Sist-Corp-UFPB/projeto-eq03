@@ -6,8 +6,10 @@ spring:
   output:
     ansi:
       enabled: always
-  jackson:
-    time-zone: America/Recife
+  # A política de datas fica toda em TimeConfig, com serializadores explícitos por tipo.
+  # Não reintroduza spring.jackson.time-zone aqui: um fuso global contradiz a distinção entre
+  # hora local do negócio (literal) e instante de máquina (UTC), e foi meio caminho pro bug
+  # em que 22h escolhido pela tela aparecia como 19h.
 
 mail:
   api-url: ${MAIL_API_URL:https://api.resend.com}
@@ -16,6 +18,10 @@ mail:
   business: ${MAIL_BUSINESS:salao@localhost.com}
 
 app:
+  # Fuso em que o salão opera (ver TimeConfig). É daqui que sai o "hoje"/"agora" de toda regra
+  # de negócio — nunca do fuso do sistema operacional, que é UTC de propósito. Assim o mesmo
+  # .jar se comporta igual numa VPS em Recife, na Virgínia ou em Frankfurt.
+  timezone: ${APP_TIMEZONE:America/Recife}
   # Base do frontend usada para montar links clicáveis em e-mails (ex.: redefinição de
   # senha). Sem isso, o link renderizado num e-mail de produção apontaria pra localhost.
   frontend-url: ${FRONTEND_URL:http://localhost:5173}

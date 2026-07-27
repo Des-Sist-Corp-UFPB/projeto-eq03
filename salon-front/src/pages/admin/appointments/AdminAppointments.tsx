@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { formatApiDate, formatApiDateTime } from '../../../utils/datetime';
 import { Plus, Clock, User as UserIcon, Calendar as CalendarIcon, X, PencilLine } from 'lucide-react';
 import { Table } from '../../../components/table/Table';
 import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
@@ -397,34 +398,15 @@ export const AdminAppointments = () => {
     );
   };
 
-  const formatDate = (dateValue: string | number[] | null | undefined) => {
-    if (!dateValue) return '—';
-    let date: Date;
-    if (Array.isArray(dateValue)) {
-      const [year, month, day, hour, minute] = dateValue as number[];
-      date = new Date(year, month - 1, day, hour, minute);
-    } else {
-      date = new Date(dateValue);
-    }
-    if (isNaN(date.getTime())) return 'Data inválida';
-    return new Intl.DateTimeFormat('pt-BR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit',
-    }).format(date);
-  };
-
   const columns = [
     {
       key: 'scheduledAt',
       label: 'Data / hora',
       render: (item: AppointmentResponse) =>
         item.scheduledAt
-          ? formatDate(item.scheduledAt)
+          ? formatApiDateTime(item.scheduledAt)
           : item.preferredDate
-            ? `Pref.: ${new Date(item.preferredDate + 'T12:00:00').toLocaleDateString('pt-BR')} (a combinar)`
+            ? `Pref.: ${formatApiDate(item.preferredDate)} (a combinar)`
             : 'A combinar',
     },
     { key: 'clientName', label: 'Cliente' },

@@ -6,7 +6,7 @@ import com.cristiane.salon.models.staff.enums.Gender;
 import com.cristiane.salon.models.staff.enums.PixKeyType;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Visão de um cadastro da equipe para a API.
@@ -54,8 +54,8 @@ public record StaffProfileResponse(
 
         LocalDate hiredAt,
         String notes,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        Instant createdAt,
+        Instant updatedAt
 ) {
 
     public static StaffProfileResponse fromEntity(StaffProfile profile) {

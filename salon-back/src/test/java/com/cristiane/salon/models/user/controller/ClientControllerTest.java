@@ -21,6 +21,7 @@ import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 @WebMvcTest(ClientController.class)
 class ClientControllerTest extends BaseControllerTest {
@@ -34,7 +35,7 @@ class ClientControllerTest extends BaseControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void findAllClientsReturnsPage() throws Exception {
-        UserResponse response = new UserResponse(1L, "Client John", "john@client.com", "12345678", null, "CLIENTE", true, LocalDateTime.now());
+        UserResponse response = new UserResponse(1L, "Client John", "john@client.com", "12345678", null, "CLIENTE", true, Instant.now());
         org.springframework.data.domain.Page<UserResponse> page = new org.springframework.data.domain.PageImpl<>(List.of(response));
         when(userService.findAllClients(any(), any())).thenReturn(page);
 
@@ -48,7 +49,7 @@ class ClientControllerTest extends BaseControllerTest {
     @WithMockUser(roles = "ADMIN")
     void findClientDetailsByIdReturnsDetails() throws Exception {
         ClientDetailsResponse details = new ClientDetailsResponse(
-                1L, "Client John", "john@client.com", "12345678", "12345678909", "CLIENTE", true, LocalDateTime.now(),
+                1L, "Client John", "john@client.com", "12345678", "12345678909", "CLIENTE", true, Instant.now(),
                 5L, LocalDateTime.now(), List.of()
         );
         when(userService.findClientDetailsById(eq(1L))).thenReturn(details);

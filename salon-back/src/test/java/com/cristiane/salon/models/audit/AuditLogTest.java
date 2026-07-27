@@ -3,12 +3,14 @@ package com.cristiane.salon.models.audit;
 import org.junit.jupiter.api.Test;
 import java.time.LocalDateTime;
 import static org.junit.jupiter.api.Assertions.*;
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 
 class AuditLogTest {
 
     @Test
     void testGettersSettersAndBuilder() {
-        LocalDateTime now = LocalDateTime.now();
+        Instant now = Instant.now();
         AuditLog log = AuditLog.builder()
                 .id(1L)
                 .userId(2L)
@@ -80,7 +82,7 @@ class AuditLogTest {
         log.onCreate();
         assertNotNull(log.getCreatedAt());
 
-        LocalDateTime specificTime = LocalDateTime.now().minusDays(1);
+        Instant specificTime = Instant.now().minus(1, ChronoUnit.DAYS);
         AuditLog logWithTime = new AuditLog();
         logWithTime.setCreatedAt(specificTime);
         logWithTime.onCreate();

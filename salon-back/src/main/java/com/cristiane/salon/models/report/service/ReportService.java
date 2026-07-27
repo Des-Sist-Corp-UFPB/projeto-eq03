@@ -1,5 +1,6 @@
 package com.cristiane.salon.models.report.service;
 
+import com.cristiane.salon.config.SalonClock;
 import com.cristiane.salon.exception.ResourceNotFoundException;
 import com.cristiane.salon.models.appointment.entity.Appointment;
 import com.cristiane.salon.models.appointment.enums.AppointmentStatus;
@@ -46,6 +47,7 @@ public class ReportService {
     private final CashFlowRepository cashFlowRepository;
     private final AppointmentRepository appointmentRepository;
     private final EmployeeRepository employeeRepository;
+    private final SalonClock salonClock;
 
     @Transactional(readOnly = true)
     public Page<AppointmentFinancialResponse> getEmployeeFinancialHistory(
@@ -67,8 +69,8 @@ public class ReportService {
     public FinancialReportResponse generateFinancialReport(
             @SpanAttribute("relatorio.data_inicio") LocalDate from,
             @SpanAttribute("relatorio.data_fim") LocalDate to) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now().plusDays(30);
+        if (from == null) from = salonClock.today().withDayOfMonth(1);
+        if (to == null) to = salonClock.today().plusDays(30);
 
         List<CashFlow> cashFlows = cashFlowRepository.findByDateBetween(from, to);
 
@@ -195,8 +197,8 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public AppointmentReportResponse generateAppointmentReport(LocalDate from, LocalDate to) {
-        final LocalDate fromDate = from == null ? LocalDate.now().withDayOfMonth(1) : from;
-        final LocalDate toDate = to == null ? LocalDate.now().plusDays(30) : to;
+        final LocalDate fromDate = from == null ? salonClock.today().withDayOfMonth(1) : from;
+        final LocalDate toDate = to == null ? salonClock.today().plusDays(30) : to;
 
         List<Appointment> appointments = findAppointmentsInPeriod(fromDate, toDate);
 
@@ -230,8 +232,8 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public PayrollReportResponse generatePayrollReport(LocalDate from, LocalDate to) {
-        if (from == null) from = LocalDate.now().withDayOfMonth(1);
-        if (to == null) to = LocalDate.now().plusDays(30);
+        if (from == null) from = salonClock.today().withDayOfMonth(1);
+        if (to == null) to = salonClock.today().plusDays(30);
 
         List<Appointment> doneAppointments = findAppointmentsInPeriod(from, to).stream()
                 .filter(a -> a.getStatus() == AppointmentStatus.DONE)
@@ -303,6 +305,10 @@ public class ReportService {
     private List<Appointment> findAppointmentsInPeriod(LocalDate from, LocalDate to) {
         LocalDateTime startOfDay = from.atStartOfDay();
         LocalDateTime endOfDay = to.atTime(LocalTime.MAX);
-        return appointmentRepository.findAllInPeriod(from, to, startOfDay, endOfDay);
+        // O mesmo intervalo também como instante: "00:00 do dia X no salão" corresponde a um
+        // ponto diferente da linha do tempo conforme o fuso, e createdAt só entende instante.
+        return appointmentRepository.findAllInPeriod(from, to, startOfDay, endOfDay,
+                startOfDay.atZone(salonClock.zone()).toInstant(),
+                endOfDay.atZone(salonClock.zone()).toInstant());
     }
 }

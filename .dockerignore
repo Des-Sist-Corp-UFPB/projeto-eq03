@@ -1,0 +1,30 @@
+# Sem este arquivo o contexto de build passava de 500 MB (node_modules, dist, logs e
+# coverage eram enviados ao daemon a cada build) e, pior, o .env local de desenvolvimento
+# era copiado para dentro da imagem pelo `COPY salon-front/ .` — o que faz o build local
+# mentir: ele pegaria a chave VAPID do .env e passaria, enquanto o CI (que não tem .env)
+# geraria um bundle sem chave nenhuma. Foi assim que a falha de push passou despercebida.
+
+# Dependências e artefatos de build — reconstruídos dentro da imagem
+**/node_modules
+salon-front/dist
+salon-front/coverage
+salon-back/target
+
+# Segredos e configuração local: em produção as variáveis vêm do .env do servidor
+# (runtime) e dos build-args do cd.yml (build). Nunca de um arquivo dentro da imagem.
+.env
+**/.env
+**/.env.local
+!**/.env.example
+
+# Metadados de repositório e ferramentas locais
+.git
+.github
+.claude
+logs
+cobertura
+loadtest
+
+# Documentação — não influencia o build
+*.md
+docs

@@ -9,6 +9,16 @@ COPY salon-front/ .
 # Como o Nginx foi removido e tudo rodará no mesmo domínio e porta (Spring Boot), a URL da API é apenas o caminho relativo
 ARG VITE_API_URL=/v1
 ENV VITE_API_URL=$VITE_API_URL
+
+# Chave PÚBLICA VAPID das notificações push. Precisa entrar AQUI, no build: o Vite embute as
+# variáveis VITE_* no bundle durante o `npm run build`, então configurá-la só no .env do
+# servidor não surte efeito nenhum — o JavaScript já saiu compilado de dentro da imagem.
+# Sem ela, usePushNotification desiste na primeira linha e o usuário nunca vê o pedido de
+# permissão de notificação. Não é segredo: a chave pública trafega pro navegador de todo
+# cliente por definição — o que não pode vazar é a VAPID_PRIVATE_KEY, que fica só no backend.
+ARG VITE_VAPID_PUBLIC_KEY
+ENV VITE_VAPID_PUBLIC_KEY=$VITE_VAPID_PUBLIC_KEY
+
 RUN npm run build
 
 # Estágio 2: Build do Backend (Spring Boot) integrando o Frontend

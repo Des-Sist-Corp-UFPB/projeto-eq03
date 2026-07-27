@@ -3,7 +3,7 @@ package com.cristiane.salon.integrations.email.outbox.dto;
 import com.cristiane.salon.integrations.email.outbox.entity.EmailOutboxEntry;
 import com.cristiane.salon.integrations.email.outbox.enums.EmailOutboxStatus;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 
 /**
  * Sem {@code htmlContent}: a tela de admin precisa saber PARA QUEM/O QUÊ/status, não o corpo
@@ -15,12 +15,12 @@ public record EmailOutboxResponse(
         String subject,
         EmailOutboxStatus status,
         int attempts,
-        LocalDateTime nextRetryAt,
+        Instant nextRetryAt,
         String lastError,
         String relatedEntityType,
         Long relatedEntityId,
-        LocalDateTime createdAt,
-        LocalDateTime sentAt
+        Instant createdAt,
+        Instant sentAt
 ) {
     public static EmailOutboxResponse fromEntity(EmailOutboxEntry entry) {
         return new EmailOutboxResponse(

@@ -21,6 +21,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+import java.time.Instant;
 
 /**
  * Nota: como em StaffControllerTest, a autorização real do RBAC não é exercitada neste slice
@@ -39,7 +40,7 @@ class EmailOutboxControllerTest extends BaseControllerTest {
         return new EmailOutboxResponse(
                 1L, "cliente@example.com", "Assunto", status, 1,
                 null, null, "Appointment", 42L,
-                LocalDateTime.now(), status == EmailOutboxStatus.SENT ? LocalDateTime.now() : null
+                Instant.now(), status == EmailOutboxStatus.SENT ? Instant.now() : null
         );
     }
 

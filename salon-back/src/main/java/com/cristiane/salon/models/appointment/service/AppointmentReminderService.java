@@ -15,6 +15,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.util.List;
+import java.time.Instant;
 
 /**
  * Lembrete de agendamento D-1 (issue #111): reduz no-show avisando o cliente na véspera.
@@ -61,7 +62,7 @@ public class AppointmentReminderService {
             emailService.sendAppointmentReminder(appointment);
             pushService.sendToUser(appointment.getClient().getId(), "Seu agendamento é amanhã! ⏰",
                     "Não esqueça: " + appointment.getServiceNames() + " agendado para amanhã.", "/my-appointments");
-            appointment.setRemindedAt(LocalDateTime.now());
+            appointment.setRemindedAt(Instant.now());
             appointmentRepository.save(appointment);
         }
     }
