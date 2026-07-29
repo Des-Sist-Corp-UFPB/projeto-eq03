@@ -31,6 +31,12 @@ app:
   http-client:
     connect-timeout-ms: ${HTTP_CLIENT_CONNECT_TIMEOUT_MS:3000}
     read-timeout-ms: ${HTTP_CLIENT_READ_TIMEOUT_MS:5000}
+  # Timeout à parte pro provedor de IA — gerar uma resposta de LLM rotineiramente leva vários
+  # segundos (mais ainda atravessando um proxy compartilhado, ex.: LiteLLM da turma), um perfil
+  # de latência bem diferente de Mercado Pago/Resend. Usar os 5s acima aqui derrubava a chamada
+  # antes do provedor terminar de responder (ver HttpClientConfig.aiRestClientBuilder).
+  ai-http-client:
+    read-timeout-ms: ${AI_HTTP_CLIENT_READ_TIMEOUT_MS:30000}
   # Fila de retry de e-mail (ver EmailOutboxService) — retenção curta de propósito: o registro
   # permanente de todo envio já existe em tb_audit_log, esta tabela é só operacional (o que
   # ainda falta reenviar + histórico recente pra tela de admin), então não faz sentido manter

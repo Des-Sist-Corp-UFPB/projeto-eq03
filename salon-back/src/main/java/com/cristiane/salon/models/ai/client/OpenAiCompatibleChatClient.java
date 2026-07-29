@@ -2,7 +2,7 @@ package com.cristiane.salon.models.ai.client;
 
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
@@ -22,10 +22,18 @@ import java.util.Map;
  * {@code BusinessException} — este componente só transporta.
  */
 @Component
-@RequiredArgsConstructor
 public class OpenAiCompatibleChatClient {
 
     private final RestClient.Builder restClientBuilder;
+
+    // Construtor explícito (em vez de @RequiredArgsConstructor): @Qualifier em campo não é
+    // copiado automaticamente pro parâmetro do construtor gerado pelo Lombok, e resolver isso
+    // errado silenciosamente voltaria a usar o timeout de 5s compartilhado (ver
+    // HttpClientConfig.aiRestClientBuilder) — o mesmo bug que estava derrubando a chamada de IA
+    // em produção antes do provedor terminar de responder.
+    public OpenAiCompatibleChatClient(@Qualifier("aiRestClientBuilder") RestClient.Builder restClientBuilder) {
+        this.restClientBuilder = restClientBuilder;
+    }
 
     @SuppressWarnings("unchecked")
     @CircuitBreaker(name = "ai-provider")
