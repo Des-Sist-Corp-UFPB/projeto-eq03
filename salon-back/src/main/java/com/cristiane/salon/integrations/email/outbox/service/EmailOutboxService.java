@@ -46,8 +46,14 @@ public class EmailOutboxService {
      * o que fazer (hoje: registrar FAILURE no log de auditoria), exatamente como antes desta
      * fila existir. A diferença é que agora, além disso, fica registrado aqui para retry
      * automático mais tarde.
+     *
+     * {@code noRollbackFor}: sem isso, o rollback automático do Spring pra qualquer
+     * RuntimeException que escapa de um método @Transactional desfaz também o
+     * {@code repository.save(entry)} que acabou de gravar a falha — apagando, no mesmo
+     * instante, o próprio registro que essa fila existe pra preservar. A entrada precisa
+     * sobreviver à exceção que é relançada logo em seguida.
      */
-    @Transactional
+    @Transactional(noRollbackFor = RuntimeException.class)
     public void sendNow(String to, String subject, String htmlContent, String replyTo,
             String relatedEntityType, Long relatedEntityId) {
         EmailOutboxEntry entry = EmailOutboxEntry.create(to, subject, htmlContent, replyTo,
