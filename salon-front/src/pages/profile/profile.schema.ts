@@ -2,10 +2,11 @@ import { z } from 'zod';
 
 export const profileFormSchema = z
   .object({
-    name: z.string().min(1, 'Nome é obrigatório').min(3, 'Mínimo 3 caracteres'),
+    name: z.string().min(1, 'Nome é obrigatório').min(3, 'Mínimo 3 caracteres').max(150, 'Máximo de 150 caracteres'),
     email: z.string().optional(),
     phone: z
       .string()
+      .max(20, 'Máximo de 20 caracteres')
       .optional()
       .refine(
         (v) => !v || /^\(?\d{2}\)?\s?\d{4,5}-?\d{4}$/.test(v),

@@ -133,6 +133,7 @@ export const Profile = () => {
               </label>
               <input
                 type="text"
+                maxLength={150}
                 {...register('name')}
                 className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
               />
@@ -145,6 +146,7 @@ export const Profile = () => {
               <label className="label-premium">Telefone</label>
               <input
                 type="tel"
+                maxLength={20}
                 {...register('phone')}
                 placeholder="(11) 99999-9999"
                 className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}

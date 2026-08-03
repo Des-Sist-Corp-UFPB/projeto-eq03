@@ -140,14 +140,14 @@ export const SalonProfile = () => {
       >
         <div className="space-y-1.5">
           <label htmlFor="salon-name" className={labelCls}>Nome *</label>
-          <input id="salon-name" type="text" {...register('name')}
+          <input id="salon-name" type="text" maxLength={150} {...register('name')}
             className={`${inputCls} ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`} />
           {errors.name && <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>}
         </div>
 
         <div className="space-y-1.5">
           <label htmlFor="salon-description" className={labelCls}>Sobre</label>
-          <textarea id="salon-description" rows={4} {...register('description')} className={inputCls} />
+          <textarea id="salon-description" rows={4} maxLength={2000} {...register('description')} className={inputCls} />
           {errors.description && (
             <span className="text-xs text-rose-500 font-semibold">{errors.description.message}</span>
           )}
@@ -155,21 +155,21 @@ export const SalonProfile = () => {
 
         <div className="space-y-1.5">
           <label htmlFor="salon-address" className={labelCls}>Endereço</label>
-          <input id="salon-address" type="text" {...register('address')} className={inputCls} />
+          <input id="salon-address" type="text" maxLength={300} {...register('address')} className={inputCls} />
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="space-y-1.5">
             <label htmlFor="salon-phone" className={labelCls}>Telefone</label>
-            <input id="salon-phone" type="text" {...register('phone')} className={inputCls} />
+            <input id="salon-phone" type="text" maxLength={20} {...register('phone')} className={inputCls} />
           </div>
           <div className="space-y-1.5">
             <label htmlFor="salon-instagram" className={labelCls}>Instagram</label>
-            <input id="salon-instagram" type="text" placeholder="@seusalao" {...register('instagram')} className={inputCls} />
+            <input id="salon-instagram" type="text" placeholder="@seusalao" maxLength={150} {...register('instagram')} className={inputCls} />
           </div>
           <div className="space-y-1.5">
             <label htmlFor="salon-whatsapp" className={labelCls}>WhatsApp</label>
-            <input id="salon-whatsapp" type="text" {...register('whatsapp')} className={inputCls} />
+            <input id="salon-whatsapp" type="text" maxLength={20} {...register('whatsapp')} className={inputCls} />
           </div>
         </div>
 

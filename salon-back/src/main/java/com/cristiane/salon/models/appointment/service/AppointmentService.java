@@ -35,6 +35,7 @@ import com.cristiane.salon.models.user.entity.User;
 import com.cristiane.salon.models.user.repository.UserRepository;
 import com.cristiane.salon.models.audit.AuditLogService;
 import com.mercadopago.resources.payment.Payment;
+import org.springframework.dao.DataIntegrityViolationException;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -504,13 +505,8 @@ public class AppointmentService {
         appointmentRepository.save(appointment);
 
         // 6. Lança a receita no Fluxo de Caixa financeiro do salão
-        CashFlow cashFlow = new CashFlow();
-        cashFlow.setType(CashFlowType.INCOME);
-        cashFlow.setAmount(payment.getTransactionAmount());
-        cashFlow.setDescription("Pagamento PIX do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
-        cashFlow.setDate(salonClock.today());
-        cashFlow.setAppointment(appointment);
-        cashFlowRepository.save(cashFlow);
+        billAppointmentOnce(appointment, payment.getTransactionAmount(),
+                "Pagamento PIX do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
         
         pushService.sendToUser(appointment.getClient().getId(), "Pagamento recebido e confirmado! ✅",
                 "O pagamento do seu agendamento de " + appointment.getServiceNames() + " foi confirmado.", "/my-appointments");
@@ -605,23 +601,8 @@ public class AppointmentService {
             appointment.setStatus(status);
 
             if (status == AppointmentStatus.DONE) {
-                BigDecimal servicePrice = appointment.getTotalEffectivePrice();
-                boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
-
-                if (shouldAutoBill) {
-                    boolean alreadyBilled = cashFlowRepository.findAll().stream()
-                            .anyMatch(cf -> cf.getAppointment() != null && cf.getAppointment().getId().equals(id));
-
-                    if (!alreadyBilled) {
-                        CashFlow cashFlow = new CashFlow();
-                        cashFlow.setType(CashFlowType.INCOME);
-                        cashFlow.setAmount(servicePrice);
-                        cashFlow.setDescription("Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
-                        cashFlow.setDate(salonClock.today());
-                        cashFlow.setAppointment(appointment);
-                        cashFlowRepository.save(cashFlow);
-                    }
-                }
+                billAppointmentOnce(appointment, appointment.getTotalEffectivePrice(),
+                        "Pagamento do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
             }
 
             Appointment saved = appointmentRepository.save(appointment);
@@ -674,29 +655,40 @@ public class AppointmentService {
             appointment.setPaymentStatus(paymentStatus);
 
             if (paymentStatus == PaymentStatus.PAID) {
-                BigDecimal servicePrice = appointment.getTotalEffectivePrice();
-                boolean shouldAutoBill = servicePrice != null && servicePrice.signum() > 0;
-
-                if (shouldAutoBill) {
-                    boolean alreadyBilled = cashFlowRepository.findAll().stream()
-                            .anyMatch(cf -> cf.getAppointment() != null && cf.getAppointment().getId().equals(id));
-
-                    if (!alreadyBilled) {
-                        CashFlow cashFlow = new CashFlow();
-                        cashFlow.setType(CashFlowType.INCOME);
-                        cashFlow.setAmount(servicePrice);
-                        cashFlow.setDescription("Pagamento (Confirmado Admin) do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
-                        cashFlow.setDate(salonClock.today());
-                        cashFlow.setAppointment(appointment);
-                        cashFlowRepository.save(cashFlow);
-                    }
-                }
+                billAppointmentOnce(appointment, appointment.getTotalEffectivePrice(),
+                        "Pagamento (Confirmado Admin) do agendamento #" + appointment.getId() + " - " + appointment.getServiceNames());
             }
 
             Appointment saved = appointmentRepository.save(appointment);
             return AppointmentResponse.fromEntity(saved);
         } catch (IllegalArgumentException e) {
             throw new BadRequestException("Status de pagamento inválido");
+        }
+    }
+
+    // existsByAppointmentId evita a maioria das faturas duplicadas, mas ainda existe uma janela
+    // de corrida entre o exists e o save (ex.: webhook duplicado do Mercado Pago chegando quase
+    // simultâneo). A constraint UNIQUE(appointment_id) no banco (V45) é a garantia de verdade —
+    // se ela disparar, é porque outra transação já faturou este agendamento primeiro, então o
+    // catch aqui só transforma isso em um no-op silencioso em vez de propagar erro 500.
+    private void billAppointmentOnce(Appointment appointment, BigDecimal amount, String description) {
+        if (amount == null || amount.signum() <= 0) {
+            return;
+        }
+        if (cashFlowRepository.existsByAppointmentId(appointment.getId())) {
+            return;
+        }
+        try {
+            CashFlow cashFlow = new CashFlow();
+            cashFlow.setType(CashFlowType.INCOME);
+            cashFlow.setAmount(amount);
+            cashFlow.setDescription(description);
+            cashFlow.setDate(salonClock.today());
+            cashFlow.setAppointment(appointment);
+            cashFlowRepository.save(cashFlow);
+        } catch (DataIntegrityViolationException e) {
+            log.warn("Agendamento {} já havia sido faturado por outra transação concorrente — ignorando.",
+                    appointment.getId());
         }
     }
 }

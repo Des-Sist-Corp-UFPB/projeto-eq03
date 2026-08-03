@@ -339,6 +339,7 @@ export const AuditLog = () => {
               id="startDateInput"
               type="date"
               value={inputStartDate}
+              max={inputEndDate || undefined}
               onChange={(e) => setInputStartDate(e.target.value)}
               className="input-premium"
             />
@@ -350,6 +351,7 @@ export const AuditLog = () => {
               id="endDateInput"
               type="date"
               value={inputEndDate}
+              min={inputStartDate || undefined}
               onChange={(e) => setInputEndDate(e.target.value)}
               className="input-premium"
             />

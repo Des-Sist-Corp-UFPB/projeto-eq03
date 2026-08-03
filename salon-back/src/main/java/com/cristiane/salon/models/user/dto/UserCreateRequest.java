@@ -13,6 +13,7 @@ public record UserCreateRequest(
 
         @NotBlank(message = "O email é obrigatório")
         @Email(message = "O formato do email é inválido")
+        @Size(max = 150, message = "O email deve ter no máximo 150 caracteres")
         String email,
 
         @NotBlank(message = "A senha é obrigatória")

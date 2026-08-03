@@ -32,9 +32,13 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long>,
             @Param("endOfDay") LocalDateTime endOfDay
     );
 
+    // CAST(:from/:to AS timestamp) na checagem IS NULL não é frescura — sem ele, o Postgres
+    // não consegue inferir o tipo do parâmetro (ele aparece "nu", só num "? is null", sem
+    // nenhum outro contexto de tipo) e a query quebra com "could not determine data type
+    // of parameter $N" toda vez que from/to vêm nulos (bug real encontrado em produção).
     @Query("SELECT a FROM Appointment a WHERE a.employee.id = :employeeId "
-            + "AND (:from IS NULL OR a.scheduledAt >= :from) "
-            + "AND (:to IS NULL OR a.scheduledAt <= :to)")
+            + "AND (CAST(:from AS timestamp) IS NULL OR a.scheduledAt >= :from) "
+            + "AND (CAST(:to AS timestamp) IS NULL OR a.scheduledAt <= :to)")
     Page<Appointment> findByEmployeeIdForFinancialHistory(
             @Param("employeeId") Long employeeId,
             @Param("from") LocalDateTime from,

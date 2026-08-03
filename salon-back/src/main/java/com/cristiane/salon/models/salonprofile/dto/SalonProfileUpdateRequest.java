@@ -9,7 +9,7 @@ import java.util.List;
 
 public record SalonProfileUpdateRequest(
         @NotBlank @Size(max = 150) String name,
-        String description,
+        @Size(max = 2000) String description,
         @Size(max = 300) String address,
         @Size(max = 20) String phone,
         @Size(max = 150) String instagram,

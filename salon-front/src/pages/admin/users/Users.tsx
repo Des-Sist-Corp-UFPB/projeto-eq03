@@ -270,6 +270,7 @@ export const Users = () => {
             <label className={labelCls}>Nome Completo *</label>
             <input
               type="text"
+              maxLength={150}
               className={`input-premium ${errors.name ? 'border-rose-300 focus:border-rose-500' : ''}`}
               {...register('name')}
             />
@@ -281,6 +282,7 @@ export const Users = () => {
             <label className={labelCls}>Email *</label>
             <input
               type="email"
+              maxLength={150}
               className={`input-premium ${errors.email ? 'border-rose-300 focus:border-rose-500' : ''}`}
               {...register('email')}
             />
@@ -306,6 +308,7 @@ export const Users = () => {
             <label className={labelCls}>Telefone</label>
             <input
               type="text"
+              maxLength={20}
               className={`input-premium ${errors.phone ? 'border-rose-300 focus:border-rose-500' : ''}`}
               {...register('phone')}
             />

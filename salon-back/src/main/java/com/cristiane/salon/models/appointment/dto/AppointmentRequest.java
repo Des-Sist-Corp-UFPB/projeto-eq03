@@ -2,6 +2,7 @@ package com.cristiane.salon.models.appointment.dto;
 
 import jakarta.validation.constraints.NotEmpty;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Size;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,6 +24,7 @@ public record AppointmentRequest(
         LocalDate preferredDate,
 
         /** Observações do cliente (opcional). */
+        @Size(max = 1000, message = "As observações devem ter no máximo 1000 caracteres")
         String clientNotes,
 
         /** Preenchido apenas quando admin/gerente agenda para um cliente. */
