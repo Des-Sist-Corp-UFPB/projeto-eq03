@@ -7,8 +7,10 @@ import java.math.BigDecimal;
 
 public record SalonServiceRequest(
         @NotBlank(message = "O nome é obrigatório")
+        @Size(max = 150, message = "O nome deve ter no máximo 150 caracteres")
         String name,
 
+        @Size(max = 2000, message = "A descrição deve ter no máximo 2000 caracteres")
         String description,
 
         /** Opcional: exibido como &quot;a partir de&quot; no site */

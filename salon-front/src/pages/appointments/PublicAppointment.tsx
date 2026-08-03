@@ -436,6 +436,7 @@ export const PublicAppointment = () => {
               <textarea
                 id="client-notes"
                 rows={4}
+                maxLength={1000}
                 placeholder="Ex.: só de manhã, comentários sobre o cabelo, etc."
                 value={clientNotes}
                 onChange={(e) => setClientNotes(e.target.value)}

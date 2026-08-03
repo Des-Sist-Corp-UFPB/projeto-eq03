@@ -307,6 +307,7 @@ export const CashFlow = () => {
             <input
               type="date"
               value={dateFrom}
+              max={dateTo || undefined}
               onChange={(e) => {
                 setDateFrom(e.target.value);
                 setCurrentPage(1);
@@ -319,6 +320,7 @@ export const CashFlow = () => {
             <input
               type="date"
               value={dateTo}
+              min={dateFrom || undefined}
               onChange={(e) => {
                 setDateTo(e.target.value);
                 setCurrentPage(1);
@@ -593,6 +595,7 @@ export const CashFlow = () => {
             <input
               type="text"
               disabled={sourceType === 'PRODUCT'}
+              maxLength={500}
               className={`${inputCls} ${errors.description ? 'border-rose-300 focus:ring-rose-500/10 focus:border-rose-400' : ''}`}
               {...register('description')}
             />

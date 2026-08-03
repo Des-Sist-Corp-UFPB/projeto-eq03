@@ -93,6 +93,7 @@ export const AppointmentFiltersBar = ({ filters, employees, onChange, onClear }:
           type="date"
           className={inputCls}
           value={filters.startDate}
+          max={filters.endDate || undefined}
           onChange={(e) => onChange({ startDate: e.target.value })}
         />
       </div>
@@ -103,6 +104,7 @@ export const AppointmentFiltersBar = ({ filters, employees, onChange, onClear }:
           type="date"
           className={inputCls}
           value={filters.endDate}
+          min={filters.startDate || undefined}
           onChange={(e) => onChange({ endDate: e.target.value })}
         />
       </div>

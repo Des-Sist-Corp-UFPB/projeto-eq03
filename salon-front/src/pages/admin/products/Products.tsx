@@ -201,6 +201,7 @@ export const Products = () => {
             <label className={labelCls}>Nome do Produto *</label>
             <input
               type="text"
+              maxLength={150}
               className={`${inputCls} ${errors.name ? 'border-rose-300' : ''}`}
               {...register('name')}
             />

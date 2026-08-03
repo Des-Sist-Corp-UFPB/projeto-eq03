@@ -33,6 +33,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      # VITE_* é embutido no bundle durante `npm run build`, dentro da imagem — passar só via
+      # env_file/environment (runtime do container) não adianta nada, o Vite já rodou antes
+      # disso. Sem isso aqui, `docker compose up --build` gera uma imagem com a chave VAPID
+      # undefined e o push fica mudo silenciosamente (mesma causa raiz documentada em
+      # usePushNotification.ts, mas faltando aqui no caminho de build local via compose).
+      args:
+        VITE_VAPID_PUBLIC_KEY: ${VITE_VAPID_PUBLIC_KEY}
     container_name: salon-app
     env_file:
       - .env

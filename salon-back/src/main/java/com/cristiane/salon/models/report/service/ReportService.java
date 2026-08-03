@@ -17,6 +17,7 @@ import com.cristiane.salon.models.report.dto.AppointmentReportResponse;
 import com.cristiane.salon.models.report.dto.FinancialReportResponse;
 import com.cristiane.salon.models.report.dto.EmployeeFinanceResponse;
 import com.cristiane.salon.models.report.dto.PayrollReportResponse;
+import com.cristiane.salon.utils.DateRangeValidator;
 import io.opentelemetry.api.trace.Span;
 import io.opentelemetry.instrumentation.annotations.SpanAttribute;
 import io.opentelemetry.instrumentation.annotations.WithSpan;
@@ -52,6 +53,7 @@ public class ReportService {
     @Transactional(readOnly = true)
     public Page<AppointmentFinancialResponse> getEmployeeFinancialHistory(
             Long employeeId, LocalDate from, LocalDate to, Pageable pageable) {
+        DateRangeValidator.validate(from, to);
         if (!employeeRepository.existsById(employeeId)) {
             throw new ResourceNotFoundException("Funcionária não encontrada");
         }
@@ -69,6 +71,7 @@ public class ReportService {
     public FinancialReportResponse generateFinancialReport(
             @SpanAttribute("relatorio.data_inicio") LocalDate from,
             @SpanAttribute("relatorio.data_fim") LocalDate to) {
+        DateRangeValidator.validate(from, to);
         if (from == null) from = salonClock.today().withDayOfMonth(1);
         if (to == null) to = salonClock.today().plusDays(30);
 
@@ -197,6 +200,7 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public AppointmentReportResponse generateAppointmentReport(LocalDate from, LocalDate to) {
+        DateRangeValidator.validate(from, to);
         final LocalDate fromDate = from == null ? salonClock.today().withDayOfMonth(1) : from;
         final LocalDate toDate = to == null ? salonClock.today().plusDays(30) : to;
 
@@ -232,6 +236,7 @@ public class ReportService {
 
     @Transactional(readOnly = true)
     public PayrollReportResponse generatePayrollReport(LocalDate from, LocalDate to) {
+        DateRangeValidator.validate(from, to);
         if (from == null) from = salonClock.today().withDayOfMonth(1);
         if (to == null) to = salonClock.today().plusDays(30);
 

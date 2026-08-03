@@ -1440,9 +1440,7 @@ class AppointmentServiceTest {
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
-        CashFlow existingFlow = new CashFlow();
-        existingFlow.setAppointment(apt);
-        when(cashFlowRepository.findAll()).thenReturn(List.of(existingFlow));
+        when(cashFlowRepository.existsByAppointmentId(1L)).thenReturn(true);
 
         // Act
         AppointmentResponse result = appointmentService.updateStatus(1L, "DONE");
@@ -1464,7 +1462,6 @@ class AppointmentServiceTest {
         
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(cashFlowRepository.findAll()).thenReturn(new ArrayList<>()); // No bills yet
 
         // Act
         AppointmentResponse result = appointmentService.updateStatus(1L, "DONE");
@@ -1490,7 +1487,6 @@ class AppointmentServiceTest {
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(cashFlowRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
         appointmentService.updateStatus(1L, "DONE");
@@ -1732,7 +1728,6 @@ class AppointmentServiceTest {
 
         when(appointmentRepository.findById(1L)).thenReturn(Optional.of(apt));
         when(appointmentRepository.save(any(Appointment.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(cashFlowRepository.findAll()).thenReturn(new ArrayList<>());
 
         // Act
         AppointmentResponse result = appointmentService.updateStatus(1L, "DONE");

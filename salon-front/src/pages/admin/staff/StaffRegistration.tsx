@@ -264,12 +264,12 @@ export const StaffRegistration = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="staff-name" className={labelCls}>Nome de exibição</label>
-                      <input id="staff-name" className={inputCls} {...register('name')} />
+                      <input id="staff-name" maxLength={150} className={inputCls} {...register('name')} />
                       {errors.name && <span className="text-xs text-rose-500 font-semibold">{errors.name.message}</span>}
                     </div>
                     <div>
                       <label htmlFor="staff-email" className={labelCls}>Email</label>
-                      <input id="staff-email" type="email" className={inputCls} {...register('email')} />
+                      <input id="staff-email" type="email" maxLength={150} className={inputCls} {...register('email')} />
                       {errors.email && <span className="text-xs text-rose-500 font-semibold">{errors.email.message}</span>}
                     </div>
                     <div>
@@ -293,12 +293,12 @@ export const StaffRegistration = () => {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                       <label htmlFor="staff-fullName" className={labelCls}>Nome completo</label>
-                      <input id="staff-fullName" className={inputCls} {...register('fullName')} />
+                      <input id="staff-fullName" maxLength={150} className={inputCls} {...register('fullName')} />
                       {errors.fullName && <span className="text-xs text-rose-500 font-semibold">{errors.fullName.message}</span>}
                     </div>
                     <div>
                       <label htmlFor="staff-socialName" className={labelCls}>Nome social (opcional)</label>
-                      <input id="staff-socialName" className={inputCls} {...register('socialName')} />
+                      <input id="staff-socialName" maxLength={150} className={inputCls} {...register('socialName')} />
                     </div>
                     <div>
                       <label htmlFor="staff-cpf" className={labelCls}>CPF</label>
@@ -336,7 +336,7 @@ export const StaffRegistration = () => {
                     <div />
                     <div>
                       <label htmlFor="staff-emergencyContactName" className={labelCls}>Contato de emergência (opcional)</label>
-                      <input id="staff-emergencyContactName" className={inputCls} {...register('emergencyContactName')} />
+                      <input id="staff-emergencyContactName" maxLength={150} className={inputCls} {...register('emergencyContactName')} />
                     </div>
                     <div>
                       <label htmlFor="staff-emergencyContactPhone" className={labelCls}>Telefone de emergência (opcional)</label>
@@ -366,28 +366,28 @@ export const StaffRegistration = () => {
                     </div>
                     <div className="md:col-span-2">
                       <label htmlFor="staff-street" className={labelCls}>Logradouro</label>
-                      <input id="staff-street" className={inputCls} {...register('street')} />
+                      <input id="staff-street" maxLength={200} className={inputCls} {...register('street')} />
                       {errors.street && <span className="text-xs text-rose-500 font-semibold">{errors.street.message}</span>}
                     </div>
                     <div>
                       <label htmlFor="staff-streetNumber" className={labelCls}>Número</label>
-                      <input id="staff-streetNumber" className={inputCls} {...register('streetNumber')} />
+                      <input id="staff-streetNumber" maxLength={20} className={inputCls} {...register('streetNumber')} />
                       {errors.streetNumber && (
                         <span className="text-xs text-rose-500 font-semibold">{errors.streetNumber.message}</span>
                       )}
                     </div>
                     <div>
                       <label htmlFor="staff-complement" className={labelCls}>Complemento (opcional)</label>
-                      <input id="staff-complement" className={inputCls} {...register('complement')} />
+                      <input id="staff-complement" maxLength={100} className={inputCls} {...register('complement')} />
                     </div>
                     <div>
                       <label htmlFor="staff-district" className={labelCls}>Bairro</label>
-                      <input id="staff-district" className={inputCls} {...register('district')} />
+                      <input id="staff-district" maxLength={100} className={inputCls} {...register('district')} />
                       {errors.district && <span className="text-xs text-rose-500 font-semibold">{errors.district.message}</span>}
                     </div>
                     <div>
                       <label htmlFor="staff-city" className={labelCls}>Cidade</label>
-                      <input id="staff-city" className={inputCls} {...register('city')} />
+                      <input id="staff-city" maxLength={100} className={inputCls} {...register('city')} />
                       {errors.city && <span className="text-xs text-rose-500 font-semibold">{errors.city.message}</span>}
                     </div>
                     <div>
@@ -423,7 +423,7 @@ export const StaffRegistration = () => {
                     </div>
                     <div>
                       <label htmlFor="staff-pixKey" className={labelCls}>Chave PIX</label>
-                      <input id="staff-pixKey" className={inputCls} {...register('pixKey')} />
+                      <input id="staff-pixKey" maxLength={150} className={inputCls} {...register('pixKey')} />
                       {errors.pixKey && <span className="text-xs text-rose-500 font-semibold">{errors.pixKey.message}</span>}
                       <p className="text-xs text-gray-400 mt-1">
                         Cifrada no banco. Para pagar, um QR Code é gerado sem expor a chave.
@@ -483,7 +483,7 @@ export const StaffRegistration = () => {
                         )}
                         <div className="md:col-span-2">
                           <label htmlFor="staff-bio" className={labelCls}>Bio (opcional)</label>
-                          <textarea id="staff-bio" rows={2} className={inputCls} {...register('bio')} />
+                          <textarea id="staff-bio" rows={2} maxLength={1000} className={inputCls} {...register('bio')} />
                         </div>
                       </div>
                     </>
@@ -500,7 +500,7 @@ export const StaffRegistration = () => {
                     </div>
                     <div className="md:col-span-2">
                       <label htmlFor="staff-notes" className={labelCls}>Observações (opcional)</label>
-                      <textarea id="staff-notes" rows={2} className={inputCls} {...register('notes')} />
+                      <textarea id="staff-notes" rows={2} maxLength={2000} className={inputCls} {...register('notes')} />
                     </div>
                   </div>
                 </div>

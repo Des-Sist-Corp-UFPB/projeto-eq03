@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Plus, Edit, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit, Trash2, Eye, Search } from 'lucide-react';
 import { DataTable } from '../../../components/table/DataTable';
 import type { FilterField } from '../../../components/table/DataTable';
 import { ModalForm } from '../../../components/modal/ModalForm';
@@ -9,6 +9,8 @@ import { ConfirmDialog } from '../../../components/modal/ConfirmDialog';
 import { PermissionGate } from '../../../components/permissions/PermissionGate';
 import { employeesApi } from './services/employees';
 import type { EmployeeData, EmployeeFilter } from './services/employees';
+import { usersApi } from '../users/services/users';
+import type { UserData } from '../users/services/users';
 import { employeeFormSchema } from './employee.schema';
 import type { EmployeeFormValues } from './employee.schema';
 import { useAlert } from '../../../hooks/useAlert';
@@ -29,6 +31,12 @@ export const Employees = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedEmployee, setSelectedEmployee] = useState<EmployeeData | null>(null);
 
+  const [userQuery, setUserQuery] = useState('');
+  const [userResults, setUserResults] = useState<UserData[]>([]);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const [selectedUserLabel, setSelectedUserLabel] = useState('');
+  const userSearchDebounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -40,6 +48,36 @@ export const Employees = () => {
   } = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeFormSchema) });
   const remunerationType = watch('remunerationType');
   const { error: showError } = useAlert();
+
+  const handleUserQueryChange = (value: string) => {
+    setUserQuery(value);
+    setShowUserDropdown(true);
+    if (value !== selectedUserLabel) {
+      setValue('userId', '');
+    }
+    if (userSearchDebounce.current) clearTimeout(userSearchDebounce.current);
+    if (!value.trim()) {
+      setUserResults([]);
+      return;
+    }
+    userSearchDebounce.current = setTimeout(async () => {
+      try {
+        const page = await usersApi.findAll({ name: value }, 0, 8);
+        setUserResults(page.content);
+      } catch {
+        setUserResults([]);
+      }
+    }, 300);
+  };
+
+  const selectUser = (user: UserData) => {
+    setValue('userId', String(user.id));
+    const label = `${user.name} (${user.email})`;
+    setUserQuery(label);
+    setSelectedUserLabel(label);
+    setShowUserDropdown(false);
+    setUserResults([]);
+  };
 
   useEffect(() => {
     clearErrors('remunerationValue');
@@ -58,9 +96,17 @@ export const Employees = () => {
 
   const handleOpenForm = (employee?: EmployeeData) => {
     reset();
+    setUserQuery('');
+    setUserResults([]);
+    setShowUserDropdown(false);
     if (employee) {
       setEditingEmployee(employee);
       setValue('userId', String(employee.userId));
+      const label = employee.name
+        ? `${employee.name}${employee.email ? ` (${employee.email})` : ''}`
+        : String(employee.userId);
+      setUserQuery(label);
+      setSelectedUserLabel(label);
       setValue('bio', employee.bio || '');
       setValue('remunerationType', employee.remunerationType ?? '');
       setValue('commissionScope', employee.commissionScope ?? '');
@@ -74,6 +120,7 @@ export const Employees = () => {
       );
     } else {
       setEditingEmployee(null);
+      setSelectedUserLabel('');
     }
     setShowForm(true);
   };
@@ -249,16 +296,42 @@ export const Employees = () => {
         onSubmit={handleSubmit(onSubmit)}
       >
         <div className="space-y-4">
-          <div>
-            <label className={labelCls}>ID do Usuário *</label>
-            <input
-              type="number"
-              className={`${inputCls} ${errors.userId ? 'border-rose-300' : ''} ${editingEmployee ? 'opacity-60 cursor-not-allowed' : ''}`}
-              {...register('userId')}
-              disabled={!!editingEmployee}
-            />
+          <div className="relative">
+            <label className={labelCls}>Usuário *</label>
+            <input type="hidden" {...register('userId')} />
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+              <input
+                type="text"
+                className={`${inputCls} pl-9 ${errors.userId ? 'border-rose-300' : ''} ${editingEmployee ? 'opacity-60 cursor-not-allowed' : ''}`}
+                placeholder="Digite o nome ou email do usuário..."
+                value={userQuery}
+                onChange={(e) => handleUserQueryChange(e.target.value)}
+                onFocus={() => setShowUserDropdown(true)}
+                onBlur={() => setTimeout(() => setShowUserDropdown(false), 150)}
+                disabled={!!editingEmployee}
+                autoComplete="off"
+              />
+            </div>
+            {showUserDropdown && !editingEmployee && userResults.length > 0 && (
+              <ul className="absolute z-10 mt-1 w-full max-h-48 overflow-y-auto bg-white border border-[#eae1e1] rounded-xl shadow-lg">
+                {userResults.map((u) => (
+                  <li key={u.id}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => selectUser(u)}
+                      className="w-full text-left px-3 py-2 text-sm hover:bg-[#fcf9f9] cursor-pointer"
+                    >
+                      <span className="font-semibold">{u.name}</span>{' '}
+                      <span className="text-xs text-gray-400">{u.email}</span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
             <p className="text-xs text-gray-400 mt-1">
-              Insira o ID do usuário que será vinculado como funcionário(a).
+              Busque pelo nome e selecione o usuário que será vinculado como funcionário(a).
             </p>
             {errors.userId && (
               <span className="text-xs text-rose-500 font-semibold">{errors.userId.message}</span>
@@ -266,7 +339,7 @@ export const Employees = () => {
           </div>
           <div>
             <label className={labelCls}>Biografia / Especialidade</label>
-            <textarea rows={3} className={`${inputCls} resize-none`} {...register('bio')} />
+            <textarea rows={3} maxLength={1000} className={`${inputCls} resize-none`} {...register('bio')} />
           </div>
 
           <div className="border-t border-[#eae1e1]/50 pt-4">

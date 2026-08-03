@@ -36,8 +36,8 @@ export const staffFormSchema = z
   .object({
     // Acesso
     roleName: roleNameSchema,
-    name: z.string().min(1, 'O nome de exibição é obrigatório').min(3, 'Mínimo 3 caracteres'),
-    email: z.string().min(1, 'O email é obrigatório').email('Formato de e-mail inválido'),
+    name: z.string().min(1, 'O nome de exibição é obrigatório').min(3, 'Mínimo 3 caracteres').max(150, 'Máximo de 150 caracteres'),
+    email: z.string().min(1, 'O email é obrigatório').email('Formato de e-mail inválido').max(150, 'Máximo de 150 caracteres'),
     password: z
       .string()
       .min(1, 'A senha é obrigatória')
@@ -48,8 +48,8 @@ export const staffFormSchema = z
     confirmPassword: z.string().min(1, 'A confirmação de senha é obrigatória'),
 
     // Dados pessoais
-    fullName: z.string().min(1, 'O nome completo é obrigatório').min(3, 'Mínimo 3 caracteres'),
-    socialName: z.string().optional(),
+    fullName: z.string().min(1, 'O nome completo é obrigatório').min(3, 'Mínimo 3 caracteres').max(150, 'Máximo de 150 caracteres'),
+    socialName: z.string().max(150, 'Máximo de 150 caracteres').optional(),
     cpf: z
       .string()
       .min(1, 'O CPF é obrigatório')
@@ -62,7 +62,7 @@ export const staffFormSchema = z
 
     // Contato
     phone: z.string().min(1, 'O telefone é obrigatório').regex(phoneRegex, 'Telefone inválido'),
-    emergencyContactName: z.string().optional(),
+    emergencyContactName: z.string().max(150, 'Máximo de 150 caracteres').optional(),
     emergencyContactPhone: z
       .string()
       .optional()
@@ -70,16 +70,16 @@ export const staffFormSchema = z
 
     // Endereço
     zipCode: z.string().min(1, 'O CEP é obrigatório').regex(zipCodeRegex, 'CEP inválido'),
-    street: z.string().min(1, 'O logradouro é obrigatório'),
-    streetNumber: z.string().min(1, 'O número é obrigatório'),
-    complement: z.string().optional(),
-    district: z.string().min(1, 'O bairro é obrigatório'),
-    city: z.string().min(1, 'A cidade é obrigatória'),
+    street: z.string().min(1, 'O logradouro é obrigatório').max(200, 'Máximo de 200 caracteres'),
+    streetNumber: z.string().min(1, 'O número é obrigatório').max(20, 'Máximo de 20 caracteres'),
+    complement: z.string().max(100, 'Máximo de 100 caracteres').optional(),
+    district: z.string().min(1, 'O bairro é obrigatório').max(100, 'Máximo de 100 caracteres'),
+    city: z.string().min(1, 'A cidade é obrigatória').max(100, 'Máximo de 100 caracteres'),
     stateUf: z.enum(['', ...BRAZILIAN_STATES]),
 
     // PIX (opcional)
     pixKeyType: pixKeyTypeSchema.optional(),
-    pixKey: z.string().optional(),
+    pixKey: z.string().max(150, 'Máximo de 150 caracteres').optional(),
 
     // Metadados
     hiredAt: z.string().optional(),

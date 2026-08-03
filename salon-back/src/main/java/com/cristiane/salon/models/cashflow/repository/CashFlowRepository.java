@@ -23,4 +23,9 @@ public interface CashFlowRepository extends JpaRepository<CashFlow, Long> {
     // carregar o período inteiro de uma vez.
     @Query("SELECT c FROM CashFlow c WHERE c.date >= :startDate AND c.date <= :endDate")
     Page<CashFlow> findByDateBetween(@Param("startDate") LocalDate startDate, @Param("endDate") LocalDate endDate, Pageable pageable);
+
+    // Usado para checar se um agendamento já foi lançado no caixa antes de lançar de novo
+    // (evita faturamento duplicado) — substitui um findAll().stream().anyMatch(...) que fazia
+    // full table scan a cada confirmação de pagamento.
+    boolean existsByAppointmentId(Long appointmentId);
 }

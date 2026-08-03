@@ -15,6 +15,7 @@ import com.cristiane.salon.models.cashflow.enums.CashFlowType;
 import com.cristiane.salon.models.cashflow.repository.CashFlowRepository;
 import com.cristiane.salon.models.product.entity.Product;
 import com.cristiane.salon.models.product.repository.ProductRepository;
+import com.cristiane.salon.utils.DateRangeValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -40,6 +41,7 @@ public class CashFlowService {
 
     @Transactional(readOnly = true)
     public List<CashFlowResponse> findByPeriod(LocalDate from, LocalDate to) {
+        DateRangeValidator.validate(from, to);
         if (from == null) from = salonClock.today().withDayOfMonth(1);
         if (to == null) to = salonClock.today().plusDays(30);
 
@@ -50,6 +52,7 @@ public class CashFlowService {
 
     @Transactional(readOnly = true)
     public Page<CashFlowResponse> findByPeriod(LocalDate from, LocalDate to, Pageable pageable) {
+        DateRangeValidator.validate(from, to);
         if (from == null) from = salonClock.today().withDayOfMonth(1);
         if (to == null) to = salonClock.today().plusDays(30);
 

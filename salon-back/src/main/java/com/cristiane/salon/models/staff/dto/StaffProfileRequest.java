@@ -106,6 +106,7 @@ public record StaffProfileRequest(
         // --- PIX (opcional, validado em conjunto por @ValidPixKey) ---
 
         PixKeyType pixKeyType,
+        @Size(max = 150, message = "A chave PIX deve ter no máximo 150 caracteres")
         String pixKey,
 
         // --- Metadados ---

@@ -1,6 +1,7 @@
 package com.cristiane.salon.models.audit;
 
 import com.cristiane.salon.config.SalonClock;
+import com.cristiane.salon.utils.DateRangeValidator;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
@@ -103,7 +104,8 @@ public class AuditLogService {
             LocalDate startDate,
             LocalDate endDate,
             Pageable pageable) {
-        
+        DateRangeValidator.validate(startDate, endDate);
+
         String searchAction = (action == null || action.trim().isEmpty()) ? null : action.trim();
         String searchEntity = (entityType == null || entityType.trim().isEmpty()) ? null : entityType.trim();
 
@@ -141,6 +143,7 @@ public class AuditLogService {
     
     /** {@code from}/{@code to} chegam como hora local do salão (é o que a tela envia). */
     public Page<AuditLog> getAuditLogsByDateRange(LocalDateTime from, LocalDateTime to, Pageable pageable) {
+        DateRangeValidator.validate(from, to);
         return auditLogRepository.findByCreatedAtBetween(
                 from.atZone(salonClock.zone()).toInstant(),
                 to.atZone(salonClock.zone()).toInstant(),

@@ -219,6 +219,7 @@ export const AdminServices = () => {
             <label className={labelCls}>Nome do Serviço *</label>
             <input
               type="text"
+              maxLength={150}
               className={`${inputCls} ${errors.name ? 'border-rose-300' : ''}`}
               {...register('name')}
             />
@@ -228,7 +229,7 @@ export const AdminServices = () => {
           </div>
           <div>
             <label className={labelCls}>Descrição</label>
-            <textarea rows={3} className={`${inputCls} resize-none`} {...register('description')} />
+            <textarea rows={3} maxLength={2000} className={`${inputCls} resize-none`} {...register('description')} />
           </div>
           <div>
             <label className={labelCls}>Valor de referência — "a partir de" (opcional)</label>
@@ -252,6 +253,7 @@ export const AdminServices = () => {
             <input
               type="text"
               placeholder="Ex.: Em média 50 min · Em média 1h20"
+              maxLength={160}
               className={inputCls}
               {...register('durationEstimate')}
             />

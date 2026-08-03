@@ -16,6 +16,8 @@ Key scenarios:
 - Appointment slot conflict detection (overlap rules)
 - Cash flow entry creation and listing
 
+Newer modules are also covered, without an exhaustive scenario list here: staff registration (CPF/PIX encryption and hashing), push notification subscribe/unsubscribe, e-mail outbox retry/resend, salon profile and business hours, the AI module (recommendations, AI config, MCP tokens), Mercado Pago PIX payment generation and webhook processing, and the password reset flow.
+
 ## Frontend
 
 **Unit & Component tests** — Vitest + React Testing Library (RTL). Test pages, components, hooks (e.g., `usePermission`), and contexts (e.g., `AuthContext`) in isolation.
@@ -31,14 +33,17 @@ Key scenarios:
 ## Running Tests
 
 ```bash
-# Backend
+# Backend — quick local run (does not enforce the coverage gate)
 cd salon-back
 ./mvnw test
+
+# Backend — what CI actually runs (also enforces the 85% Jacoco coverage gate)
+./mvnw clean verify -Dspring.profiles.active=test
 
 # Frontend Unit/Component tests
 cd salon-front
 npm run test
 
-# Frontend Coverage report
+# Frontend Coverage report (this is what CI runs, via npm run test:coverage)
 npm run test:coverage
 ```

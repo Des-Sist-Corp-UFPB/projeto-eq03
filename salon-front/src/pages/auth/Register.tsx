@@ -152,6 +152,7 @@ export const Register = () => {
               <input
                 type="text"
                 placeholder="Seu nome completo"
+                maxLength={150}
                 {...register('name')}
                 className={`input-premium ${
                   errors.name ? 'border-rose-300 focus:border-rose-500' : ''
@@ -167,6 +168,7 @@ export const Register = () => {
               <input
                 type="email"
                 placeholder="seuemail@exemplo.com"
+                maxLength={150}
                 {...register('email')}
                 className={`input-premium ${
                   errors.email ? 'border-rose-300 focus:border-rose-500' : ''
@@ -182,6 +184,7 @@ export const Register = () => {
               <input
                 type="text"
                 placeholder="(83) 99999-9999"
+                maxLength={20}
                 {...register('phone')}
                 className={`input-premium ${
                   errors.phone ? 'border-rose-300 focus:border-rose-500' : ''
