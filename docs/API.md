@@ -420,4 +420,5 @@ Unique on `(user_id, endpoint)`.
 | **V42** | `V42__add_salon_profile_permissions.sql` | Documents salon profile endpoint (no explicit grants; ADMIN/SYSADMIN only via bypass) |
 | **V43** | `V43__machine_timestamps_to_timestamptz.sql` | Converts machine-generated timestamps to `timestamptz` (fixes a timezone display bug) |
 | **V44** | `V44__funcionaria_confirm_own_appointments.sql` | Lets FUNCIONARIA confirm/decline appointments where she's the assigned professional |
-| **V45** | `V45__unique_cashflow_appointment.sql` | Adds a unique constraint preventing duplicate cash flow entries per appointment |
+| **V45** | `V45__cleanup_duplicate_cashflow_appointments.sql` | One-time cleanup: removes pre-existing duplicate cash flow entries per appointment (keeps the oldest), required before V46 can add the unique constraint |
+| **V46** | `V46__unique_cashflow_appointment.sql` | Adds a unique constraint preventing duplicate cash flow entries per appointment |

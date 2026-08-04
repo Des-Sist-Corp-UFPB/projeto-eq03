@@ -83,7 +83,7 @@ resources/
 │   ├── V1__create_security_tables.sql
 │   ├── V2__insert_roles_permissions.sql
 │   ├── ...
-│   └── V45__unique_cashflow_appointment.sql
+│   └── V46__unique_cashflow_appointment.sql
 ├── templates/
 │   └── mail/        # Thymeleaf e-mail templates
 ├── application.yaml
