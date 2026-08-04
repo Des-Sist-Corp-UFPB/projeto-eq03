@@ -668,7 +668,7 @@ public class AppointmentService {
 
     // existsByAppointmentId evita a maioria das faturas duplicadas, mas ainda existe uma janela
     // de corrida entre o exists e o save (ex.: webhook duplicado do Mercado Pago chegando quase
-    // simultâneo). A constraint UNIQUE(appointment_id) no banco (V45) é a garantia de verdade —
+    // simultâneo). A constraint UNIQUE(appointment_id) no banco (V46) é a garantia de verdade —
     // se ela disparar, é porque outra transação já faturou este agendamento primeiro, então o
     // catch aqui só transforma isso em um no-op silencioso em vez de propagar erro 500.
     private void billAppointmentOnce(Appointment appointment, BigDecimal amount, String description) {

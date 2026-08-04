@@ -34,7 +34,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
- * Prova em banco real (não H2) que a constraint UNIQUE(appointment_id) da migration V45
+ * Prova em banco real (não H2) que a constraint UNIQUE(appointment_id) da migration V46
  * realmente impede faturamento duplicado do mesmo agendamento no fluxo de caixa — a checagem em
  * memória (existsByAppointmentId) sozinha não fecha a janela de corrida entre duas transações
  * concorrentes.
