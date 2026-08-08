@@ -25,6 +25,14 @@ O sistema cumpre todos os requisitos exigidos utilizando padrões modernos de de
 
 ---
 
+## 🎬 Entrega Final — Vídeo de Demonstração
+
+Como parte da entrega final da disciplina, gravamos um vídeo demonstrando o sistema em funcionamento — fluxos de agendamento, painel administrativo, integrações e demais funcionalidades descritas neste README.
+
+📺 **Assista aqui:** [Apresentando sistema para salão de beleza](https://youtu.be/dAna434OWtg)
+
+---
+
 ## 📝 Log de Auditoria
 
 O sistema de auditoria registra ações críticas de gravação ou autenticação realizadas no sistema.
